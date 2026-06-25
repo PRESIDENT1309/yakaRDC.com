@@ -1,23 +1,111 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
-import { Search as SearchIcon, MapPin } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  Platform,
+  Dimensions,
+  FlatList,
+} from 'react-native';
+import { router } from 'expo-router';
+import Svg, { Circle, Polygon, Path } from 'react-native-svg';
+import {
+  Search,
+  Bell,
+  SlidersHorizontal,
+  Building2,
+  Home,
+  UtensilsCrossed,
+  Mountain,
+  Star,
+  MapPin,
+  ChevronRight,
+} from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, radii } from '../../lib/theme';
-import CategoryPill from '../../components/CategoryPill';
-import ListingCard from '../../components/ListingCard';
+import { useAuth } from '../../lib/auth-context';
+import { colors, categoryColors } from '../../lib/theme';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
-const CATEGORIES: { key: EstablishmentType; label: string }[] = [
-  { key: 'hotel', label: 'Hôtels' },
-  { key: 'furnished_house', label: 'Maisons meublées' },
-  { key: 'restaurant', label: 'Restaurants' },
-  { key: 'site', label: 'Sites' },
+const CARD_WIDTH = 160;
+
+const CATEGORIES: {
+  key: EstablishmentType;
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+}[] = [
+  { key: 'hotel', label: 'Hôtels', icon: <Building2 size={22} color="#712B13" />, color: '#712B13', bg: '#FAECE7' },
+  { key: 'furnished_house', label: 'Maisons', icon: <Home size={22} color="#085041" />, color: '#085041', bg: '#E1F5EE' },
+  { key: 'restaurant', label: 'Restaurants', icon: <UtensilsCrossed size={22} color="#854F0B" />, color: '#854F0B', bg: '#FAEEDA' },
+  { key: 'site', label: 'Sites', icon: <Mountain size={22} color="#1F4D3A" />, color: '#1F4D3A', bg: '#DCEEE3' },
 ];
 
+function HeroIllustration() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 390 260" preserveAspectRatio="xMidYMid slice">
+      <Circle cx="300" cy="70" r="52" fill="#FAC775" opacity={0.9} />
+      <Circle cx="300" cy="70" r="40" fill="#F0A040" />
+      <Circle cx="300" cy="70" r="28" fill="#D85A30" />
+      <Polygon points="0,260 60,130 120,260" fill="#2A1005" />
+      <Polygon points="80,260 135,100 190,260" fill="#1A0A03" />
+      <Polygon points="175,260 220,75 232,70 244,75 300,260" fill="#0D0602" />
+      <Path
+        d="M226,70 C224,55 235,48 229,32"
+        stroke="#FAF8F4"
+        strokeWidth="2.5"
+        fill="none"
+        opacity={0.25}
+        strokeLinecap="round"
+      />
+      <Polygon points="290,260 325,155 360,260" fill="#1A0A03" />
+    </Svg>
+  );
+}
+
+function ListingCard({ item }: { item: Establishment }) {
+  const cat = categoryColors[item.type];
+  const icons: Record<EstablishmentType, React.ReactNode> = {
+    hotel: <Building2 size={28} color={cat?.accent ?? colors.lave} />,
+    furnished_house: <Home size={28} color={cat?.accent ?? colors.fleuve} />,
+    restaurant: <UtensilsCrossed size={28} color={cat?.accent ?? colors.or} />,
+    site: <Mountain size={28} color={cat?.accent ?? colors.foret} />,
+  };
+
+  return (
+    <Pressable
+      style={styles.card}
+      onPress={() => router.push(`/listing/${item.id}`)}
+    >
+      <View style={[styles.cardThumb, { backgroundColor: cat?.soft ?? '#FAECE7' }]}>
+        {icons[item.type]}
+        <View style={styles.ratingBadge}>
+          <Star size={8} color="#854F0B" fill="#854F0B" />
+          <Text style={styles.ratingText}>4.8</Text>
+        </View>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+        <View style={styles.cardLocation}>
+          <MapPin size={10} color={colors.faint} />
+          <Text style={styles.cardLocationText} numberOfLines={1}>
+            {item.neighborhood ?? item.city}
+          </Text>
+        </View>
+        <Text style={[styles.cardPrice, { color: cat?.accent ?? colors.lave }]}>
+          Voir détails
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function HomeScreen() {
-  const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
+  const { profile } = useAuth();
   const [listings, setListings] = useState<Establishment[]>([]);
+  const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,110 +123,303 @@ export default function HomeScreen() {
   }, [activeCategory]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={styles.hero}>
-        <Svg width="100%" height={210} viewBox="0 0 264 210">
-          <Rect x="0" y="0" width="264" height="210" fill="#FAEEDA" />
-          <Rect x="0" y="100" width="264" height="110" fill="#F5C4B3" />
-          <Circle cx="160" cy="100" r="32" fill="#D85A30" />
-          <Path
-            d="M0,165 L0,210 L264,210 L264,160 C220,150 200,170 175,150 C150,130 130,155 100,140 C70,125 40,150 0,165 Z"
-            fill="#C99C82"
-          />
-          <Polygon points="50,210 90,135 135,210" fill="#993C1D" />
-          <Polygon points="125,210 152,108 160,106 168,108 195,210" fill="#4A1B0C" />
-          <Path
-            d="M160,106 C158,95 165,90 161,78 C158,68 166,64 162,52"
-            stroke="#FAF8F4"
-            strokeWidth={2}
-            fill="none"
-            opacity={0.55}
-            strokeLinecap="round"
-          />
-          <Path
-            d="M0,195 L0,180 C20,165 35,178 50,168 C65,158 78,172 95,162 C112,152 128,170 145,160 C162,150 178,168 195,158 C212,148 228,165 245,155 C255,150 260,158 264,160 L264,195 Z"
-            fill="#2C2C2A"
-          />
-          <Rect x="0" y="195" width="264" height="15" fill="#4A1B0C" />
-        </Svg>
+    <View style={styles.screen}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
-        <View style={styles.heroOverlayTop}>
-          <View style={styles.locationPill}>
-            <MapPin color={colors.lave} size={12} />
-            <Text style={styles.locationPillText}>Kinshasa</Text>
+        <View style={styles.hero}>
+          <View style={StyleSheet.absoluteFill}>
+            <HeroIllustration />
+          </View>
+          <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+
+          <View style={styles.topBar}>
+            <View style={styles.logoRow}>
+              <View style={styles.logoBadge}>
+                <Svg width="18" height="18" viewBox="0 0 120 120">
+                  <Circle cx="60" cy="48" r="22" fill="#FAC775" />
+                  <Polygon points="34,80 60,38 86,80" fill="#712B13" />
+                  <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
+                </Svg>
+              </View>
+              <Text style={styles.logoText}>YakaRDC</Text>
+            </View>
+            <Pressable style={styles.bellBtn}>
+              <Bell size={18} color="#FAF8F4" />
+            </Pressable>
+          </View>
+
+          <View style={styles.heroContent}>
+            <View style={styles.locationRow}>
+              <MapPin size={12} color="rgba(250,248,244,0.7)" />
+              <Text style={styles.locationText}>Kinshasa, RDC</Text>
+            </View>
+            <Text style={styles.heroTitle}>
+              Où voulez-vous{'\n'}aller aujourd'hui ?
+            </Text>
           </View>
         </View>
 
-        <View style={styles.heroOverlayBottom}>
-          <Text style={styles.wordmark}>Yaka</Text>
-          <Text style={styles.tagline}>Les merveilles du Congo</Text>
+        <View style={styles.searchWrapper}>
+          <Pressable
+            style={styles.searchBar}
+            onPress={() => router.push('/(tabs)/search')}
+          >
+            <Search size={16} color={colors.faint} />
+            <Text style={styles.searchPlaceholder}>
+              Hôtel, restaurant, site...
+            </Text>
+            <View style={styles.filterBtn}>
+              <SlidersHorizontal size={14} color="#FAF8F4" />
+            </View>
+          </Pressable>
         </View>
-      </View>
 
-      <View style={styles.searchBar}>
-        <SearchIcon color={colors.faint} size={16} />
-        <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
-      </View>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Catégories</Text>
+          </View>
+          <View style={styles.categoriesRow}>
+            {CATEGORIES.map((cat) => (
+              <Pressable
+                key={cat.key}
+                style={styles.categoryItem}
+                onPress={() => setActiveCategory(cat.key)}
+              >
+                <View
+                  style={[
+                    styles.categoryIcon,
+                    { backgroundColor: cat.bg },
+                    activeCategory === cat.key && styles.categoryIconActive,
+                  ]}
+                >
+                  {cat.icon}
+                </View>
+                <Text
+                  style={[
+                    styles.categoryLabel,
+                    activeCategory === cat.key && { color: cat.color, fontWeight: '500' },
+                  ]}
+                >
+                  {cat.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
 
-      <View style={styles.content}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsRow}>
-          {CATEGORIES.map((cat) => (
-            <CategoryPill
-              key={cat.key}
-              label={cat.label}
-              active={activeCategory === cat.key}
-              onPress={() => setActiveCategory(cat.key)}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recommandés</Text>
+            <Pressable style={styles.seeAll} onPress={() => router.push('/(tabs)/search')}>
+              <Text style={styles.seeAllText}>Voir tout</Text>
+              <ChevronRight size={14} color={colors.lave} />
+            </Pressable>
+          </View>
+
+          {loading ? (
+            <Text style={styles.emptyText}>Chargement...</Text>
+          ) : listings.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                Aucun établissement dans cette catégorie pour le moment.
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Les établissements apparaîtront ici une fois approuvés.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={listings}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <ListingCard item={item} />}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 18, paddingRight: 8 }}
+              ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+              scrollEnabled
+              nestedScrollEnabled
             />
-          ))}
-        </ScrollView>
-
-        <Text style={styles.sectionTitle}>Recommandés près de vous</Text>
-
-        <View style={{ gap: 12 }}>
-          {listings.map((item) => (
-            <ListingCard key={item.id} establishment={item} />
-          ))}
-          {!loading && listings.length === 0 && (
-            <Text style={styles.empty}>Aucun établissement publié pour le moment dans cette catégorie.</Text>
           )}
         </View>
-      </View>
-    </ScrollView>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Découvrir Kinshasa</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 18 }}>
+            {[
+              { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
+              { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
+              { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
+              { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
+              { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
+            ].map((q) => (
+              <Pressable
+                key={q.label}
+                style={[styles.neighborhoodPill, { backgroundColor: q.color }]}
+              >
+                <Text style={[styles.neighborhoodLabel, { color: q.accent }]}>{q.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  hero: { position: 'relative' },
-  heroOverlayTop: { position: 'absolute', top: 14, right: 16 },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.white,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
+  hero: {
+    height: 260,
+    backgroundColor: '#1A0A03',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  locationPillText: { fontSize: 11, fontWeight: '500', color: colors.lave },
-  heroOverlayBottom: { position: 'absolute', bottom: 14, left: 18 },
-  wordmark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 27, color: colors.cream },
-  tagline: { fontSize: 11, color: 'rgba(250,248,244,0.85)', marginTop: 2 },
+  heroOverlay: {
+    backgroundColor: 'rgba(10,4,1,0.45)',
+  },
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 54 : 20,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    backgroundColor: '#712B13',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    fontFamily: 'PlayfairDisplay_400Regular_Italic',
+    fontSize: 20,
+    color: '#FAF8F4',
+  },
+  bellBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 24,
+    left: 18,
+    zIndex: 2,
+  },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  locationText: { fontSize: 12, color: 'rgba(250,248,244,0.7)' },
+  heroTitle: { fontSize: 22, fontWeight: '500', color: '#FAF8F4', lineHeight: 30 },
+  searchWrapper: { paddingHorizontal: 18, marginTop: -20, zIndex: 10 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radii.lg,
-    marginHorizontal: 16,
-    marginTop: -18,
-    padding: 12,
+    borderColor: '#E5E3DA',
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  searchPlaceholder: { fontSize: 13, color: colors.faint },
-  content: { paddingHorizontal: 18, paddingTop: 14 },
-  pillsRow: { marginBottom: 4 },
-  sectionTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginVertical: 10 },
-  empty: { fontSize: 12, color: colors.muted, paddingVertical: 12 },
+  searchPlaceholder: { flex: 1, fontSize: 14, color: colors.faint },
+  filterBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    backgroundColor: '#712B13',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  section: { marginTop: 22 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  seeAllText: { fontSize: 12, color: colors.lave },
+  categoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+  },
+  categoryItem: { alignItems: 'center', gap: 6 },
+  categoryIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryIconActive: {
+    shadowColor: '#712B13',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  categoryLabel: { fontSize: 11, color: colors.muted },
+  card: {
+    width: CARD_WIDTH,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E3DA',
+    overflow: 'hidden',
+  },
+  cardThumb: {
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  ratingText: { fontSize: 10, color: '#854F0B', fontWeight: '500' },
+  cardBody: { padding: 10 },
+  cardName: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 3 },
+  cardLocation: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 5 },
+  cardLocationText: { fontSize: 10, color: colors.faint, flex: 1 },
+  cardPrice: { fontSize: 12, fontWeight: '500' },
+  emptyState: { paddingHorizontal: 18 },
+  emptyText: { fontSize: 13, color: colors.muted, paddingHorizontal: 18 },
+  emptySubtext: { fontSize: 11, color: colors.faint, marginTop: 4 },
+  neighborhoodPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginRight: 8,
+  },
+  neighborhoodLabel: { fontSize: 13, fontWeight: '500' },
 });
