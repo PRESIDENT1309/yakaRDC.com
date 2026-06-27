@@ -159,7 +159,7 @@ export default function LoginScreen() {
         {/* Lien inscription */}
         <View style={styles.signupRow}>
           <Text style={styles.signupText}>Pas encore de compte ? </Text>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={8} onPress={() => router.push('/(auth)/register')}>
             <Text style={styles.signupLink}>S'inscrire</Text>
           </Pressable>
         </View>

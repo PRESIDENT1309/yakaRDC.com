@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Platform,
+  ImageBackground,
   Dimensions,
   FlatList,
 } from 'react-native';
@@ -28,6 +29,7 @@ import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = 160;
 
 const CATEGORIES: {
@@ -108,6 +110,8 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
 
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenue';
+
   useEffect(() => {
     setLoading(true);
     supabase
@@ -116,7 +120,12 @@ export default function HomeScreen() {
       .eq('status', 'approved')
       .eq('type', activeCategory)
       .limit(10)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('SUPABASE ERREUR:', JSON.stringify(error));
+        } else {
+          console.log('SUPABASE OK:', data?.length, 'résultats pour', activeCategory);
+        }
         setListings((data as Establishment[]) ?? []);
         setLoading(false);
       });
@@ -126,12 +135,14 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
+        {/* ── Hero ── */}
         <View style={styles.hero}>
           <View style={StyleSheet.absoluteFill}>
             <HeroIllustration />
           </View>
           <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
 
+          {/* Top bar */}
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
               <View style={styles.logoBadge}>
@@ -148,6 +159,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
+          {/* Hero text */}
           <View style={styles.heroContent}>
             <View style={styles.locationRow}>
               <MapPin size={12} color="rgba(250,248,244,0.7)" />
@@ -159,6 +171,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* ── Search bar ── */}
         <View style={styles.searchWrapper}>
           <Pressable
             style={styles.searchBar}
@@ -174,6 +187,7 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* ── Categories ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Catégories</Text>
@@ -207,6 +221,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* ── Listings ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recommandés</Text>
@@ -221,7 +236,7 @@ export default function HomeScreen() {
           ) : listings.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
-                Aucun établissement dans cette catégorie pour le moment.
+                Aucun établissement disponible dans cette catégorie pour le moment.
               </Text>
               <Text style={styles.emptySubtext}>
                 Les établissements apparaîtront ici une fois approuvés.
@@ -242,6 +257,7 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* ── Section Découvrir ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Découvrir Kinshasa</Text>
@@ -251,7 +267,7 @@ export default function HomeScreen() {
               { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
               { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
               { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
-              { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
+              { label: 'N\'Sele', color: '#DCEEE3', accent: '#1F4D3A' },
               { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
             ].map((q) => (
               <Pressable
@@ -320,8 +336,17 @@ const styles = StyleSheet.create({
   },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   locationText: { fontSize: 12, color: 'rgba(250,248,244,0.7)' },
-  heroTitle: { fontSize: 22, fontWeight: '500', color: '#FAF8F4', lineHeight: 30 },
-  searchWrapper: { paddingHorizontal: 18, marginTop: -20, zIndex: 10 },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '500',
+    color: '#FAF8F4',
+    lineHeight: 30,
+  },
+  searchWrapper: {
+    paddingHorizontal: 18,
+    marginTop: -20,
+    zIndex: 10,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

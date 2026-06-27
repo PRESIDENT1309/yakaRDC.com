@@ -5,49 +5,37 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
+import Svg, { Circle, Polygon, Path } from 'react-native-svg';
 import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
-  Wind, Coffee, ChevronDown, Plus, Minus, X, Send,
+  Wind, Coffee, Plus, Minus, X, Send,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import type { Establishment, Rate, EstablishmentType } from '../../lib/types';
 
-// ─── Types locaux ──────────────────────────────────────────────────
 type TimeSlot = string;
 
 interface BaseForm {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  adults: number;
-  children: number;
-  notes: string;
+  firstName: string; lastName: string; phone: string;
+  adults: number; children: number; notes: string;
 }
-
 interface HotelForm extends BaseForm {
-  checkIn: string;
-  checkOut: string;
+  checkIn: string; checkOut: string;
   paymentMethod: 'cash' | 'mobile_money' | 'card';
 }
-
 interface RestaurantForm extends BaseForm {
-  visitDate: string;
-  timeSlot: TimeSlot;
+  visitDate: string; timeSlot: TimeSlot;
   occasion: 'none' | 'birthday' | 'business' | 'romantic' | 'other';
   allergies: string;
 }
-
 interface SiteForm extends BaseForm {
-  visitDate: string;
-  timeSlot: TimeSlot;
+  visitDate: string; timeSlot: TimeSlot;
   visitType: 'guided' | 'free';
   nationality: 'congolaise' | 'etrangere';
 }
 
-// ─── Données statiques ──────────────────────────────────────────────
 const RESTAURANT_SLOTS: TimeSlot[] = ['12h00','12h30','13h00','19h00','19h30','20h00','20h30'];
 const SITE_SLOTS: TimeSlot[] = ['09h00','11h00','14h00','16h00'];
 const OCCASIONS = [
@@ -69,7 +57,36 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   'Petit-déjeuner': <Coffee size={13} color={colors.fleuveDark} />,
 };
 
-// ─── Compteur ──────────────────────────────────────────────────────
+function HeroIllustration({ type, accent, soft }: { type: EstablishmentType; accent: string; soft: string }) {
+  return (
+    <Svg width="100%" height="220" viewBox="0 0 390 220" preserveAspectRatio="xMidYMid slice">
+      <Circle cx="320" cy="70" r="60" fill={soft} opacity={0.8} />
+      <Circle cx="320" cy="70" r="44" fill={accent} opacity={0.3} />
+      <Circle cx="320" cy="70" r="30" fill={accent} opacity={0.5} />
+      {type === 'hotel' || type === 'furnished_house' ? (
+        <>
+          <Polygon points="80,220 130,120 180,220" fill={accent} opacity={0.25} />
+          <Polygon points="140,220 200,90 260,220" fill={accent} opacity={0.35} />
+          <Polygon points="230,220 280,140 330,220" fill={accent} opacity={0.2} />
+        </>
+      ) : type === 'restaurant' ? (
+        <>
+          <Circle cx="80" cy="160" r="50" fill={accent} opacity={0.15} />
+          <Circle cx="180" cy="180" r="65" fill={accent} opacity={0.1} />
+          <Circle cx="290" cy="155" r="45" fill={accent} opacity={0.15} />
+        </>
+      ) : (
+        <>
+          <Polygon points="30,220 90,100 150,220" fill={accent} opacity={0.2} />
+          <Polygon points="120,220 200,60 280,220" fill={accent} opacity={0.3} />
+          <Path d="M200,60 C198,45 208,38 203,22" stroke={soft} strokeWidth="3" fill="none" opacity={0.6} strokeLinecap="round" />
+          <Polygon points="260,220 310,140 360,220" fill={accent} opacity={0.2} />
+        </>
+      )}
+    </Svg>
+  );
+}
+
 function Counter({ label, value, onDec, onInc, accent }:
   { label: string; value: number; onDec: () => void; onInc: () => void; accent: string }) {
   return (
@@ -88,7 +105,6 @@ function Counter({ label, value, onDec, onInc, accent }:
   );
 }
 
-// ─── Champ texte ───────────────────────────────────────────────────
 function FormField({ label, value, onChange, placeholder, keyboardType = 'default', multiline = false }:
   { label: string; value: string; onChange: (v: string) => void; placeholder?: string;
     keyboardType?: any; multiline?: boolean }) {
@@ -97,238 +113,134 @@ function FormField({ label, value, onChange, placeholder, keyboardType = 'defaul
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         style={[styles.fieldInput, multiline && styles.fieldInputMulti]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.faint}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
+        value={value} onChangeText={onChange} placeholder={placeholder}
+        placeholderTextColor={colors.faint} keyboardType={keyboardType}
+        multiline={multiline} numberOfLines={multiline ? 3 : 1}
       />
     </View>
   );
 }
 
-// ─── Formulaire Hôtel / Maison meublée ─────────────────────────────
 function HotelBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: HotelForm; setForm: (f: HotelForm) => void;
-    onSubmit: () => void; loading: boolean }) {
+  { accent: string; form: HotelForm; setForm: (f: HotelForm) => void; onSubmit: () => void; loading: boolean }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
-        <View style={{ flex: 1 }}>
-          <FormField label="Prénom" value={form.firstName}
-            onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FormField label="Nom" value={form.lastName}
-            onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" />
-        </View>
+        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" /></View>
+        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
       </View>
-      <FormField label="Téléphone" value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-        placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-
-      <Text style={styles.fieldLabel}>Dates du séjour</Text>
+      <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
       <View style={styles.formRow}>
-        <View style={{ flex: 1 }}>
-          <FormField label="Arrivée (JJ/MM/AAAA)" value={form.checkIn}
-            onChange={v => setForm({ ...form, checkIn: v })} placeholder="20/06/2026" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FormField label="Départ (JJ/MM/AAAA)" value={form.checkOut}
-            onChange={v => setForm({ ...form, checkOut: v })} placeholder="23/06/2026" />
-        </View>
+        <View style={{ flex: 1 }}><FormField label="Arrivée (JJ/MM/AAAA)" value={form.checkIn} onChange={v => setForm({ ...form, checkIn: v })} placeholder="20/06/2026" /></View>
+        <View style={{ flex: 1 }}><FormField label="Départ (JJ/MM/AAAA)" value={form.checkOut} onChange={v => setForm({ ...form, checkOut: v })} placeholder="23/06/2026" /></View>
       </View>
-
       <Text style={styles.fieldLabel}>Voyageurs</Text>
       <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent}
-          onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })}
-          onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent}
-          onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })}
-          onInc={() => setForm({ ...form, children: form.children + 1 })} />
+        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
       </View>
-
-      <Text style={styles.fieldLabel}>Mode de paiement prévu</Text>
+      <Text style={styles.fieldLabel}>Mode de paiement</Text>
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {PAYMENTS.map(p => (
-          <Pressable key={p.key}
-            style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
-            <Text style={[styles.chipText, form.paymentMethod === p.key && { color: '#FAF8F4', fontWeight: '500' }]}>
-              {p.label}
-            </Text>
+          <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
+            <Text style={[styles.chipText, form.paymentMethod === p.key && { color: '#FAF8F4', fontWeight: '500' }]}>{p.label}</Text>
           </Pressable>
         ))}
       </View>
-
-      <FormField label="Demandes spéciales (optionnel)" value={form.notes}
-        onChange={v => setForm({ ...form, notes: v })}
-        placeholder="Chambre calme, lit king size, étage élevé..." multiline />
-
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]}
-        onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> :
-          <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Envoyer la demande</Text></>}
+      <FormField label="Demandes spéciales (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Chambre calme, lit king size..." multiline />
+      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Envoyer la demande</Text></>}
       </Pressable>
     </ScrollView>
   );
 }
 
-// ─── Formulaire Restaurant ─────────────────────────────────────────
 function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void;
-    onSubmit: () => void; loading: boolean }) {
+  { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void; onSubmit: () => void; loading: boolean }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
-        <View style={{ flex: 1 }}>
-          <FormField label="Prénom" value={form.firstName}
-            onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FormField label="Nom" value={form.lastName}
-            onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" />
-        </View>
+        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" /></View>
+        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
       </View>
-      <FormField label="Téléphone de contact" value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-        placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-
-      <FormField label="Date (JJ/MM/AAAA)" value={form.visitDate}
-        onChange={v => setForm({ ...form, visitDate: v })} placeholder="21/06/2026" />
-
+      <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
+      <FormField label="Date (JJ/MM/AAAA)" value={form.visitDate} onChange={v => setForm({ ...form, visitDate: v })} placeholder="21/06/2026" />
       <Text style={styles.fieldLabel}>Créneau horaire</Text>
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {RESTAURANT_SLOTS.map(s => (
-          <Pressable key={s}
-            style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, timeSlot: s })}>
+          <Pressable key={s} style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, timeSlot: s })}>
             <Text style={[styles.chipText, form.timeSlot === s && { color: '#FAF8F4', fontWeight: '500' }]}>{s}</Text>
           </Pressable>
         ))}
       </View>
-
       <Text style={styles.fieldLabel}>Couverts</Text>
       <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent}
-          onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })}
-          onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent}
-          onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })}
-          onInc={() => setForm({ ...form, children: form.children + 1 })} />
+        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
       </View>
-
       <Text style={styles.fieldLabel}>Occasion</Text>
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {OCCASIONS.map(o => (
-          <Pressable key={o.key}
-            style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, occasion: o.key as any })}>
-            <Text style={[styles.chipText, form.occasion === o.key && { color: '#FAF8F4', fontWeight: '500' }]}>
-              {o.label}
-            </Text>
+          <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
+            <Text style={[styles.chipText, form.occasion === o.key && { color: '#FAF8F4', fontWeight: '500' }]}>{o.label}</Text>
           </Pressable>
         ))}
       </View>
-
-      <FormField label="Allergies / régimes alimentaires (optionnel)" value={form.allergies}
-        onChange={v => setForm({ ...form, allergies: v })}
-        placeholder="Sans gluten, végétarien, halal..." multiline />
-
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]}
-        onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> :
-          <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la table</Text></>}
+      <FormField label="Allergies / régimes (optionnel)" value={form.allergies} onChange={v => setForm({ ...form, allergies: v })} placeholder="Sans gluten, végétarien..." multiline />
+      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la table</Text></>}
       </Pressable>
     </ScrollView>
   );
 }
 
-// ─── Formulaire Site touristique ───────────────────────────────────
 function SiteBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: SiteForm; setForm: (f: SiteForm) => void;
-    onSubmit: () => void; loading: boolean }) {
+  { accent: string; form: SiteForm; setForm: (f: SiteForm) => void; onSubmit: () => void; loading: boolean }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
-        <View style={{ flex: 1 }}>
-          <FormField label="Prénom" value={form.firstName}
-            onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FormField label="Nom" value={form.lastName}
-            onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" />
-        </View>
+        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" /></View>
+        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
       </View>
-      <FormField label="Téléphone (responsable)" value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-        placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-
-      <FormField label="Date de visite (JJ/MM/AAAA)" value={form.visitDate}
-        onChange={v => setForm({ ...form, visitDate: v })} placeholder="22/06/2026" />
-
+      <FormField label="Téléphone (responsable)" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
+      <FormField label="Date de visite (JJ/MM/AAAA)" value={form.visitDate} onChange={v => setForm({ ...form, visitDate: v })} placeholder="22/06/2026" />
       <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {SITE_SLOTS.map(s => (
-          <Pressable key={s}
-            style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, timeSlot: s })}>
+          <Pressable key={s} style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, timeSlot: s })}>
             <Text style={[styles.chipText, form.timeSlot === s && { color: '#FAF8F4', fontWeight: '500' }]}>{s}</Text>
           </Pressable>
         ))}
       </View>
-
       <Text style={styles.fieldLabel}>Composition du groupe</Text>
       <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent}
-          onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })}
-          onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent}
-          onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })}
-          onInc={() => setForm({ ...form, children: form.children + 1 })} />
+        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
       </View>
-
       <Text style={styles.fieldLabel}>Type de visite</Text>
       <View style={styles.formRow}>
         {[{ key: 'guided', label: 'Guidée 🎒' }, { key: 'free', label: 'Libre 🗺️' }].map(v => (
-          <Pressable key={v.key} style={[styles.chip, { flex: 1 },
-            form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, visitType: v.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' },
-              form.visitType === v.key && { color: '#FAF8F4', fontWeight: '500' }]}>{v.label}</Text>
+          <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
+            <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: '#FAF8F4', fontWeight: '500' }]}>{v.label}</Text>
           </Pressable>
         ))}
       </View>
-
       <Text style={styles.fieldLabel}>Nationalité</Text>
       <View style={styles.formRow}>
         {[{ key: 'congolaise', label: '🇨🇩 Congolaise' }, { key: 'etrangere', label: '🌍 Étrangère' }].map(n => (
-          <Pressable key={n.key} style={[styles.chip, { flex: 1 },
-            form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => setForm({ ...form, nationality: n.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' },
-              form.nationality === n.key && { color: '#FAF8F4', fontWeight: '500' }]}>{n.label}</Text>
+          <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
+            <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: '#FAF8F4', fontWeight: '500' }]}>{n.label}</Text>
           </Pressable>
         ))}
       </View>
-
-      <FormField label="Remarques (optionnel)" value={form.notes}
-        onChange={v => setForm({ ...form, notes: v })}
-        placeholder="Accessibilité PMR, équipement spécial..." multiline />
-
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]}
-        onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> :
-          <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la visite</Text></>}
+      <FormField label="Remarques (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Accessibilité PMR, équipement spécial..." multiline />
+      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
+        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la visite</Text></>}
       </Pressable>
     </ScrollView>
   );
 }
 
-// ─── Écran principal ───────────────────────────────────────────────
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
@@ -340,18 +252,15 @@ export default function ListingDetailScreen() {
 
   const [hotelForm, setHotelForm] = useState<HotelForm>({
     firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 1, children: 0, checkIn: '', checkOut: '',
-    paymentMethod: 'cash', notes: '',
+    adults: 1, children: 0, checkIn: '', checkOut: '', paymentMethod: 'cash', notes: '',
   });
   const [restaurantForm, setRestaurantForm] = useState<RestaurantForm>({
     firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 2, children: 0, visitDate: '', timeSlot: '',
-    occasion: 'none', allergies: '', notes: '',
+    adults: 2, children: 0, visitDate: '', timeSlot: '', occasion: 'none', allergies: '', notes: '',
   });
   const [siteForm, setSiteForm] = useState<SiteForm>({
     firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 1, children: 0, visitDate: '', timeSlot: '',
-    visitType: 'guided', nationality: 'congolaise', notes: '',
+    adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise', notes: '',
   });
 
   useEffect(() => {
@@ -362,11 +271,7 @@ export default function ListingDetailScreen() {
   }, [id]);
 
   if (!establishment) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.lave} />
-      </View>
-    );
+    return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
   }
 
   const cat = categoryColors[establishment.type];
@@ -379,33 +284,28 @@ export default function ListingDetailScreen() {
   async function handleSubmit() {
     if (!session?.user) return;
     setSubmitting(true);
-
     let payload: any = { establishment_id: id, traveler_id: session.user.id };
 
     if (isHotel) {
       const f = hotelForm;
       if (!f.firstName || !f.lastName || !f.checkIn || !f.checkOut) {
-        Alert.alert('Champs requis', 'Veuillez remplir prénom, nom et les dates de séjour.');
+        Alert.alert('Champs requis', 'Veuillez remplir prénom, nom et les dates.');
         setSubmitting(false); return;
       }
       payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
         contact_phone: f.phone, guests: f.adults, children: f.children,
-        check_in: f.checkIn, check_out: f.checkOut,
-        notes: f.notes || null,
-        metadata: { payment_method: f.paymentMethod },
-      };
+        check_in: f.checkIn, check_out: f.checkOut, notes: f.notes || null,
+        metadata: { payment_method: f.paymentMethod } };
     } else if (isRestaurant) {
       const f = restaurantForm;
       if (!f.firstName || !f.lastName || !f.visitDate || !f.timeSlot) {
-        Alert.alert('Champs requis', 'Veuillez remplir prénom, nom, date et créneau horaire.');
+        Alert.alert('Champs requis', 'Veuillez remplir prénom, nom, date et créneau.');
         setSubmitting(false); return;
       }
       payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
         contact_phone: f.phone, guests: f.adults, children: f.children,
-        visit_date: f.visitDate, visit_time: f.timeSlot,
-        notes: f.notes || null,
-        metadata: { time_slot: f.timeSlot, occasion: f.occasion, allergies: f.allergies },
-      };
+        visit_date: f.visitDate, visit_time: f.timeSlot, notes: f.notes || null,
+        metadata: { time_slot: f.timeSlot, occasion: f.occasion, allergies: f.allergies } };
     } else if (isSite) {
       const f = siteForm;
       if (!f.firstName || !f.lastName || !f.visitDate || !f.timeSlot) {
@@ -414,10 +314,8 @@ export default function ListingDetailScreen() {
       }
       payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
         contact_phone: f.phone, guests: f.adults, children: f.children,
-        visit_date: f.visitDate, visit_time: f.timeSlot,
-        notes: f.notes || null,
-        metadata: { time_slot: f.timeSlot, visit_type: f.visitType, nationality: f.nationality },
-      };
+        visit_date: f.visitDate, visit_time: f.timeSlot, notes: f.notes || null,
+        metadata: { time_slot: f.timeSlot, visit_type: f.visitType, nationality: f.nationality } };
     }
 
     const { error } = await supabase.from('bookings').insert(payload);
@@ -435,8 +333,9 @@ export default function ListingDetailScreen() {
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.hero, { backgroundColor: soft }]}>
-          <View style={styles.heroCenter}>
-            <Polygon points="34,80 60,38 86,80" fill={accent} opacity={0.3} />
+          <HeroIllustration type={establishment.type} accent={accent} soft={soft} />
+          <View style={StyleSheet.absoluteFill}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
           </View>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={16} color={colors.ink} />
@@ -490,27 +389,22 @@ export default function ListingDetailScreen() {
               <Text style={styles.priceFrom}>À partir de</Text>
               <Text style={styles.priceValue}>{priceLabel}</Text>
             </View>
-            <Pressable style={[styles.bookBtn, { backgroundColor: accent }]}
-              onPress={() => setShowForm(true)}>
+            <Pressable style={[styles.bookBtn, { backgroundColor: accent }]} onPress={() => setShowForm(true)}>
               <Text style={styles.bookBtnText}>Réserver</Text>
             </Pressable>
           </View>
         </View>
       </ScrollView>
 
-      {/* ─── Succès ─── */}
       {success && (
         <View style={styles.successBanner}>
-          <Text style={styles.successText}>
-            ✅ Demande envoyée ! L'établissement vous confirmera sous 24h.
-          </Text>
+          <Text style={styles.successText}>✅ Demande envoyée ! L'établissement vous confirmera sous 24h.</Text>
           <Pressable onPress={() => { setSuccess(false); router.push('/(tabs)/bookings'); }}>
             <Text style={styles.successLink}>Voir mes réservations →</Text>
           </Pressable>
         </View>
       )}
 
-      {/* ─── Modal formulaire ─── */}
       <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={styles.modalOverlay} onPress={() => setShowForm(false)} />
@@ -525,13 +419,9 @@ export default function ListingDetailScreen() {
                 <X size={20} color={colors.muted} />
               </Pressable>
             </View>
-
-            {isHotel && <HotelBookingForm accent={accent} form={hotelForm}
-              setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} />}
-            {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm}
-              setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} />}
-          {isSite && <SiteBookingForm accent={accent} form={siteForm}
-  setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} />}
+            {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} />}
+            {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} />}
+            {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} />}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -542,8 +432,7 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
-  hero: { height: 220, position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  heroCenter: { opacity: 0.3 },
+  hero: { height: 220, position: 'relative', overflow: 'hidden' },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: 16,
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFFCC',
     alignItems: 'center', justifyContent: 'center' },
@@ -551,11 +440,10 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFFCC',
     alignItems: 'center', justifyContent: 'center' },
   heroFooter: { position: 'absolute', bottom: 14, left: 16 },
-  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3,
-    borderRadius: 999, marginBottom: 4 },
+  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, marginBottom: 4 },
   typeBadgeText: { fontSize: 10, fontWeight: '500', color: '#FAF8F4' },
   heroName: { fontSize: 20, fontWeight: '500', color: '#FAF8F4',
-    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   body: { padding: 16 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -565,16 +453,14 @@ const styles = StyleSheet.create({
   ratingText: { fontSize: 12, color: '#854F0B', fontWeight: '500' },
   ratingCount: { fontSize: 11, color: colors.muted },
   amenitiesRow: { marginBottom: 16 },
-  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8 },
+  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8 },
   amenityText: { fontSize: 11, color: colors.ink },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '500', color: colors.ink, marginBottom: 6 },
   description: { fontSize: 13, color: colors.muted, lineHeight: 20 },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    padding: 14 },
+    backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14 },
   priceFrom: { fontSize: 11, color: colors.muted },
   priceValue: { fontSize: 18, fontWeight: '500', color: colors.ink },
   bookBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
@@ -591,7 +477,7 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
   modalTitle: { fontSize: 17, fontWeight: '500', color: colors.ink },
   modalSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  formRow: { flexDirection: 'row', gap: 10, marginBottom: 0 },
+  formRow: { flexDirection: 'row', gap: 10 },
   fieldWrap: { marginBottom: 12 },
   fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
   fieldInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,

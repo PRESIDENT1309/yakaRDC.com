@@ -57,9 +57,14 @@ export interface Booking {
   check_in: string | null;
   check_out: string | null;
   guests: number | null;
+  children: number;
   visit_date: string | null;
   visit_time: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  contact_phone: string | null;
   notes: string | null;
+  metadata: Record<string, any>;
   unique_code: string | null;
   qr_token: string;
   used_at: string | null;

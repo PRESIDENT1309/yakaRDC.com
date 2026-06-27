@@ -3,7 +3,8 @@ import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../lib/auth-context';
 
 export default function Index() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
+
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' }}>
@@ -11,5 +12,14 @@ export default function Index() {
       </View>
     );
   }
-  return <Redirect href={session ? '/(tabs)' : '/(auth)/login'} />;
+
+  if (!session) return <Redirect href="/(auth)/login" />;
+
+  // Partenaires et admins → tableau de bord pro
+  if (profile?.role === 'partner' || profile?.role === 'admin') {
+    return <Redirect href="/pro" />;
+  }
+
+  // Voyageurs → app principale
+  return <Redirect href="/(tabs)" />;
 }
