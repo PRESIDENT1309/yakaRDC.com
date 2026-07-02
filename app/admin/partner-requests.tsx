@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput, Alert, Modal,
+  Platform, ActivityIndicator, TextInput, Alert, Modal, useWindowDimensions,
 } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import {
   Building2, Home, UtensilsCrossed, Mountain, Store,
   Check, X, Camera, Phone, User as UserIcon, MapPin, Clock,
@@ -55,6 +56,8 @@ function StatusBadge({ status }: { status: PartnerRequestStatus }) {
 
 export default function PartnerRequestsScreen() {
   const { profile } = useAuth();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [requests, setRequests] = useState<PartnerRequest[]>([]);
   const [filter, setFilter] = useState<Filter>('pending');
   const [loading, setLoading] = useState(true);
@@ -137,64 +140,73 @@ export default function PartnerRequestsScreen() {
         ))}
       </View>
 
-      <View style={styles.body}>
-        {/* Liste */}
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {loading ? (
-            <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} />
-          ) : requests.length === 0 ? (
-            <View style={styles.empty}>
-              <Store size={32} color={colors.borderStrong} />
-              <Text style={styles.emptyText}>Aucune demande dans cette catégorie.</Text>
-            </View>
-          ) : (
-            <View style={{ gap: 8, padding: 14 }}>
-              {requests.map(r => (
-                <Pressable
-                  key={r.id}
-                  style={[styles.listCard, selected?.id === r.id && styles.listCardActive]}
-                  onPress={() => { setSelected(r); setRejecting(false); }}
-                >
-                  <View style={[styles.listIcon, { backgroundColor: categoryColors[r.establishment_type]?.soft ?? '#FAECE7' }]}>
-                    <TypeIcon type={r.establishment_type} size={16} />
+      <View style={[styles.body, isMobile && styles.bodyMobile]}>
+        {/* Liste — cachée sur mobile quand un élément est sélectionné */}
+        {(!isMobile || !selected) && (
+          <ScrollView style={[styles.list, isMobile && styles.listMobile]} showsVerticalScrollIndicator={false}>
+            {loading ? (
+              <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} />
+            ) : requests.length === 0 ? (
+              <View style={styles.empty}>
+                <Store size={32} color={colors.borderStrong} />
+                <Text style={styles.emptyText}>Aucune demande dans cette catégorie.</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8, padding: 14 }}>
+                {requests.map(r => (
+                  <Pressable
+                    key={r.id}
+                    style={[styles.listCard, selected?.id === r.id && styles.listCardActive]}
+                    onPress={() => { setSelected(r); setRejecting(false); }}
+                  >
+                    <View style={[styles.listIcon, { backgroundColor: categoryColors[r.establishment_type]?.soft ?? '#FAECE7' }]}>
+                      <TypeIcon type={r.establishment_type} size={16} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.listName} numberOfLines={1}>{r.establishment_name}</Text>
+                      <Text style={styles.listMeta}>
+                        {TYPE_LABELS[r.establishment_type]} · {new Date(r.created_at).toLocaleDateString('fr-FR')}
+                      </Text>
+                    </View>
+                    <StatusBadge status={r.status} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        )}
+
+        {/* Détail — plein écran sur mobile, avec bouton retour */}
+        {(!isMobile || selected) && (
+          <View style={styles.detail}>
+            {!selected ? (
+              <View style={styles.detailEmpty}>
+                <Store size={40} color={colors.borderStrong} />
+                <Text style={styles.detailEmptyText}>Sélectionnez une demande pour voir le détail</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+                {isMobile && (
+                  <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
+                    <ArrowLeft size={15} color={colors.lave} />
+                    <Text style={styles.backToListText}>Retour à la liste</Text>
+                  </Pressable>
+                )}
+                <View style={styles.detailHeader}>
+                  <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAECE7' }]}>
+                    <TypeIcon type={selected.establishment_type} size={22} />
                   </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.listName} numberOfLines={1}>{r.establishment_name}</Text>
-                    <Text style={styles.listMeta}>
-                      {TYPE_LABELS[r.establishment_type]} · {new Date(r.created_at).toLocaleDateString('fr-FR')}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.detailName}>{selected.establishment_name}</Text>
+                    <Text style={styles.detailDate}>
+                      Soumis le {new Date(selected.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </Text>
                   </View>
-                  <StatusBadge status={r.status} />
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-
-        {/* Détail */}
-        <View style={styles.detail}>
-          {!selected ? (
-            <View style={styles.detailEmpty}>
-              <Store size={40} color={colors.borderStrong} />
-              <Text style={styles.detailEmptyText}>Sélectionnez une demande pour voir le détail</Text>
-            </View>
-          ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-              <View style={styles.detailHeader}>
-                <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAECE7' }]}>
-                  <TypeIcon type={selected.establishment_type} size={22} />
+                  <StatusBadge status={selected.status} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.detailName}>{selected.establishment_name}</Text>
-                  <Text style={styles.detailDate}>
-                    Soumis le {new Date(selected.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </Text>
-                </View>
-                <StatusBadge status={selected.status} />
-              </View>
 
-              {/* Type bien visible */}
-              <View style={[styles.typeBanner, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAEEDA' }]}>
+                {/* Type bien visible */}
+                <View style={[styles.typeBanner, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAEEDA' }]}>
                 <TypeIcon type={selected.establishment_type} size={15} />
                 <Text style={[styles.typeBannerText, { color: categoryColors[selected.establishment_type]?.accent ?? colors.lave }]}>
                   Type d'établissement : <Text style={{ fontWeight: '500' }}>{TYPE_LABELS[selected.establishment_type]}</Text>
@@ -321,8 +333,9 @@ export default function PartnerRequestsScreen() {
                 </>
               )}
             </ScrollView>
-          )}
-        </View>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -342,7 +355,11 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 11, color: colors.muted },
   filterTextActive: { color: '#FAF8F4', fontWeight: '500' },
   body: { flex: 1, flexDirection: 'row' },
+  bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
+  listMobile: { width: '100%', borderRightWidth: 0 },
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  backToListText: { fontSize: 13, color: colors.lave, fontWeight: '500' },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
   emptyText: { fontSize: 12, color: colors.muted },
   listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },

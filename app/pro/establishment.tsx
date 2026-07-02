@@ -54,6 +54,8 @@ export default function EstablishmentScreen() {
   const [amenities, setAmenities]     = useState<string[]>([]);
   const [price, setPrice]             = useState('');
   const [currency, setCurrency]       = useState('USD');
+  const [discountPercent, setDiscountPercent] = useState('');
+  const [discountLabel, setDiscountLabel]     = useState('');
   const [pendingCount, setPendingCount] = useState(0);
   const [confirmedCount, setConfirmedCount] = useState(0);
   const [checkinCount, setCheckinCount] = useState(0);
@@ -79,6 +81,8 @@ export default function EstablishmentScreen() {
       setNumero((e as any).numero ?? '');
       setReference((e as any).reference ?? '');
       setAmenities(e.amenities ?? []);
+      setDiscountPercent(e.discount_percent != null ? String(e.discount_percent) : '');
+      setDiscountLabel(e.discount_label ?? '');
 
       const { data: rate } = await supabase.from('rates').select('*')
         .eq('establishment_id', e.id).maybeSingle();
@@ -104,6 +108,8 @@ export default function EstablishmentScreen() {
       name, description, phone,
       email, instagram, tiktok,
       commune, neighborhood, avenue, numero, reference, amenities,
+      discount_percent: discountPercent ? parseInt(discountPercent, 10) : null,
+      discount_label: discountLabel.trim() || null,
     }).eq('id', establishment.id);
 
     if (price) {
@@ -264,6 +270,22 @@ export default function EstablishmentScreen() {
             </View>
           </View>
 
+          {/* Promotion du jour */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🏷️ Promotion du jour</Text>
+            <Text style={styles.promoHint}>
+              Affichez une réduction dans le planificateur de voyage des utilisateurs. Laissez vide pour ne pas afficher de promotion.
+            </Text>
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Field label="Réduction (%)" value={discountPercent} onChange={setDiscountPercent} placeholder="Ex : 20" keyboardType="decimal-pad" />
+              </View>
+              <View style={{ flex: 2 }}>
+                <Field label="Libellé (optionnel)" value={discountLabel} onChange={setDiscountLabel} placeholder="Ex : Happy hour -20%" />
+              </View>
+            </View>
+          </View>
+
           {/* Tarif */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>💰 Tarif</Text>
@@ -311,6 +333,7 @@ const styles = StyleSheet.create({
   logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center' },
   addPhotoBtn: { width: 72, height: 72, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   hint: { fontSize: 10, color: colors.faint, marginTop: 6 },
+  promoHint: { fontSize: 11, color: colors.muted, marginBottom: 10, lineHeight: 16 },
   row: { flexDirection: 'row', gap: 10 },
   fieldWrap: { marginBottom: 10 },
   fieldLabel: { fontSize: 11, fontWeight: '500', color: colors.muted, marginBottom: 4 },

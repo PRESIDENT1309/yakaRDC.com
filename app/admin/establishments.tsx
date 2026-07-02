@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, Alert,
+  Platform, TextInput, ActivityIndicator, Alert, useWindowDimensions,
 } from 'react-native';
 import {
   Search, Building2, Home, UtensilsCrossed, Mountain,
-  Star, AlertTriangle, Ban, CheckCircle, Phone, Mail, User as UserIcon,
+  Star, AlertTriangle, Ban, CheckCircle, Phone, Mail, User as UserIcon, ArrowLeft,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -46,6 +46,8 @@ interface Stats {
 
 export default function EstablishmentsScreen() {
   const { profile: currentAdmin } = useAuth();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [establishments, setEstablishments] = useState<Establishment[]>([]);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -222,8 +224,9 @@ export default function EstablishmentsScreen() {
         </View>
       </View>
 
-      <View style={styles.body}>
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+      <View style={[styles.body, isMobile && styles.bodyMobile]}>
+        {(!isMobile || !selected) && (
+        <ScrollView style={[styles.list, isMobile && styles.listMobile]} showsVerticalScrollIndicator={false}>
           {loading ? <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} /> : establishments.length === 0 ? (
             <View style={styles.empty}><Text style={styles.emptyText}>Aucun établissement trouvé.</Text></View>
           ) : (
@@ -259,7 +262,9 @@ export default function EstablishmentsScreen() {
             </View>
           )}
         </ScrollView>
+        )}
 
+        {(!isMobile || selected) && (
         <View style={styles.detail}>
           {!selected ? (
             <View style={styles.detailEmpty}>
@@ -268,6 +273,12 @@ export default function EstablishmentsScreen() {
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+              {isMobile && (
+                <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
+                  <ArrowLeft size={15} color={colors.lave} />
+                  <Text style={styles.backToListText}>Retour à la liste</Text>
+                </Pressable>
+              )}
               <View style={styles.detailHeader}>
                 <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.type]?.soft ?? '#FAECE7' }]}>
                   <TypeIcon type={selected.type} size={22} />
@@ -402,6 +413,7 @@ export default function EstablishmentsScreen() {
             </ScrollView>
           )}
         </View>
+        )}
       </View>
     </View>
   );
@@ -420,7 +432,11 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, color: colors.muted },
   pillTextActive: { color: '#FAF8F4', fontWeight: '500' },
   body: { flex: 1, flexDirection: 'row' },
+  bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
+  listMobile: { width: '100%', borderRightWidth: 0 },
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  backToListText: { fontSize: 13, color: colors.lave, fontWeight: '500' },
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { fontSize: 12, color: colors.muted },
   listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },

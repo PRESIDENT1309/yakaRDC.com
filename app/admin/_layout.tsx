@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import {
+  View, Text, Pressable, StyleSheet, ScrollView,
+  ActivityIndicator, Platform, useWindowDimensions,
+} from 'react-native';
 import { Slot, router, usePathname } from 'expo-router';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import {
   LayoutDashboard, ChartBar, Users, Store, History,
-  Star, MapPin, LogOut, Search, Building2,
+  Star, MapPin, LogOut, Building2, Menu, X,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
+
+const MOBILE_BREAKPOINT = 768;
 
 interface NavItem {
   key: string;
@@ -33,7 +38,10 @@ const NAV: NavItem[] = [
 export default function AdminLayout() {
   const { profile, loading } = useAuth();
   const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  const isMobile = width < MOBILE_BREAKPOINT;
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -60,9 +68,13 @@ export default function AdminLayout() {
   }
   if (profile.role !== 'admin') return null;
 
-  return (
-    <View style={styles.screen}>
-      <View style={styles.sidebar}>
+  const activeItem = NAV.find(item =>
+    pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+  );
+
+  function NavList({ onNavigate }: { onNavigate?: () => void }) {
+    return (
+      <>
         <View style={styles.brand}>
           <Svg width="26" height="26" viewBox="0 0 120 120">
             <Rect width="120" height="120" rx="20" fill="#712B13" />
@@ -74,6 +86,11 @@ export default function AdminLayout() {
             <Text style={styles.brandTitle}>YakaRDC</Text>
             <Text style={styles.brandSub}>Administration</Text>
           </View>
+          {isMobile && (
+            <Pressable style={styles.closeDrawerBtn} onPress={onNavigate} hitSlop={8}>
+              <X size={18} color="#FAF8F4" />
+            </Pressable>
+          )}
         </View>
 
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -85,7 +102,11 @@ export default function AdminLayout() {
                 key={item.key}
                 disabled={!item.ready}
                 style={[styles.navItem, active && styles.navItemActive, !item.ready && styles.navItemDisabled]}
-                onPress={() => item.ready && router.push(item.href as any)}
+                onPress={() => {
+                  if (!item.ready) return;
+                  router.push(item.href as any);
+                  onNavigate?.();
+                }}
               >
                 {item.icon(active ? '#FAF8F4' : '#A8A39A')}
                 <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
@@ -101,10 +122,10 @@ export default function AdminLayout() {
         <View style={styles.sidebarFooter}>
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{(profile.full_name ?? 'A').charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{(profile?.full_name ?? 'A').charAt(0).toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.profileName} numberOfLines={1}>{profile.full_name ?? 'Admin'}</Text>
+              <Text style={styles.profileName} numberOfLines={1}>{profile?.full_name ?? 'Admin'}</Text>
               <Text style={styles.profileRole}>Super-utilisateur</Text>
             </View>
             <Pressable onPress={handleSignOut} hitSlop={8}>
@@ -112,27 +133,87 @@ export default function AdminLayout() {
             </Pressable>
           </View>
         </View>
+      </>
+    );
+  }
+
+  // ── Desktop / tablette : sidebar fixe classique ──
+  if (!isMobile) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.sidebar}>
+          <NavList />
+        </View>
+        <View style={styles.main}>
+          <Slot />
+        </View>
+      </View>
+    );
+  }
+
+  // ── Mobile : barre du haut + tiroir de navigation ──
+  return (
+    <View style={styles.screenMobile}>
+      <View style={styles.topBar}>
+        <Pressable style={styles.hamburgerBtn} onPress={() => setDrawerOpen(true)} hitSlop={8}>
+          <Menu size={20} color={colors.ink} />
+        </Pressable>
+        <Text style={styles.topBarTitle} numberOfLines={1}>
+          {activeItem?.label ?? 'Administration'}
+        </Text>
+        <View style={{ width: 34 }} />
       </View>
 
-      <View style={styles.main}>
+      <View style={styles.mainMobile}>
         <Slot />
       </View>
+
+      {drawerOpen && (
+        <>
+          <Pressable style={styles.backdrop} onPress={() => setDrawerOpen(false)} />
+          <View style={styles.drawer}>
+            <NavList onNavigate={() => setDrawerOpen(false)} />
+          </View>
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, flexDirection: 'row', backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
-  sidebar: {
-    width: 220, backgroundColor: '#1F1A16',
-    paddingTop: Platform.OS === 'web' ? 20 : 50,
-    flexDirection: 'column',
+
+  // Desktop
+  screen: { flex: 1, flexDirection: 'row', backgroundColor: colors.cream },
+  sidebar: { width: 220, backgroundColor: '#1F1A16', paddingTop: 20, flexDirection: 'column' },
+  main: { flex: 1, backgroundColor: colors.cream },
+
+  // Mobile
+  screenMobile: { flex: 1, backgroundColor: colors.cream },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 54 : 20,
+    paddingHorizontal: 14, paddingBottom: 12,
+    backgroundColor: '#FAF8F4', borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  hamburgerBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  topBarTitle: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: colors.ink },
+  mainMobile: { flex: 1 },
+  backdrop: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 90,
+  },
+  drawer: {
+    position: 'absolute', top: 0, left: 0, bottom: 0, width: '78%', maxWidth: 280,
+    backgroundColor: '#1F1A16', zIndex: 100, paddingTop: Platform.OS === 'ios' ? 54 : 30,
+  },
+  closeDrawerBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
+
+  // Partagé sidebar/drawer
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingBottom: 18 },
   brandTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: '#FAF8F4' },
   brandSub: { fontSize: 10, color: '#A8A39A' },
-  navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 11 },
+  navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
   navItemActive: { backgroundColor: 'rgba(255,255,255,0.1)' },
   navItemDisabled: { opacity: 0.45 },
   navLabel: { fontSize: 12.5, color: '#A8A39A', flex: 1 },
@@ -146,5 +227,4 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 13, fontWeight: '500', color: '#FAF8F4' },
   profileName: { fontSize: 11.5, color: '#FAF8F4', fontWeight: '500' },
   profileRole: { fontSize: 9.5, color: '#A8A39A' },
-  main: { flex: 1, backgroundColor: colors.cream },
 });

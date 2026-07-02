@@ -41,6 +41,30 @@ export interface Establishment {
   warning_count: number;
   suspended_at: string | null;
   suspension_reason: string | null;
+  discount_percent: number | null;
+  discount_label: string | null;
+  created_at: string;
+}
+
+export interface TripPlan {
+  id: string;
+  traveler_id: string;
+  title: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
+
+export interface TripPlanItem {
+  id: string;
+  trip_plan_id: string;
+  establishment_id: string | null;
+  day_date: string;
+  title: string;
+  estimated_cost: number;
+  currency: string;
+  notes: string | null;
+  position: number;
   created_at: string;
 }
 

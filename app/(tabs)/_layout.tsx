@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Home, Search, CalendarCheck, User } from 'lucide-react-native';
+import { Home, Search, CalendarRange, CalendarCheck, User } from 'lucide-react-native';
 import { colors } from '../../lib/theme';
 
 export default function TabsLayout() {
@@ -13,18 +13,14 @@ export default function TabsLayout() {
         tabBarStyle: {
           borderTopColor: colors.border,
           backgroundColor: colors.cream,
-          // Fixe la barre en bas du viewport sur web
-          ...(Platform.OS === 'web' && {
-            position: 'fixed' as any,
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 100,
-          }),
+          // Sur web : la barre reste visible grâce au HTML root (app/+html.tsx)
+          // qui contraint la hauteur à 100vh. Pas besoin de position fixed.
+          height: Platform.OS === 'web' ? 60 : undefined,
         },
-        // Ajoute un padding en bas du contenu sur web pour ne pas
-        // qu'il soit caché derrière la barre fixe
-        tabBarItemStyle: { paddingBottom: Platform.OS === 'web' ? 4 : 0 },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          marginBottom: Platform.OS === 'web' ? 4 : 0,
+        },
       }}
     >
       <Tabs.Screen
@@ -39,6 +35,13 @@ export default function TabsLayout() {
         options={{
           title: 'Recherche',
           tabBarIcon: ({ color, size }) => <Search color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="planner"
+        options={{
+          title: 'Planning',
+          tabBarIcon: ({ color, size }) => <CalendarRange color={color} size={size} />,
         }}
       />
       <Tabs.Screen
