@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth-context';
 export default function Index() {
   const { session, profile, loading } = useAuth();
 
-  // Attend que la session ET le profil soient chargés
+  // Attend que la session ET le profil soient chargés avant de rediriger
   if (loading || (session && profile === null)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' }}>
@@ -16,7 +16,11 @@ export default function Index() {
 
   if (!session) return <Redirect href="/(auth)/login" />;
 
-  if (profile?.role === 'partner' || profile?.role === 'admin') {
+  if (profile?.role === 'admin') {
+    return <Redirect href="/admin" />;
+  }
+
+  if (profile?.role === 'partner') {
     return <Redirect href="/pro" />;
   }
 

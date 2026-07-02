@@ -24,12 +24,31 @@ export interface Establishment {
   description: string | null;
   city: string;
   neighborhood: string | null;
+  commune: string | null;
+  avenue: string | null;
+  numero: string | null;
+  reference: string | null;
   address: string | null;
   lat: number | null;
   lng: number | null;
   phone: string | null;
+  email: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  logo_url: string | null;
   amenities: string[];
   status: EstablishmentStatus;
+  warning_count: number;
+  suspended_at: string | null;
+  suspension_reason: string | null;
+  created_at: string;
+}
+
+export interface EstablishmentWarning {
+  id: string;
+  establishment_id: string;
+  issued_by: string | null;
+  reason: string;
   created_at: string;
 }
 
@@ -86,4 +105,39 @@ export interface City {
   id: string;
   name: string;
   is_active: boolean;
+}
+
+export type PartnerRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface PartnerRequest {
+  id: string;
+  establishment_type: EstablishmentType;
+  establishment_name: string;
+  description: string | null;
+  city: string;
+  commune: string | null;
+  neighborhood: string | null;
+  avenue: string | null;
+  numero: string | null;
+  reference: string | null;
+  contact_name: string;
+  contact_phone: string;
+  contact_email: string | null;
+  photo_urls: string[];
+  status: PartnerRequestStatus;
+  rejection_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_establishment_id: string | null;
+  created_at: string;
+}
+
+export interface AdminActivityLog {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  details: Record<string, any>;
+  created_at: string;
 }

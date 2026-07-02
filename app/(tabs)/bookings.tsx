@@ -23,6 +23,7 @@ import {
   XCircle,
   ChevronRight,
 } from 'lucide-react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
@@ -106,7 +107,14 @@ function TicketModal({
 
           <View style={styles.ticketBody}>
             <View style={styles.ticketQrPlaceholder}>
-              <QrCode size={80} color={accent} />
+              <View style={styles.qrWrapper}>
+                <QRCode
+                  value={booking.qr_token}
+                  size={140}
+                  color={colors.ink}
+                  backgroundColor="#FFFFFF"
+                />
+              </View>
               <Text style={styles.ticketQrNote}>
                 Présentez ce code à la réception
               </Text>
@@ -460,6 +468,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     gap: 8,
+  },
+  qrWrapper: {
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   ticketQrNote: { fontSize: 12, color: colors.muted, textAlign: 'center' },
   ticketCode: {

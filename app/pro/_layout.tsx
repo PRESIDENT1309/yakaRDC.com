@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Tabs, router } from 'expo-router';
-import { LayoutDashboard, CalendarCheck, QrCode } from 'lucide-react-native';
+import { LayoutDashboard, CalendarCheck, QrCode, Building2, MoreHorizontal } from 'lucide-react-native';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
 
@@ -32,7 +32,12 @@ export default function PartnerLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.lave,
         tabBarInactiveTintColor: colors.faint,
-        tabBarStyle: { borderTopColor: colors.border, backgroundColor: colors.cream },
+        tabBarStyle: {
+          borderTopColor: colors.border,
+          backgroundColor: colors.cream,
+          height: Platform.OS === 'web' ? 60 : undefined,
+        },
+        tabBarLabelStyle: { fontSize: 10 },
       }}
     >
       <Tabs.Screen
@@ -50,10 +55,24 @@ export default function PartnerLayout() {
         }}
       />
       <Tabs.Screen
+        name="establishment"
+        options={{
+          title: 'Établissement',
+          tabBarIcon: ({ color, size }) => <Building2 color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="scan"
         options={{
           title: 'Scanner',
           tabBarIcon: ({ color, size }) => <QrCode color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'Plus',
+          tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} />,
         }}
       />
     </Tabs>

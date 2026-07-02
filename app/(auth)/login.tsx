@@ -41,7 +41,7 @@ export default function LoginScreen() {
       setError('Email ou mot de passe incorrect.');
       return;
     }
-    router.replace('/(tabs)');
+    router.replace('/');
   }
 
   return (
