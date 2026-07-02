@@ -164,6 +164,14 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        {/* Devenir partenaire */}
+        <Pressable style={styles.partnerRow} onPress={() => router.push('/become-partner')}>
+          <Text style={styles.partnerText}>
+            Vous gérez un hôtel, restaurant ou site touristique ?{' '}
+            <Text style={styles.partnerLink}>Devenir partenaire →</Text>
+          </Text>
+        </Pressable>
+
         {/* Mentions légales */}
         <Text style={styles.legal}>
           En continuant, vous acceptez nos{' '}
@@ -291,6 +299,23 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontSize: 13,
+    color: '#712B13',
+    fontWeight: '500',
+  },
+  partnerRow: {
+    marginBottom: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: '#FAECE7',
+    borderRadius: 10,
+  },
+  partnerText: {
+    fontSize: 12,
+    color: '#5F5E5A',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  partnerLink: {
     color: '#712B13',
     fontWeight: '500',
   },

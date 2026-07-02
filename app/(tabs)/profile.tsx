@@ -22,6 +22,7 @@ import {
   LogOut,
   ChevronRight,
   X,
+  Store,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -219,6 +220,18 @@ export default function ProfileScreen() {
               label="Langue"
               value="Français"
               onPress={() => {}}
+              last
+            />
+          </MenuSection>
+
+          {/* ── Devenir partenaire ── */}
+          <MenuSection title="Vous avez un établissement ?">
+            <MenuItem
+              icon={<Store size={16} color="#712B13" />}
+              iconBg="#FAECE7"
+              iconColor="#712B13"
+              label="Devenir partenaire"
+              onPress={() => router.push('/become-partner')}
               last
             />
           </MenuSection>
