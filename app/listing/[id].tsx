@@ -1,19 +1,34 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import {
+  ArrowLeft,
+  Car,
+  Coffee,
+  Heart, MapPin,
+  Minus,
+  Plus,
+  Send,
+  Star, Wifi,
+  Wind,
+  X,
+} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, Modal, TextInput, KeyboardAvoidingView,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import Svg, { Circle, Polygon, Path } from 'react-native-svg';
-import {
-  ArrowLeft, Heart, MapPin, Star, Wifi, Car,
-  Wind, Coffee, Plus, Minus, X, Send,
-} from 'lucide-react-native';
-import { supabase } from '../../lib/supabase';
+import Svg, { Circle, Path, Polygon } from 'react-native-svg';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
-import type { Establishment, Rate, EstablishmentType } from '../../lib/types';
+import { supabase } from '../../lib/supabase';
+import { categoryColors, colors } from '../../lib/theme';
+import type { Establishment, EstablishmentType, ListingPhoto, Rate } from '../../lib/types';
 
 type TimeSlot = string;
 
@@ -246,6 +261,8 @@ export default function ListingDetailScreen() {
   const { session, profile } = useAuth();
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [rate, setRate] = useState<Rate | null>(null);
+  const [photos, setPhotos] = useState<ListingPhoto[]>([]);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -268,6 +285,8 @@ export default function ListingDetailScreen() {
       .then(({ data }) => setEstablishment(data as Establishment));
     supabase.from('rates').select('*').eq('establishment_id', id).limit(1).maybeSingle()
       .then(({ data }) => setRate(data as Rate | null));
+    supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
+      .then(({ data }) => setPhotos((data as ListingPhoto[]) ?? []));
   }, [id]);
 
   if (!establishment) {
@@ -333,10 +352,28 @@ export default function ListingDetailScreen() {
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.hero, { backgroundColor: soft }]}>
-          <HeroIllustration type={establishment.type} accent={accent} soft={soft} />
-          <View style={StyleSheet.absoluteFill}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
-          </View>
+          {photos.length > 0 ? (
+            <>
+              <Image source={{ uri: photos[activePhotoIndex].url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+              {photos.length > 1 && (
+                <View style={styles.photoDots}>
+                  {photos.map((_, i) => (
+                    <Pressable key={i} onPress={() => setActivePhotoIndex(i)} hitSlop={6}>
+                      <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <HeroIllustration type={establishment.type} accent={accent} soft={soft} />
+              <View style={StyleSheet.absoluteFill}>
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
+              </View>
+            </>
+          )}
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={16} color={colors.ink} />
           </Pressable>
@@ -433,6 +470,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
   hero: { height: 220, position: 'relative', overflow: 'hidden' },
+  photoDots: {
+    position: 'absolute', bottom: 14, alignSelf: 'center',
+    flexDirection: 'row', gap: 6, zIndex: 2,
+  },
+  photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
+  photoDotActive: { backgroundColor: '#FFFFFF', width: 18 },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: 16,
     width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFFCC',
     alignItems: 'center', justifyContent: 'center' },

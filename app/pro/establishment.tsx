@@ -2,14 +2,15 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, TextInput, ActivityIndicator,
-  KeyboardAvoidingView,
+  KeyboardAvoidingView, Image, Alert,
 } from 'react-native';
-import { Save, Camera, Check, Building2 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Save, Camera, Check, Building2, X } from 'lucide-react-native';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
-import type { Establishment } from '../../lib/types';
+import type { Establishment, ListingPhoto } from '../../lib/types';
 
 const ALL_AMENITIES = [
   'Wifi', 'Parking', 'Climatisation', 'Petit-déjeuner',
@@ -59,6 +60,10 @@ export default function EstablishmentScreen() {
   const [pendingCount, setPendingCount] = useState(0);
   const [confirmedCount, setConfirmedCount] = useState(0);
   const [checkinCount, setCheckinCount] = useState(0);
+  const [photos, setPhotos] = useState<ListingPhoto[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const fetchEstablishment = useCallback(async () => {
     if (!profile?.id) return;
@@ -83,6 +88,11 @@ export default function EstablishmentScreen() {
       setAmenities(e.amenities ?? []);
       setDiscountPercent(e.discount_percent != null ? String(e.discount_percent) : '');
       setDiscountLabel(e.discount_label ?? '');
+      setLogoUrl(e.logo_url ?? null);
+
+      const { data: photoRows } = await supabase.from('listing_photos')
+        .select('*').eq('establishment_id', e.id).order('position', { ascending: true });
+      setPhotos((photoRows as ListingPhoto[]) ?? []);
 
       const { data: rate } = await supabase.from('rates').select('*')
         .eq('establishment_id', e.id).maybeSingle();
@@ -100,6 +110,89 @@ export default function EstablishmentScreen() {
   }, [profile?.id]);
 
   useEffect(() => { fetchEstablishment(); }, [fetchEstablishment]);
+
+  // Ouvre le sélecteur d'image et retourne l'URI choisie, ou null si annulé
+  async function pickImage(): Promise<string | null> {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', "L'accès à vos photos est nécessaire pour en ajouter une.");
+      return null;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return null;
+    return result.assets[0].uri;
+  }
+
+  // Envoie un fichier local vers Supabase Storage et retourne son URL publique
+  async function uploadToStorage(uri: string, path: string): Promise<string | null> {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const { error } = await supabase.storage
+        .from('establishment-photos')
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
+      return data.publicUrl;
+    } catch {
+      Alert.alert('Erreur', "L'envoi de l'image a échoué. Vérifiez votre connexion et réessayez.");
+      return null;
+    }
+  }
+
+  async function handlePickLogo() {
+    if (!establishment) return;
+    const uri = await pickImage();
+    if (!uri) return;
+    setUploadingLogo(true);
+    const path = `${establishment.id}/logo-${Date.now()}.jpg`;
+    const publicUrl = await uploadToStorage(uri, path);
+    if (publicUrl) {
+      await supabase.from('establishments').update({ logo_url: publicUrl }).eq('id', establishment.id);
+      setLogoUrl(publicUrl);
+    }
+    setUploadingLogo(false);
+  }
+
+  async function handleAddPhoto() {
+    if (!establishment) return;
+    if (photos.length >= 10) {
+      Alert.alert('Limite atteinte', 'Vous ne pouvez pas ajouter plus de 10 photos.');
+      return;
+    }
+    const uri = await pickImage();
+    if (!uri) return;
+    setUploadingPhoto(true);
+    const path = `${establishment.id}/photo-${Date.now()}.jpg`;
+    const publicUrl = await uploadToStorage(uri, path);
+    if (publicUrl) {
+      const { data } = await supabase.from('listing_photos')
+        .insert({ establishment_id: establishment.id, url: publicUrl, position: photos.length })
+        .select()
+        .single();
+      if (data) setPhotos(prev => [...prev, data as ListingPhoto]);
+    }
+    setUploadingPhoto(false);
+  }
+
+  async function handleDeletePhoto(photo: ListingPhoto) {
+    Alert.alert('Supprimer cette photo', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: async () => {
+        await supabase.from('listing_photos').delete().eq('id', photo.id);
+        // Extrait le chemin du fichier depuis l'URL publique pour le supprimer du Storage aussi
+        const storagePath = photo.url.split('/establishment-photos/')[1];
+        if (storagePath) {
+          await supabase.storage.from('establishment-photos').remove([storagePath]);
+        }
+        setPhotos(prev => prev.filter(p => p.id !== photo.id));
+      }},
+    ]);
+  }
 
   async function handleSave() {
     if (!establishment) return;
@@ -193,24 +286,48 @@ export default function EstablishmentScreen() {
             <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
               <View style={{ alignItems: 'center', gap: 5 }}>
                 <Text style={styles.subLabel}>Logo</Text>
-                <Pressable style={styles.logoBox}>
-                  <Svg width="40" height="40" viewBox="0 0 120 120">
-                    <Rect width="120" height="120" rx="20" fill="#993C1D" />
-                    <Circle cx="60" cy="48" r="22" fill="#FAC775" />
-                    <Polygon points="34,80 60,38 86,80" fill="#712B13" />
-                    <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
-                  </Svg>
+                <Pressable style={styles.logoBox} onPress={handlePickLogo} disabled={uploadingLogo}>
+                  {uploadingLogo ? (
+                    <ActivityIndicator color={colors.lave} size="small" />
+                  ) : logoUrl ? (
+                    <Image source={{ uri: logoUrl }} style={styles.logoImage} />
+                  ) : (
+                    <Svg width="40" height="40" viewBox="0 0 120 120">
+                      <Rect width="120" height="120" rx="20" fill="#993C1D" />
+                      <Circle cx="60" cy="48" r="22" fill="#FAC775" />
+                      <Polygon points="34,80 60,38 86,80" fill="#712B13" />
+                      <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
+                    </Svg>
+                  )}
                   <Text style={{ fontSize: 9, color: colors.lave, marginTop: 4 }}>Changer</Text>
                 </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Photos (0/10)</Text>
-                <Pressable style={styles.addPhotoBtn}>
-                  <Camera size={20} color={colors.faint} />
-                  <Text style={{ fontSize: 10, color: colors.faint, marginTop: 4, textAlign: 'center' }}>
-                    Ajouter une photo
-                  </Text>
-                </Pressable>
+                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Photos ({photos.length}/10)</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {photos.map(photo => (
+                    <View key={photo.id} style={styles.photoThumbWrap}>
+                      <Image source={{ uri: photo.url }} style={styles.photoThumb} />
+                      <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(photo)} hitSlop={6}>
+                        <X size={11} color="#FFFFFF" />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {photos.length < 10 && (
+                    <Pressable style={styles.addPhotoBtn} onPress={handleAddPhoto} disabled={uploadingPhoto}>
+                      {uploadingPhoto ? (
+                        <ActivityIndicator color={colors.faint} size="small" />
+                      ) : (
+                        <>
+                          <Camera size={20} color={colors.faint} />
+                          <Text style={{ fontSize: 10, color: colors.faint, marginTop: 4, textAlign: 'center' }}>
+                            Ajouter
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  )}
+                </View>
                 <Text style={styles.hint}>JPG, PNG · Max 5 MB · 10 photos max</Text>
               </View>
             </View>
@@ -330,8 +447,16 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14 },
   cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
   subLabel: { fontSize: 10, color: colors.faint },
-  logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center' },
+  logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logoImage: { width: '100%', height: '100%', borderRadius: 12 },
   addPhotoBtn: { width: 72, height: 72, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  photoThumbWrap: { width: 72, height: 72, borderRadius: 10, overflow: 'visible', position: 'relative' },
+  photoThumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: '#F5F4F0' },
+  photoDeleteBtn: {
+    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#C0392B', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#FAF8F4',
+  },
   hint: { fontSize: 10, color: colors.faint, marginTop: 6 },
   promoHint: { fontSize: 11, color: colors.muted, marginBottom: 10, lineHeight: 16 },
   row: { flexDirection: 'row', gap: 10 },
