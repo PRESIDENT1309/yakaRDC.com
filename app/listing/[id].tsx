@@ -1,34 +1,19 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import {
-  ArrowLeft,
-  Car,
-  Coffee,
-  Heart, MapPin,
-  Minus,
-  Plus,
-  Send,
-  Star, Wifi,
-  Wind,
-  X,
-} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
+  View, Text, ScrollView, Pressable, StyleSheet,
+  Platform, Modal, TextInput, KeyboardAvoidingView,
   ActivityIndicator, Alert, Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
 } from 'react-native';
-import Svg, { Circle, Path, Polygon } from 'react-native-svg';
-import { useAuth } from '../../lib/auth-context';
+import { useLocalSearchParams, router } from 'expo-router';
+import Svg, { Circle, Polygon, Path } from 'react-native-svg';
+import {
+  ArrowLeft, Heart, MapPin, Star, Wifi, Car,
+  Wind, Coffee, Plus, Minus, X, Send,
+} from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { categoryColors, colors } from '../../lib/theme';
-import type { Establishment, EstablishmentType, ListingPhoto, Rate } from '../../lib/types';
+import { useAuth } from '../../lib/auth-context';
+import { colors, categoryColors } from '../../lib/theme';
+import type { Establishment, Rate, EstablishmentType, ListingPhoto } from '../../lib/types';
 
 type TimeSlot = string;
 
@@ -348,13 +333,15 @@ export default function ListingDetailScreen() {
     ? `${rate.price} ${rate.currency} / ${rate.unit === 'night' ? 'nuit' : rate.unit === 'person' ? 'pers.' : 'visite'}`
     : 'Tarif sur demande';
 
+  const currentPhoto = photos[Math.min(activePhotoIndex, Math.max(photos.length - 1, 0))];
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.hero, { backgroundColor: soft }]}>
-          {photos.length > 0 ? (
+          {currentPhoto ? (
             <>
-              <Image source={{ uri: photos[activePhotoIndex].url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image source={{ uri: currentPhoto.url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} resizeMode="cover" />
               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
               {photos.length > 1 && (
                 <View style={styles.photoDots}>
