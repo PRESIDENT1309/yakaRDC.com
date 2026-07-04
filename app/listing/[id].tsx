@@ -1,19 +1,34 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import {
+  ArrowLeft,
+  Car,
+  Coffee,
+  Heart, MapPin,
+  Minus,
+  Plus,
+  Send,
+  Star, Wifi,
+  Wind,
+  X,
+} from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, Modal, TextInput, KeyboardAvoidingView,
   ActivityIndicator, Alert, Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import Svg, { Circle, Polygon, Path } from 'react-native-svg';
-import {
-  ArrowLeft, Heart, MapPin, Star, Wifi, Car,
-  Wind, Coffee, Plus, Minus, X, Send,
-} from 'lucide-react-native';
-import { supabase } from '../../lib/supabase';
+import Svg, { Circle, Path, Polygon } from 'react-native-svg';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
-import type { Establishment, Rate, EstablishmentType, ListingPhoto } from '../../lib/types';
+import { supabase } from '../../lib/supabase';
+import { categoryColors, colors } from '../../lib/theme';
+import type { Establishment, EstablishmentType, ListingPhoto, Rate } from '../../lib/types';
 
 type TimeSlot = string;
 
