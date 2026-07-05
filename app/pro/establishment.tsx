@@ -2,10 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, TextInput, ActivityIndicator,
-  KeyboardAvoidingView, Image, Alert,
+  KeyboardAvoidingView, Image, Alert, Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Save, Camera, Check, Building2, X } from 'lucide-react-native';
+import {
+  Save, Camera, Check, Building2, X,
+  ChevronLeft, ChevronRight, Trash2,
+} from 'lucide-react-native';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -65,6 +68,9 @@ export default function EstablishmentScreen() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Index de la photo affichée en plein écran dans la visionneuse (null = fermée)
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
   const fetchEstablishment = useCallback(async () => {
     if (!profile?.id) return;
     const { data } = await supabase
@@ -110,6 +116,14 @@ export default function EstablishmentScreen() {
   }, [profile?.id]);
 
   useEffect(() => { fetchEstablishment(); }, [fetchEstablishment]);
+
+  // Si des photos sont supprimées pendant que la visionneuse est ouverte,
+  // ramène l'index dans les limites valides (ou ferme si plus aucune photo)
+  useEffect(() => {
+    if (viewerIndex === null) return;
+    if (photos.length === 0) { setViewerIndex(null); return; }
+    if (viewerIndex > photos.length - 1) { setViewerIndex(photos.length - 1); }
+  }, [photos.length, viewerIndex]);
 
   // Ouvre le sélecteur d'image et retourne l'URI choisie, ou null si annulé
   async function pickImage(): Promise<string | null> {
@@ -239,6 +253,7 @@ export default function EstablishmentScreen() {
 
   const unitLabel = establishment.type === 'hotel' || establishment.type === 'furnished_house'
     ? 'nuit' : 'personne';
+  const currentViewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -305,9 +320,11 @@ export default function EstablishmentScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.subLabel, { marginBottom: 8 }]}>Photos ({photos.length}/10)</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {photos.map(photo => (
+                  {photos.map((photo, index) => (
                     <View key={photo.id} style={styles.photoThumbWrap}>
-                      <Image source={{ uri: photo.url }} style={styles.photoThumb} />
+                      <Pressable onPress={() => setViewerIndex(index)}>
+                        <Image source={{ uri: photo.url }} style={styles.photoThumb} />
+                      </Pressable>
                       <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(photo)} hitSlop={6}>
                         <X size={11} color="#FFFFFF" />
                       </Pressable>
@@ -328,7 +345,7 @@ export default function EstablishmentScreen() {
                     </Pressable>
                   )}
                 </View>
-                <Text style={styles.hint}>JPG, PNG · Max 5 MB · 10 photos max</Text>
+                <Text style={styles.hint}>JPG, PNG · Max 5 MB · 10 photos max · Touchez une photo pour l'agrandir</Text>
               </View>
             </View>
           </View>
@@ -417,6 +434,63 @@ export default function EstablishmentScreen() {
              <><Save size={16} color="#FAF8F4" /><Text style={styles.saveBtnFullText}>Sauvegarder les modifications</Text></>}
           </Pressable>
         </ScrollView>
+
+        {/* Visionneuse plein écran : défiler les photos une par une */}
+        <Modal
+          visible={viewerIndex !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setViewerIndex(null)}
+        >
+          <View style={styles.viewerOverlay}>
+            <View style={styles.viewerHeader}>
+              <Text style={styles.viewerCounter}>
+                {viewerIndex !== null ? `${viewerIndex + 1} / ${photos.length}` : ''}
+              </Text>
+              <Pressable onPress={() => setViewerIndex(null)} hitSlop={12}>
+                <X size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+
+            <View style={styles.viewerImageWrap}>
+              {currentViewerPhoto && (
+                <Image
+                  source={{ uri: currentViewerPhoto.url }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            <View style={styles.viewerFooter}>
+              <Pressable
+                style={[styles.viewerNavBtn, viewerIndex === 0 && styles.viewerNavBtnDisabled]}
+                onPress={() => setViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
+                disabled={viewerIndex === 0}
+                hitSlop={10}
+              >
+                <ChevronLeft size={22} color="#FFFFFF" />
+              </Pressable>
+
+              <Pressable
+                style={styles.viewerDeleteBtn}
+                onPress={() => currentViewerPhoto && handleDeletePhoto(currentViewerPhoto)}
+              >
+                <Trash2 size={15} color="#FFFFFF" />
+                <Text style={styles.viewerDeleteText}>Supprimer</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.viewerNavBtn, viewerIndex === photos.length - 1 && styles.viewerNavBtnDisabled]}
+                onPress={() => setViewerIndex(i => (i !== null && i < photos.length - 1 ? i + 1 : i))}
+                disabled={viewerIndex === photos.length - 1}
+                hitSlop={10}
+              >
+                <ChevronRight size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -471,4 +545,28 @@ const styles = StyleSheet.create({
   amenityTextActive: { color: '#1F4D3A', fontWeight: '500' },
   saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
   saveBtnFullText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+
+  // Visionneuse plein écran
+  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
+  viewerHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: 12,
+  },
+  viewerCounter: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
+  viewerImageWrap: { flex: 1, paddingHorizontal: 10 },
+  viewerFooter: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: 12,
+  },
+  viewerNavBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
+  viewerNavBtnDisabled: { opacity: 0.3 },
+  viewerDeleteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: 'rgba(192,57,43,0.9)', borderRadius: 10,
+    paddingHorizontal: 16, paddingVertical: 11,
+  },
+  viewerDeleteText: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
 });
