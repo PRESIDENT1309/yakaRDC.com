@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  ImageBackground,
-  Dimensions,
+  Image,
   FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -29,8 +28,9 @@ import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = 160;
+type EstablishmentWithPhoto = Establishment & {
+  listing_photos?: { url: string; position: number }[];
+};
 
 const CATEGORIES: {
   key: EstablishmentType;
@@ -67,7 +67,7 @@ function HeroIllustration() {
   );
 }
 
-function ListingCard({ item }: { item: Establishment }) {
+function ListingCard({ item }: { item: EstablishmentWithPhoto }) {
   const cat = categoryColors[item.type];
   const icons: Record<EstablishmentType, React.ReactNode> = {
     hotel: <Building2 size={28} color={cat?.accent ?? colors.lave} />,
@@ -76,13 +76,21 @@ function ListingCard({ item }: { item: Establishment }) {
     site: <Mountain size={28} color={cat?.accent ?? colors.foret} />,
   };
 
+  // Prend la photo de position la plus basse (la "principale"), sinon aucune
+  const sortedPhotos = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
+  const coverPhoto = sortedPhotos[0];
+
   return (
     <Pressable
       style={styles.card}
       onPress={() => router.push(`/listing/${item.id}`)}
     >
       <View style={[styles.cardThumb, { backgroundColor: cat?.soft ?? '#FAECE7' }]}>
-        {icons[item.type]}
+        {coverPhoto ? (
+          <Image source={{ uri: coverPhoto.url }} style={styles.cardThumbImage} resizeMode="cover" />
+        ) : (
+          icons[item.type]
+        )}
         <View style={styles.ratingBadge}>
           <Star size={8} color="#854F0B" fill="#854F0B" />
           <Text style={styles.ratingText}>4.8</Text>
@@ -106,27 +114,21 @@ function ListingCard({ item }: { item: Establishment }) {
 
 export default function HomeScreen() {
   const { profile } = useAuth();
-  const [listings, setListings] = useState<Establishment[]>([]);
+  const [listings, setListings] = useState<EstablishmentWithPhoto[]>([]);
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
-
-  const firstName = profile?.full_name?.split(' ')[0] ?? 'Bienvenue';
 
   useEffect(() => {
     setLoading(true);
     supabase
       .from('establishments')
-      .select('*')
+      .select('*, listing_photos(url, position)')
       .eq('status', 'approved')
       .eq('type', activeCategory)
       .limit(10)
       .then(({ data, error }) => {
-        if (error) {
-          console.error('SUPABASE ERREUR:', JSON.stringify(error));
-        } else {
-          console.log('SUPABASE OK:', data?.length, 'résultats pour', activeCategory);
-        }
-        setListings((data as Establishment[]) ?? []);
+        if (error) console.error('SUPABASE ERREUR:', JSON.stringify(error));
+        setListings((data as EstablishmentWithPhoto[]) ?? []);
         setLoading(false);
       });
   }, [activeCategory]);
@@ -135,14 +137,12 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
-        {/* ── Hero ── */}
         <View style={styles.hero}>
           <View style={StyleSheet.absoluteFill}>
             <HeroIllustration />
           </View>
           <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
 
-          {/* Top bar */}
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
               <View style={styles.logoBadge}>
@@ -159,7 +159,6 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Hero text */}
           <View style={styles.heroContent}>
             <View style={styles.locationRow}>
               <MapPin size={12} color="rgba(250,248,244,0.7)" />
@@ -171,7 +170,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── Search bar ── */}
         <View style={styles.searchWrapper}>
           <Pressable
             style={styles.searchBar}
@@ -187,7 +185,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* ── Categories ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Catégories</Text>
@@ -221,7 +218,6 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── Listings ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recommandés</Text>
@@ -257,7 +253,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* ── Section Découvrir ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Découvrir Kinshasa</Text>
@@ -267,7 +262,7 @@ export default function HomeScreen() {
               { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
               { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
               { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
-              { label: 'N\'Sele', color: '#DCEEE3', accent: '#1F4D3A' },
+              { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
               { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
             ].map((q) => (
               <Pressable
@@ -406,7 +401,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: { fontSize: 11, color: colors.muted },
   card: {
-    width: CARD_WIDTH,
+    width: 160,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
@@ -418,6 +413,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  cardThumbImage: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
   ratingBadge: {
     position: 'absolute',
