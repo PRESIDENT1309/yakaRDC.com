@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput, KeyboardAvoidingView,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert, Image, useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
@@ -244,6 +244,8 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading }:
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
+  const { width: heroWidth } = useWindowDimensions();
+  const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [rate, setRate] = useState<Rate | null>(null);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
@@ -333,20 +335,46 @@ export default function ListingDetailScreen() {
     ? `${rate.price} ${rate.currency} / ${rate.unit === 'night' ? 'nuit' : rate.unit === 'person' ? 'pers.' : 'visite'}`
     : 'Tarif sur demande';
 
-  const currentPhoto = photos[Math.min(activePhotoIndex, Math.max(photos.length - 1, 0))];
-
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[styles.hero, { backgroundColor: soft }]}>
-          {currentPhoto ? (
+          {photos.length > 0 ? (
             <>
-              <Image source={{ uri: currentPhoto.url }} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} resizeMode="cover" />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]} />
+              <ScrollView
+                ref={photoScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
+                  setActivePhotoIndex(index);
+                }}
+              >
+                {photos.map((photo) => (
+                  <Image
+                    key={photo.id}
+                    source={{ uri: photo.url }}
+                    style={{ width: heroWidth, height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              <View
+                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]}
+              />
               {photos.length > 1 && (
                 <View style={styles.photoDots}>
                   {photos.map((_, i) => (
-                    <Pressable key={i} onPress={() => setActivePhotoIndex(i)} hitSlop={6}>
+                    <Pressable
+                      key={i}
+                      onPress={() => {
+                        setActivePhotoIndex(i);
+                        photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
+                      }}
+                      hitSlop={6}
+                    >
                       <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
                     </Pressable>
                   ))}
