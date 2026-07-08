@@ -45,6 +45,15 @@ const CATEGORIES: {
   { key: 'site', label: 'Sites', icon: <Mountain size={22} color="#1F4D3A" />, color: '#1F4D3A', bg: '#DCEEE3' },
 ];
 
+// Quelques-unes des 24 communes de Kinshasa, mises en avant sur l'accueil
+const FEATURED_COMMUNES = [
+  { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
+  { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
+  { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
+  { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
+  { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
+];
+
 function HeroIllustration() {
   return (
     <Svg width="100%" height="100%" viewBox="0 0 390 260" preserveAspectRatio="xMidYMid slice">
@@ -76,7 +85,6 @@ function ListingCard({ item }: { item: EstablishmentWithPhoto }) {
     site: <Mountain size={28} color={cat?.accent ?? colors.foret} />,
   };
 
-  // Prend la photo de position la plus basse (la "principale"), sinon aucune
   const sortedPhotos = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
   const coverPhoto = sortedPhotos[0];
 
@@ -154,7 +162,8 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.logoText}>YakaRDC</Text>
             </View>
-            <Pressable style={styles.bellBtn}>
+            {/* Notifications : réutilise les vraies mises à jour de réservations */}
+            <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
               <Bell size={18} color="#FAF8F4" />
             </Pressable>
           </View>
@@ -253,23 +262,19 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Communes — maintenant fonctionnelles : ouvrent la recherche filtrée */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Découvrir Kinshasa</Text>
+            <Text style={styles.sectionTitle}>Communes populaires</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 18 }}>
-            {[
-              { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
-              { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
-              { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
-              { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
-              { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
-            ].map((q) => (
+            {FEATURED_COMMUNES.map((q) => (
               <Pressable
                 key={q.label}
-                style={[styles.neighborhoodPill, { backgroundColor: q.color }]}
+                style={[styles.communePill, { backgroundColor: q.color }]}
+                onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: q.label } })}
               >
-                <Text style={[styles.neighborhoodLabel, { color: q.accent }]}>{q.label}</Text>
+                <Text style={[styles.communeLabel, { color: q.accent }]}>{q.label}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -438,11 +443,11 @@ const styles = StyleSheet.create({
   emptyState: { paddingHorizontal: 18 },
   emptyText: { fontSize: 13, color: colors.muted, paddingHorizontal: 18 },
   emptySubtext: { fontSize: 11, color: colors.faint, marginTop: 4 },
-  neighborhoodPill: {
+  communePill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
     marginRight: 8,
   },
-  neighborhoodLabel: { fontSize: 13, fontWeight: '500' },
+  communeLabel: { fontSize: 13, fontWeight: '500' },
 });

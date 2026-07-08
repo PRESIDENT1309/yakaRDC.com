@@ -10,7 +10,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   Search,
   X,
@@ -38,7 +38,11 @@ const CATEGORIES: { key: CategoryFilter; label: string }[] = [
   { key: 'site', label: 'Sites' },
 ];
 
-const QUARTIERS = ['Tous', 'Gombe', 'Limete', 'Bandal', 'Ngaliema', 'N\'Sele', 'Kintambo', 'Lemba'];
+// Communes de Kinshasa (liste non exhaustive — la ville en compte 24 au total)
+const COMMUNES = [
+  'Toutes', 'Gombe', 'Limete', 'Bandal', 'Ngaliema', "N'Sele",
+  'Kintambo', 'Lemba', 'Kalamu', 'Ngiri-Ngiri', 'Barumbu',
+];
 const PRIX = ['Tous', '0–20 $', '20–50 $', '50–100 $', '100 $ +'];
 const NOTES = ['Toutes', '4.5 +', '4.0 +', '3.5 +'];
 
@@ -84,7 +88,7 @@ function ResultCard({ item }: { item: Establishment }) {
         <View style={styles.cardLocationRow}>
           <MapPin size={10} color={colors.faint} />
           <Text style={styles.cardLocationText} numberOfLines={1}>
-            {item.neighborhood ?? item.city}
+            {item.commune ?? item.neighborhood ?? item.city}
           </Text>
         </View>
         <View style={styles.cardBottomRow}>
@@ -121,19 +125,21 @@ function FilterModal({
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>{title}</Text>
-          {options.map((opt) => (
-            <Pressable
-              key={opt}
-              style={styles.modalOption}
-              onPress={() => { onSelect(opt); onClose(); }}
-            >
-              <Text style={[
-                styles.modalOptionText,
-                selected === opt && { color: colors.lave, fontWeight: '500' },
-              ]}>{opt}</Text>
-              {selected === opt && <Check size={16} color={colors.lave} />}
-            </Pressable>
-          ))}
+          <ScrollView style={{ maxHeight: 360 }}>
+            {options.map((opt) => (
+              <Pressable
+                key={opt}
+                style={styles.modalOption}
+                onPress={() => { onSelect(opt); onClose(); }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  selected === opt && { color: colors.lave, fontWeight: '500' },
+                ]}>{opt}</Text>
+                {selected === opt && <Check size={16} color={colors.lave} />}
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
       </Pressable>
     </Modal>
@@ -141,14 +147,24 @@ function FilterModal({
 }
 
 export default function SearchScreen() {
+  const params = useLocalSearchParams<{ commune?: string }>();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
-  const [quartier, setQuartier] = useState('Tous');
+  const [commune, setCommune] = useState('Toutes');
   const [prix, setPrix] = useState('Tous');
   const [note, setNote] = useState('Toutes');
   const [results, setResults] = useState<Establishment[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeModal, setActiveModal] = useState<'quartier' | 'prix' | 'note' | null>(null);
+  const [activeModal, setActiveModal] = useState<'commune' | 'prix' | 'note' | null>(null);
+
+  // Si on arrive depuis une commune tapée sur l'accueil, on pré-remplit le filtre
+  useEffect(() => {
+    if (params.commune && COMMUNES.includes(params.commune)) {
+      setCommune(params.commune);
+    } else if (params.commune) {
+      setCommune(params.commune);
+    }
+  }, [params.commune]);
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
@@ -158,13 +174,13 @@ export default function SearchScreen() {
       .eq('status', 'approved');
 
     if (category !== 'all') q = q.eq('type', category);
-    if (quartier !== 'Tous') q = q.eq('neighborhood', quartier);
+    if (commune !== 'Toutes') q = q.eq('commune', commune);
     if (query.trim()) q = q.ilike('name', `%${query.trim()}%`);
 
     const { data } = await q.limit(30);
     setResults((data as Establishment[]) ?? []);
     setLoading(false);
-  }, [query, category, quartier]);
+  }, [query, category, commune]);
 
   useEffect(() => {
     const timer = setTimeout(fetchResults, 350);
@@ -227,14 +243,14 @@ export default function SearchScreen() {
           contentContainerStyle={{ gap: 6 }}
         >
           <Pressable
-            style={[styles.filterPill, quartier !== 'Tous' && styles.filterPillActive]}
-            onPress={() => setActiveModal('quartier')}
+            style={[styles.filterPill, commune !== 'Toutes' && styles.filterPillActive]}
+            onPress={() => setActiveModal('commune')}
           >
-            <MapPin size={12} color={quartier !== 'Tous' ? colors.lave : colors.muted} />
-            <Text style={[styles.filterPillText, quartier !== 'Tous' && { color: colors.lave }]}>
-              {quartier === 'Tous' ? 'Quartier' : quartier}
+            <MapPin size={12} color={commune !== 'Toutes' ? colors.lave : colors.muted} />
+            <Text style={[styles.filterPillText, commune !== 'Toutes' && { color: colors.lave }]}>
+              {commune === 'Toutes' ? 'Commune' : commune}
             </Text>
-            <ChevronDown size={12} color={quartier !== 'Tous' ? colors.lave : colors.faint} />
+            <ChevronDown size={12} color={commune !== 'Toutes' ? colors.lave : colors.faint} />
           </Pressable>
 
           <Pressable
@@ -286,11 +302,11 @@ export default function SearchScreen() {
       />
 
       <FilterModal
-        visible={activeModal === 'quartier'}
-        title="Choisir un quartier"
-        options={QUARTIERS}
-        selected={quartier}
-        onSelect={setQuartier}
+        visible={activeModal === 'commune'}
+        title="Choisir une commune"
+        options={COMMUNES}
+        selected={commune}
+        onSelect={setCommune}
         onClose={() => setActiveModal(null)}
       />
       <FilterModal

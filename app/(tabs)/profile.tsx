@@ -115,6 +115,7 @@ export default function ProfileScreen() {
   const { profile, session } = useAuth();
   const [showLogout, setShowLogout] = useState(false);
   const [bookingCount, setBookingCount] = useState(0);
+  const [favoriteCount, setFavoriteCount] = useState(0);
 
   const initial = profile?.full_name
     ? profile.full_name.charAt(0).toUpperCase()
@@ -130,12 +131,21 @@ export default function ProfileScreen() {
       .select('id', { count: 'exact' })
       .eq('traveler_id', session.user.id)
       .then(({ count }) => setBookingCount(count ?? 0));
+    supabase
+      .from('favorites')
+      .select('id', { count: 'exact' })
+      .eq('traveler_id', session.user.id)
+      .then(({ count }) => setFavoriteCount(count ?? 0));
   }, [session?.user?.id]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
     setShowLogout(false);
     router.replace('/(auth)/login');
+  }
+
+  function showComingSoon(feature: string) {
+    Alert.alert(feature, "Cette fonctionnalité arrive bientôt sur YakaRDC.");
   }
 
   return (
@@ -146,7 +156,7 @@ export default function ProfileScreen() {
       >
         {/* ── Header ── */}
         <View style={styles.header}>
-          <Pressable style={styles.settingsBtn}>
+          <Pressable style={styles.settingsBtn} onPress={() => showComingSoon('Paramètres')}>
             <Settings size={16} color="#FAF8F4" />
           </Pressable>
 
@@ -157,18 +167,18 @@ export default function ProfileScreen() {
           </View>
 
           <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.email}>{displayEmail}</Text>
+          <Text style={styles.contact}>{displayEmail}</Text>
 
           <View style={styles.statsRow}>
-            <View style={styles.stat}>
+            <Pressable style={styles.stat} onPress={() => router.push('/(tabs)/bookings')}>
               <Text style={styles.statValue}>{bookingCount}</Text>
               <Text style={styles.statLabel}>Réservations</Text>
-            </View>
+            </Pressable>
             <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>0</Text>
+            <Pressable style={styles.stat} onPress={() => router.push('/favorites')}>
+              <Text style={styles.statValue}>{favoriteCount}</Text>
               <Text style={styles.statLabel}>Favoris</Text>
-            </View>
+            </Pressable>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
               <Text style={styles.statValue}>0</Text>
@@ -185,14 +195,15 @@ export default function ProfileScreen() {
               iconBg="#FAECE7"
               iconColor="#712B13"
               label="Modifier le profil"
-              onPress={() => {}}
+              onPress={() => router.push('/edit-profile')}
             />
             <MenuItem
               icon={<Heart size={16} color="#712B13" />}
               iconBg="#FAECE7"
               iconColor="#712B13"
               label="Mes favoris"
-              onPress={() => {}}
+              value={favoriteCount > 0 ? String(favoriteCount) : undefined}
+              onPress={() => router.push('/favorites')}
             />
             <MenuItem
               icon={<CalendarCheck size={16} color="#712B13" />}
@@ -200,26 +211,6 @@ export default function ProfileScreen() {
               iconColor="#712B13"
               label="Historique des réservations"
               onPress={() => router.push('/(tabs)/bookings')}
-              last
-            />
-          </MenuSection>
-
-          {/* ── Préférences ── */}
-          <MenuSection title="Préférences">
-            <MenuItem
-              icon={<Bell size={16} color="#085041" />}
-              iconBg="#E1F5EE"
-              iconColor="#085041"
-              label="Notifications"
-              onPress={() => {}}
-            />
-            <MenuItem
-              icon={<Languages size={16} color="#085041" />}
-              iconBg="#E1F5EE"
-              iconColor="#085041"
-              label="Langue"
-              value="Français"
-              onPress={() => {}}
               last
             />
           </MenuSection>
@@ -236,6 +227,29 @@ export default function ProfileScreen() {
             />
           </MenuSection>
 
+          {/* ── Préférences ── */}
+          <MenuSection title="Préférences">
+            <MenuItem
+              icon={<Bell size={16} color="#085041" />}
+              iconBg="#E1F5EE"
+              iconColor="#085041"
+              label="Notifications"
+              onPress={() => router.push('/notifications')}
+            />
+            <MenuItem
+              icon={<Languages size={16} color="#085041" />}
+              iconBg="#E1F5EE"
+              iconColor="#085041"
+              label="Langue"
+              value="Français"
+              onPress={() => Alert.alert(
+                'Langue',
+                "YakaRDC est disponible en français pour le moment. D'autres langues (lingala, anglais) arriveront bientôt."
+              )}
+              last
+            />
+          </MenuSection>
+
           {/* ── Assistance ── */}
           <MenuSection title="Assistance">
             <MenuItem
@@ -243,30 +257,26 @@ export default function ProfileScreen() {
               iconBg="#FAEEDA"
               iconColor="#854F0B"
               label="Centre d'aide"
-              onPress={() => {}}
+              onPress={() => showComingSoon("Centre d'aide")}
             />
             <MenuItem
               icon={<Shield size={16} color="#854F0B" />}
               iconBg="#FAEEDA"
               iconColor="#854F0B"
               label="Confidentialité"
-              onPress={() => {}}
+              onPress={() => showComingSoon('Politique de confidentialité')}
               last
             />
           </MenuSection>
 
           {/* ── Déconnexion ── */}
           <Pressable
-            style={styles.logoutBtn}
+            style={styles.logoutButton}
             onPress={() => setShowLogout(true)}
           >
-            <View style={styles.logoutIcon}>
-              <LogOut size={16} color="#C0392B" />
-            </View>
+            <LogOut color={colors.lave} size={16} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
-
-          <Text style={styles.version}>YakaRDC v1.0.0</Text>
         </View>
       </ScrollView>
 
@@ -323,7 +333,7 @@ const styles = StyleSheet.create({
     color: '#FAF8F4',
     marginBottom: 4,
   },
-  email: {
+  contact: {
     fontSize: 13,
     color: 'rgba(250,248,244,0.7)',
     marginBottom: 20,
@@ -398,37 +408,19 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginRight: 4,
   },
-  logoutBtn: {
+  logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFF5F5',
+    gap: 8,
+    alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#FFD5D5',
-    borderRadius: 14,
-    paddingHorizontal: 14,
+    borderColor: colors.borderStrong,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     marginTop: 4,
   },
-  logoutIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    backgroundColor: '#FFE5E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutText: {
-    fontSize: 13,
-    color: '#C0392B',
-    fontWeight: '500',
-  },
-  version: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: colors.borderStrong,
-    marginTop: 8,
-  },
+  logoutText: { color: colors.lave, fontSize: 13, fontWeight: '500' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

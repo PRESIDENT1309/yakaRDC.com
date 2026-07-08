@@ -250,6 +250,8 @@ export default function ListingDetailScreen() {
   const [rate, setRate] = useState<Rate | null>(null);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -275,6 +277,31 @@ export default function ListingDetailScreen() {
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
       .then(({ data }) => setPhotos((data as ListingPhoto[]) ?? []));
   }, [id]);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    supabase.from('favorites').select('id')
+      .eq('traveler_id', session.user.id).eq('establishment_id', id)
+      .maybeSingle()
+      .then(({ data }) => setIsFavorited(!!data));
+  }, [id, session?.user?.id]);
+
+  async function toggleFavorite() {
+    if (!session?.user || favoriteLoading) return;
+    setFavoriteLoading(true);
+    if (isFavorited) {
+      await supabase.from('favorites').delete()
+        .eq('traveler_id', session.user.id).eq('establishment_id', id);
+      setIsFavorited(false);
+    } else {
+      await supabase.from('favorites').insert({
+        traveler_id: session.user.id,
+        establishment_id: id,
+      });
+      setIsFavorited(true);
+    }
+    setFavoriteLoading(false);
+  }
 
   if (!establishment) {
     return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
@@ -392,8 +419,8 @@ export default function ListingDetailScreen() {
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={16} color={colors.ink} />
           </Pressable>
-          <Pressable style={styles.heartBtn}>
-            <Heart size={16} color={colors.ink} />
+          <Pressable style={styles.heartBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
+            <Heart size={16} color={isFavorited ? '#C0392B' : colors.ink} fill={isFavorited ? '#C0392B' : 'transparent'} />
           </Pressable>
           <View style={styles.heroFooter}>
             <View style={[styles.typeBadge, { backgroundColor: accent }]}>

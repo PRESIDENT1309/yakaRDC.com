@@ -165,3 +165,9 @@ export interface AdminActivityLog {
   details: Record<string, any>;
   created_at: string;
 }
+export interface Favorite {
+  id: string;
+  traveler_id: string;
+  establishment_id: string;
+  created_at: string;
+}
