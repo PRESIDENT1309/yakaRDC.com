@@ -20,7 +20,6 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  // loading reste true jusqu'à ce qu'on ait AUSSI chargé le profil
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
@@ -29,21 +28,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single();
-    setProfile((data as Profile) ?? null);
-    // Le chargement est terminé seulement quand le profil est là
+
+    if (data) {
+      setProfile(data as Profile);
+    } else {
+      // Première connexion (ex : via Google) — aucun profil n'existe encore,
+      // on le crée à la volée avec les infos fournies par le fournisseur OAuth.
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      const { data: created } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: user?.email ?? null,
+          full_name:
+            (user?.user_metadata?.full_name as string | undefined) ??
+            (user?.user_metadata?.name as string | undefined) ??
+            null,
+          role: 'traveler',
+        })
+        .select()
+        .single();
+      setProfile((created as Profile) ?? null);
+    }
     setLoading(false);
   }
 
   useEffect(() => {
-    // Récupère la session initiale
     supabase.auth.getSession().then(({ data }) => {
       const s = data.session;
       setSession(s);
       if (!s?.user) {
-        // Pas de session → on peut arrêter le chargement immédiatement
         setLoading(false);
       }
-      // Si session existe, loadProfile appellera setLoading(false) une fois terminé
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -59,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!session?.user) return;
-    setLoading(true); // remet en chargement pendant qu'on charge le profil
+    setLoading(true);
     loadProfile(session.user.id);
   }, [session?.user?.id]);
 
