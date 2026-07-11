@@ -1,50 +1,26 @@
-import 'react-native-url-polyfill/auto';
 import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
 
-// expo-secure-store n'existe que sur iOS/Android (coffre-fort natif).
-// Sur le web, on utilise localStorage à la place, avec une protection
-// contre le rendu côté serveur (où "window" n'existe pas encore).
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+
+// expo-secure-store ne fonctionne pas sur le web — on adapte selon la plateforme
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
   setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
-const WebStorageAdapter = {
-  getItem: (key: string) => {
-    if (typeof window === 'undefined') return Promise.resolve(null);
-    return Promise.resolve(window.localStorage.getItem(key));
-  },
-  setItem: (key: string, value: string) => {
-    if (typeof window === 'undefined') return Promise.resolve();
-    window.localStorage.setItem(key, value);
-    return Promise.resolve();
-  },
-  removeItem: (key: string) => {
-    if (typeof window === 'undefined') return Promise.resolve();
-    window.localStorage.removeItem(key);
-    return Promise.resolve();
-  },
-};
-
-const storageAdapter = Platform.OS === 'web' ? WebStorageAdapter : ExpoSecureStoreAdapter;
-
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'EXPO_PUBLIC_SUPABASE_URL et EXPO_PUBLIC_SUPABASE_ANON_KEY doivent être définis dans .env — voir README.md'
-  );
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: storageAdapter,
+    // Sur web : localStorage (undefined = défaut Supabase)
+    // Sur mobile : SecureStore
+    storage: Platform.OS !== 'web' ? ExpoSecureStoreAdapter : undefined,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // CRITIQUE : permet à Supabase de détecter automatiquement le code OAuth
+    // dans l'URL de callback et d'échanger le PKCE code_verifier
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
