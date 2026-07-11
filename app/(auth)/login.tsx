@@ -55,15 +55,14 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/pkk.jpg' }}
+      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/login-bg.jpg.jpg' }}
       style={styles.bg}
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" />
 
-      {/* Overlay sombre progressif du haut vers le bas */}
+      {/* Overlay très léger sur tout l'écran pour lisibilité du logo */}
       <View style={styles.overlayTop} />
-      <View style={styles.overlayBottom} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -204,15 +203,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.15)',
     zIndex: 1,
   },
-  overlayBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '65%',
-    backgroundColor: 'rgba(10,4,1,0.72)',
-    zIndex: 1,
-  },
   scroll: {
     flexGrow: 1,
     justifyContent: 'flex-end',
@@ -252,7 +242,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: 20,
-    backgroundColor: 'rgba(250,248,244,0.97)',
+    backgroundColor: '#FAF8F4',
     borderRadius: 24,
     padding: 22,
     zIndex: 2,
