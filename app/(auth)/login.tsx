@@ -69,7 +69,7 @@ export default function LoginScreen() {
 
         {/* Formulaire minimaliste, sans carte, directement sur l'image */}
         <View style={styles.form}>
-          <Text style={styles.welcome}>Bienvenue</Text>
+          <Text style={styles.welcome}>Bienvenue en RDC, coeur de l'Afrique</Text>
 
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Adresse email</Text>
