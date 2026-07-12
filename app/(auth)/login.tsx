@@ -37,7 +37,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/pkl.jpg' }}
+      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/pgg.jpg' }}
       style={styles.bg}
       resizeMode="cover"
     >
