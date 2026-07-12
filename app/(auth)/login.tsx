@@ -55,7 +55,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/login-bg.jpg.jpg' }}
+      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/pkk_LE_upscale_prime.jpg' }}
       style={styles.bg}
       resizeMode="cover"
     >
@@ -243,20 +243,20 @@ const styles = StyleSheet.create({
   card: {
     marginHorizontal: 20,
     backgroundColor: '#FAF8F4',
-    borderRadius: 24,
-    padding: 22,
+    borderRadius: 20,
+    padding: 16,
     zIndex: 2,
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '500',
     color: '#2C2C2A',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888780',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   field: {
     flexDirection: 'row',
@@ -265,35 +265,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E3DA',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
   },
   fieldError: {
     borderColor: '#C0392B',
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     color: '#2C2C2A',
   },
   errorText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#C0392B',
-    marginBottom: 8,
+    marginBottom: 6,
     marginLeft: 2,
   },
   primaryBtn: {
     backgroundColor: '#712B13',
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 9,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginBottom: 14,
-    marginTop: 4,
+    marginBottom: 10,
+    marginTop: 2,
   },
   primaryBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#FAF8F4',
   },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   dividerLine: {
     flex: 1,
@@ -309,23 +309,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E3DA',
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#B4B2A9',
   },
   googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E3DA',
-    borderRadius: 10,
-    paddingVertical: 13,
-    marginBottom: 16,
+    borderRadius: 9,
+    paddingVertical: 11,
+    marginBottom: 12,
   },
   googleBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#2C2C2A',
   },
@@ -335,28 +335,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   signupText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888780',
   },
   signupLink: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#712B13',
     fontWeight: '500',
   },
   partnerRow: {
     marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     backgroundColor: 'rgba(113,43,19,0.85)',
-    borderRadius: 12,
+    borderRadius: 10,
     zIndex: 2,
   },
   partnerText: {
-    fontSize: 12,
+    fontSize: 11,
     color: 'rgba(250,248,244,0.85)',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   partnerLink: {
     color: '#FAC775',
