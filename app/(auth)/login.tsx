@@ -55,14 +55,14 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/pkk.jpg' }}
+      source={{ uri: 'https://liweghymxnzyaoyheznu.supabase.co/storage/v1/object/public/establishment-photos/login-bg.jpg.jpg' }}
       style={styles.bg}
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" />
 
       {/* Overlay très léger sur tout l'écran pour lisibilité du logo */}
-      <View style={styles.overlayTop} />
+      <View style={styles.overlayTop} pointerEvents="none" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
