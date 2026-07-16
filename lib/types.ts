@@ -47,6 +47,7 @@ export interface Establishment {
   suspension_reason: string | null;
   discount_percent: number | null;
   discount_label: string | null;
+  view_count: number;
   created_at: string;
 }
 
@@ -113,6 +114,8 @@ export interface Review {
   traveler_id: string;
   rating: number;
   comment: string | null;
+  partner_reply: string | null;
+  partner_replied_at: string | null;
   created_at: string;
 }
 

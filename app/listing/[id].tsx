@@ -276,6 +276,8 @@ export default function ListingDetailScreen() {
       .then(({ data }) => setRate(data as Rate | null));
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
       .then(({ data }) => setPhotos((data as ListingPhoto[]) ?? []));
+    // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
+    supabase.rpc('increment_establishment_views', { p_establishment_id: id });
   }, [id]);
 
   useEffect(() => {

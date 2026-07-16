@@ -1,264 +1,339 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, RefreshControl, ActivityIndicator, Alert,
+  Platform, ActivityIndicator, TextInput, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-  QrCode, ChevronRight, CalendarCheck,
-  TrendingUp, Users, CheckCircle, Clock,
+  CalendarCheck, Users, Wallet, Star, Bell,
+  MessageCircle, Tag,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
-import type { Booking, Establishment } from '../../lib/types';
+import type { Establishment, Booking, Review } from '../../lib/types';
 
-type BookingWithEstablishment = Booking & { establishment: Establishment };
+const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-const DAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const MOCK_DATA = [3, 5, 8, 4, 2, 9, 6];
-const MAX_DATA = Math.max(...MOCK_DATA);
+function StatCard({ icon, value, label, sub, bg }:
+  { icon: React.ReactNode; value: string; label: string; sub: string; bg: string }) {
+  return (
+    <View style={[styles.statCard, { backgroundColor: bg }]}>
+      <View style={styles.statIconBadge}>{icon}</View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statSub}>{sub}</Text>
+    </View>
+  );
+}
 
 export default function PartnerDashboard() {
   const { profile } = useAuth();
-  const [establishments, setEstablishments] = useState<Establishment[]>([]);
-  const [pendingBookings, setPendingBookings] = useState<BookingWithEstablishment[]>([]);
-  const [stats, setStats] = useState({ pending: 0, confirmed: 0, total: 0, checkedIn: 0 });
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [establishment, setEstablishment] = useState<Establishment | null>(null);
+  const [todayCount, setTodayCount] = useState(0);
+  const [revenue, setRevenue] = useState(0);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [weekCounts, setWeekCounts] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [recentReviews, setRecentReviews] = useState<Review[]>([]);
+  const [replyDraft, setReplyDraft] = useState<Record<string, string>>({});
+  const [replying, setReplying] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchDashboard = useCallback(async () => {
     if (!profile?.id) return;
-    const { data: estabs } = await supabase
-      .from('establishments').select('*').eq('owner_id', profile.id);
-    setEstablishments((estabs as Establishment[]) ?? []);
-    const ids = (estabs ?? []).map((e: Establishment) => e.id);
-    if (ids.length === 0) { setLoading(false); setRefreshing(false); return; }
-    const { data: bookings } = await supabase
-      .from('bookings').select('*, establishment:establishments(*)')
-      .in('establishment_id', ids).order('created_at', { ascending: false });
-    const all = (bookings as BookingWithEstablishment[]) ?? [];
-    setPendingBookings(all.filter(b => b.status === 'pending').slice(0, 3));
-    setStats({
-      pending: all.filter(b => b.status === 'pending').length,
-      confirmed: all.filter(b => b.status === 'confirmed').length,
-      total: all.length,
-      checkedIn: all.filter(b => b.status === 'checked_in').length,
+    setLoading(true);
+
+    const { data: est } = await supabase.from('establishments').select('*')
+      .eq('owner_id', profile.id).limit(1).maybeSingle();
+    const e = est as Establishment | null;
+    setEstablishment(e);
+    if (!e) { setLoading(false); return; }
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    const weekAgoIso = weekAgo.toISOString().slice(0, 10);
+
+    const [{ data: bookings }, { data: rate }, { data: reviews }] = await Promise.all([
+      supabase.from('bookings').select('*')
+        .eq('establishment_id', e.id)
+        .gte('created_at', weekAgoIso),
+      supabase.from('rates').select('price').eq('establishment_id', e.id).maybeSingle(),
+      supabase.from('reviews').select('*').eq('establishment_id', e.id)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const allBookings = (bookings as Booking[]) ?? [];
+    const todays = allBookings.filter(b => b.created_at.slice(0, 10) === todayIso);
+    setTodayCount(todays.length);
+
+    const confirmedOrBetter = allBookings.filter(b => ['confirmed', 'checked_in'].includes(b.status));
+    setRevenue(confirmedOrBetter.length * (rate?.price ?? 0));
+
+    // Répartition par jour de la semaine (Lun=0 ... Dim=6), sur les 7 derniers jours
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    allBookings.forEach(b => {
+      const jsDay = new Date(b.created_at).getDay(); // 0=Dim, 1=Lun...
+      const idx = jsDay === 0 ? 6 : jsDay - 1;
+      counts[idx]++;
     });
+    setWeekCounts(counts);
+
+    const allReviews = (reviews as Review[]) ?? [];
+    setReviewCount(allReviews.length);
+    setAvgRating(allReviews.length > 0
+      ? allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length
+      : null);
+    setRecentReviews(allReviews.slice(0, 2));
+
     setLoading(false);
-    setRefreshing(false);
   }, [profile?.id]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  async function handleConfirm(id: string) {
-    await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', id);
-    fetchData();
+  async function handleReply(reviewId: string) {
+    const text = replyDraft[reviewId]?.trim();
+    if (!text) return;
+    setReplying(reviewId);
+    await supabase.from('reviews').update({
+      partner_reply: text,
+      partner_replied_at: new Date().toISOString(),
+    }).eq('id', reviewId);
+    setReplying(null);
+    fetchDashboard();
   }
 
-  async function handleReject(id: string) {
-    Alert.alert('Refuser', 'Confirmer le refus ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Refuser', style: 'destructive', onPress: async () => {
-        await supabase.from('bookings').update({ status: 'rejected' }).eq('id', id);
-        fetchData();
-      }},
-    ]);
+  if (loading) {
+    return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
   }
 
-  const displayName = profile?.full_name ?? profile?.email?.split('@')[0] ?? 'Partenaire';
-  const mainEstab = establishments[0];
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  if (!establishment) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.emptyText}>Aucun établissement associé à ce compte.</Text>
+      </View>
+    );
+  }
+
+  const maxCount = Math.max(...weekCounts, 1);
+  const bestDayIdx = weekCounts.some(c => c > 0)
+    ? weekCounts.indexOf(Math.max(...weekCounts))
+    : null;
 
   return (
     <View style={styles.screen}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
+
+        {/* En-tête */}
+        <View style={styles.headerRow}>
           <View>
-            <Text style={styles.greeting}>Bonjour, {displayName.split(' ')[0]} 👋</Text>
-            <Text style={styles.date}>{dateLabel}</Text>
+            <Text style={styles.brandName}>{establishment.name}</Text>
+            <Text style={styles.headerSub}>Bonjour, voici votre activité 👋</Text>
           </View>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
-          </View>
-        </View>
-        {mainEstab && (
-          <View style={styles.estabPill}>
-            <View style={styles.estabDot} />
-            <Text style={styles.estabPillText}>{mainEstab.name} · {mainEstab.neighborhood ?? mainEstab.city}</Text>
-          </View>
-        )}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor={colors.lave} />}>
-
-        <View style={styles.content}>
-          {/* Stats */}
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, styles.statCardRed]}>
-              <Clock size={16} color={colors.lave} />
-              <Text style={[styles.statValue, { color: colors.lave }]}>{stats.pending}</Text>
-              <Text style={styles.statLabel}>En attente</Text>
-            </View>
-            <View style={[styles.statCard, styles.statCardGreen]}>
-              <CheckCircle size={16} color="#1F4D3A" />
-              <Text style={[styles.statValue, { color: '#1F4D3A' }]}>{stats.confirmed}</Text>
-              <Text style={styles.statLabel}>Confirmées</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Users size={16} color={colors.ink} />
-              <Text style={[styles.statValue, { color: colors.ink }]}>{stats.checkedIn}</Text>
-              <Text style={styles.statLabel}>Check-ins</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: '#FAEEDA', borderColor: '#F0C070' }]}>
-              <TrendingUp size={16} color="#854F0B" />
-              <Text style={[styles.statValue, { color: '#854F0B', fontSize: 16 }]}>{stats.total}</Text>
-              <Text style={[styles.statLabel, { color: '#854F0B' }]}>Total</Text>
-            </View>
-          </View>
-
-          {/* Graphique réservations */}
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Réservations — 7 derniers jours</Text>
-            <View style={styles.chart}>
-              {MOCK_DATA.map((val, i) => (
-                <View key={i} style={styles.chartCol}>
-                  <View style={styles.chartBarWrap}>
-                    <View style={[styles.chartBar, {
-                      height: `${(val / MAX_DATA) * 100}%`,
-                      backgroundColor: i === 5 ? colors.lave : '#F5C4B3',
-                    }]} />
-                  </View>
-                  <Text style={styles.chartDay}>{DAYS[i]}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Scan */}
-          <Pressable style={styles.scanBtn} onPress={() => router.push('/pro/scan')}>
-            <QrCode size={20} color="#FAF8F4" />
-            <Text style={styles.scanBtnText}>Scanner un ticket à la réception</Text>
-            <ChevronRight size={16} color="rgba(250,248,244,0.7)" />
+          <Pressable style={styles.bellBtn} onPress={() => Alert.alert('Notifications', 'Bientôt disponible.')}>
+            <Bell size={16} color={colors.lave} />
           </Pressable>
+        </View>
 
-          {/* Demandes en attente */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Demandes en attente</Text>
-            {stats.pending > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{stats.pending}</Text>
+        {/* 4 cartes couleur pleine */}
+        <View style={styles.statsGrid}>
+          <StatCard
+            icon={<CalendarCheck size={16} color="#FFF" />}
+            value={String(todayCount)}
+            label="Réservations"
+            sub="aujourd'hui"
+            bg="#712B13"
+          />
+          <StatCard
+            icon={<Users size={16} color="#FFF" />}
+            value={String(establishment.view_count)}
+            label="Visiteurs"
+            sub="de la fiche"
+            bg="#1F4D3A"
+          />
+          <StatCard
+            icon={<Wallet size={16} color="#FFF" />}
+            value={`${revenue.toFixed(0)} $`}
+            label="Généré"
+            sub="réservations confirmées"
+            bg="#854F0B"
+          />
+          <StatCard
+            icon={<Star size={16} color="#FFF" />}
+            value={avgRating != null ? avgRating.toFixed(1) : '—'}
+            label="Note moyenne"
+            sub={`${reviewCount} avis`}
+            bg="#085041"
+          />
+        </View>
+
+        {/* Graphique réservations de la semaine */}
+        <View style={styles.chartCard}>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>Réservations cette semaine</Text>
+          </View>
+          <View style={styles.chartBars}>
+            {weekCounts.map((count, i) => (
+              <View key={i} style={styles.barColumn}>
+                <View style={styles.barTrack}>
+                  <View style={[
+                    styles.barFill,
+                    {
+                      height: `${(count / maxCount) * 100}%`,
+                      backgroundColor: i === bestDayIdx ? colors.lave : '#F0E4D0',
+                    },
+                  ]} />
+                </View>
+                <Text style={[styles.barLabel, i === bestDayIdx && { color: colors.lave, fontWeight: '700' }]}>
+                  {WEEKDAY_LABELS[i]}
+                </Text>
               </View>
+            ))}
+          </View>
+          {bestDayIdx !== null && (
+            <Text style={styles.chartFooter}>
+              {WEEKDAY_LABELS[bestDayIdx]} est votre meilleur jour cette semaine
+            </Text>
+          )}
+        </View>
+
+        {/* Avis récents */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Avis récents</Text>
+            {reviewCount > 2 && (
+              <Pressable onPress={() => router.push('/pro/reviews')}>
+                <Text style={styles.seeAll}>Voir tout</Text>
+              </Pressable>
             )}
           </View>
 
-          {loading ? <ActivityIndicator color={colors.lave} /> :
-           pendingBookings.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <CheckCircle size={28} color={colors.borderStrong} />
-              <Text style={styles.emptyText}>Aucune demande en attente</Text>
-            </View>
+          {recentReviews.length === 0 ? (
+            <Text style={styles.emptyText}>Aucun avis pour le moment.</Text>
           ) : (
             <View style={{ gap: 10 }}>
-              {pendingBookings.map(b => (
-                <View key={b.id} style={styles.bookingCard}>
-                  <View style={styles.bookingAvatar}>
-                    <Text style={styles.bookingAvatarText}>
-                      {(b as any).first_name ? (b as any).first_name.charAt(0).toUpperCase() : 'C'}
-                    </Text>
-                  </View>
-                  <View style={styles.bookingInfo}>
-                    <Text style={styles.bookingName}>
-                      {(b as any).first_name && (b as any).last_name
-                        ? `${(b as any).first_name} ${(b as any).last_name}` : 'Client'}
-                    </Text>
-                    <Text style={styles.bookingMeta}>
-                      {b.check_in && b.check_out ? `${b.check_in} → ${b.check_out}` :
-                       b.visit_date ? `${b.visit_date}${b.visit_time ? ' · ' + b.visit_time : ''}` : '—'}
-                      {b.guests ? ` · ${b.guests} pers.` : ''}
-                    </Text>
-                    {(b as any).contact_phone && (
-                      <Text style={styles.bookingPhone}>📞 {(b as any).contact_phone}</Text>
+              {recentReviews.map(r => (
+                <View key={r.id} style={styles.reviewCard}>
+                  <Text style={styles.reviewQuoteMark}>"</Text>
+                  <View style={{ flex: 1 }}>
+                    {r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
+                    <View style={styles.reviewMetaRow}>
+                      <View style={{ flexDirection: 'row', gap: 1 }}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                          <Star key={i} size={10} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                        ))}
+                      </View>
+                    </View>
+
+                    {r.partner_reply ? (
+                      <View style={styles.replyBox}>
+                        <MessageCircle size={11} color={colors.lave} />
+                        <Text style={styles.replyText}>{r.partner_reply}</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.replyForm}>
+                        <TextInput
+                          style={styles.replyInput}
+                          value={replyDraft[r.id] ?? ''}
+                          onChangeText={t => setReplyDraft(prev => ({ ...prev, [r.id]: t }))}
+                          placeholder="Répondre à cet avis..."
+                          placeholderTextColor={colors.faint}
+                        />
+                        <Pressable
+                          onPress={() => handleReply(r.id)}
+                          disabled={!replyDraft[r.id]?.trim() || replying === r.id}
+                        >
+                          <Text style={[styles.replyBtnText, !replyDraft[r.id]?.trim() && { opacity: 0.4 }]}>
+                            {replying === r.id ? '...' : 'Envoyer'}
+                          </Text>
+                        </Pressable>
+                      </View>
                     )}
-                  </View>
-                  <View style={styles.bookingActions}>
-                    <Pressable style={styles.confirmBtn} onPress={() => handleConfirm(b.id)}>
-                      <Text style={styles.confirmBtnText}>✓</Text>
-                    </Pressable>
-                    <Pressable style={styles.rejectBtn} onPress={() => handleReject(b.id)}>
-                      <Text style={styles.rejectBtnText}>✕</Text>
-                    </Pressable>
                   </View>
                 </View>
               ))}
             </View>
           )}
-
-          <Pressable style={styles.allBtn} onPress={() => router.push('/pro/bookings')}>
-            <CalendarCheck size={16} color={colors.lave} />
-            <Text style={styles.allBtnText}>Voir toutes les réservations</Text>
-            <ChevronRight size={14} color={colors.lave} />
-          </Pressable>
         </View>
+
+        {/* Promotion active */}
+        {establishment.discount_percent != null && (
+          <View style={styles.promoTicket}>
+            <View style={styles.promoNotchLeft} />
+            <View style={styles.promoNotchRight} />
+            <Tag size={14} color="#FAC775" />
+            <View>
+              <Text style={styles.promoLabel}>PROMOTION ACTIVE</Text>
+              <Text style={styles.promoText}>
+                {establishment.discount_label ?? `-${establishment.discount_percent}%`}
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingHorizontal: 20, paddingBottom: 16,
+  screen: { flex: 1, backgroundColor: '#F5F4EF' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F4EF' },
+  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center' },
+  headerRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    marginBottom: 18, paddingTop: Platform.OS === 'ios' ? 46 : 6,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  greeting: { fontSize: 18, fontWeight: '500', color: '#FAF8F4' },
-  date: { fontSize: 11, color: 'rgba(250,248,244,0.7)', marginTop: 3 },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 18, fontWeight: '500', color: '#FAF8F4' },
-  estabPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start' },
-  estabDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FAC775' },
-  estabPillText: { fontSize: 11, color: '#FAF8F4' },
-  content: { padding: 16, gap: 14 },
-  statsGrid: { flexDirection: 'row', gap: 8 },
-  statCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 10, alignItems: 'center', gap: 4 },
-  statCardRed: { borderColor: '#F5C4B3', backgroundColor: '#FAECE7' },
-  statCardGreen: { borderColor: '#A8D5B5', backgroundColor: '#DCEEE3' },
-  statValue: { fontSize: 22, fontWeight: '500' },
-  statLabel: { fontSize: 9, color: colors.muted, textAlign: 'center' },
-  chartCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14 },
-  chartTitle: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 12 },
-  chart: { flexDirection: 'row', height: 80, alignItems: 'flex-end', gap: 6 },
-  chartCol: { flex: 1, alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' },
-  chartBarWrap: { flex: 1, width: '100%', justifyContent: 'flex-end' },
-  chartBar: { width: '100%', borderRadius: 4, minHeight: 4 },
-  chartDay: { fontSize: 9, color: colors.faint },
-  scanBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.lave, borderRadius: 12, padding: 14 },
-  scanBtnText: { flex: 1, fontSize: 14, fontWeight: '500', color: '#FAF8F4' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: '500', color: colors.ink },
-  badge: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center' },
-  badgeText: { fontSize: 11, color: '#FAF8F4', fontWeight: '500' },
-  emptyCard: { alignItems: 'center', paddingVertical: 20, gap: 8, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-  emptyText: { fontSize: 13, color: colors.muted },
-  bookingCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
-  bookingAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  bookingAvatarText: { fontSize: 16, fontWeight: '500', color: colors.lave },
-  bookingInfo: { flex: 1 },
-  bookingName: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  bookingMeta: { fontSize: 11, color: colors.muted, marginTop: 1 },
-  bookingPhone: { fontSize: 11, color: colors.muted, marginTop: 1 },
-  bookingActions: { flexDirection: 'row', gap: 6 },
-  confirmBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#1F4D3A', alignItems: 'center', justifyContent: 'center' },
-  confirmBtnText: { fontSize: 14, color: '#FAF8F4', fontWeight: '500' },
-  rejectBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#FFD5D5', alignItems: 'center', justifyContent: 'center' },
-  rejectBtnText: { fontSize: 14, color: '#C0392B' },
-  allBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
-  allBtnText: { flex: 1, fontSize: 13, color: colors.lave, fontWeight: '500' },
+  brandName: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 21, color: colors.ink },
+  headerSub: { fontSize: 11, color: colors.muted, marginTop: 3 },
+  bellBtn: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+  },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statCard: { width: '47.5%', borderRadius: 16, padding: 14, gap: 3 },
+  statIconBadge: {
+    width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+  },
+  statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: '#FFFFFF' },
+  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
+  statSub: { fontSize: 9, color: 'rgba(255,255,255,0.6)' },
+  chartCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
+  },
+  chartHeader: { marginBottom: 14 },
+  chartTitle: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  chartBars: { flexDirection: 'row', justifyContent: 'space-between', height: 90, alignItems: 'flex-end' },
+  barColumn: { alignItems: 'center', gap: 6, flex: 1 },
+  barTrack: { width: 14, height: 64, justifyContent: 'flex-end' },
+  barFill: { width: '100%', borderRadius: 4, minHeight: 4 },
+  barLabel: { fontSize: 9.5, color: colors.muted },
+  chartFooter: { fontSize: 10.5, color: colors.lave, marginTop: 12, fontStyle: 'italic' },
+  section: { marginBottom: 20 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: colors.ink },
+  seeAll: { fontSize: 11, color: colors.lave, fontWeight: '600' },
+  reviewCard: {
+    flexDirection: 'row', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
+  },
+  reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: '#F0E4D0', lineHeight: 30 },
+  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: '#5F5E5A', marginBottom: 6 },
+  reviewMetaRow: { flexDirection: 'row', marginBottom: 8 },
+  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 8 },
+  replyText: { flex: 1, fontSize: 11, color: colors.ink },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F0EEE4', paddingTop: 8 },
+  replyInput: { flex: 1, fontSize: 11.5, color: colors.ink, paddingVertical: 4 },
+  replyBtnText: { fontSize: 11, color: colors.lave, fontWeight: '600' },
+  promoTicket: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.lave, borderRadius: 12, padding: 14, position: 'relative', overflow: 'hidden',
+  },
+  promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: '#F5F4EF' },
+  promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: '#F5F4EF' },
+  promoLabel: { fontSize: 8.5, color: '#FAC775', letterSpacing: 0.5 },
+  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: '#FAF8F4', marginTop: 2 },
 });
