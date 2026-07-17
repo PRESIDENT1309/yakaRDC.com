@@ -7,7 +7,7 @@ import { Slot, router, usePathname } from 'expo-router';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import {
   LayoutDashboard, ChartBar, Users, Store, History,
-  Star, MapPin, LogOut, Building2, Menu, X,
+  Star, MapPin, LogOut, Building2, Menu, X, Image as ImageIcon,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
   { key: 'history', label: 'Historique', href: '/admin/history', icon: c => <History size={16} color={c} />, ready: true },
   { key: 'reviews', label: 'Avis', href: '/admin/reviews', icon: c => <Star size={16} color={c} />, ready: true },
   { key: 'cities', label: 'Villes & catégories', href: '/admin/cities', icon: c => <MapPin size={16} color={c} />, ready: true },
+  { key: 'appearance', label: 'Apparence', href: '/admin/appearance', icon: c => <ImageIcon size={16} color={c} />, ready: true },
 ];
 
 export default function AdminLayout() {

@@ -1,28 +1,28 @@
-import { Redirect } from 'expo-router';
+import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { useAuth } from '../lib/auth-context';
+import { colors } from '../lib/theme';
 
 export default function Index() {
   const { session, profile, loading } = useAuth();
 
-  // Attend que la session ET le profil soient chargés avant de rediriger
-  if (loading || (session && profile === null)) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF8F4' }}>
-        <ActivityIndicator color="#712B13" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (loading) return;
 
-  if (!session) return <Redirect href="/(auth)/login" />;
+    if (!session?.user) {
+      router.replace('/welcome');
+      return;
+    }
 
-  if (profile?.role === 'admin') {
-    return <Redirect href="/admin" />;
-  }
+    if (profile?.role === 'admin') { router.replace('/admin'); return; }
+    if (profile?.role === 'partner') { router.replace('/pro'); return; }
+    router.replace('/(tabs)');
+  }, [session, profile, loading]);
 
-  if (profile?.role === 'partner') {
-    return <Redirect href="/pro" />;
-  }
-
-  return <Redirect href="/(tabs)" />;
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream }}>
+      <ActivityIndicator color={colors.lave} />
+    </View>
+  );
 }

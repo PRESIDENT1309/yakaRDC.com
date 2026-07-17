@@ -182,6 +182,16 @@ export interface Favorite {
 }
 
 // ═══════════════════════════════════════════
+// Réglages généraux de l'app
+// ═══════════════════════════════════════════
+
+export interface AppSetting {
+  key: string;
+  value: string | null;
+  updated_at: string;
+}
+
+// ═══════════════════════════════════════════
 // Planning de voyage
 // ═══════════════════════════════════════════
 
