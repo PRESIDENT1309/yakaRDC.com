@@ -2,13 +2,14 @@ import { useEffect, useState, useRef } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput, KeyboardAvoidingView,
-  ActivityIndicator, Alert, Image, useWindowDimensions,
+  ActivityIndicator, Alert, Image, useWindowDimensions, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
 import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
+  Phone, Mail, AtSign, Music2, CalendarPlus,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -252,6 +253,7 @@ export default function ListingDetailScreen() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [addingToPlan, setAddingToPlan] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -303,6 +305,45 @@ export default function ListingDetailScreen() {
       setIsFavorited(true);
     }
     setFavoriteLoading(false);
+  }
+
+  async function handleAddToPlanning() {
+    if (!session?.user || !establishment) return;
+    setAddingToPlan(true);
+
+    const { data: plans } = await supabase.from('trip_plans')
+      .select('id').eq('traveler_id', session.user.id)
+      .order('created_at', { ascending: false }).limit(1);
+
+    const activeTrip = plans?.[0];
+    if (!activeTrip) {
+      setAddingToPlan(false);
+      Alert.alert(
+        'Aucun voyage en cours',
+        "Créez d'abord un voyage dans l'onglet Planning, puis revenez ajouter cet établissement.",
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Aller à Planning', onPress: () => router.push('/(tabs)/planner') },
+        ]
+      );
+      return;
+    }
+
+    const { count } = await supabase.from('trip_plan_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('trip_plan_id', activeTrip.id).eq('item_type', 'wishlist');
+
+    await supabase.from('trip_plan_items').insert({
+      trip_plan_id: activeTrip.id,
+      establishment_id: establishment.id,
+      item_type: 'wishlist',
+      title: establishment.name,
+      estimated_cost: rate?.price ?? 0,
+      position: count ?? 0,
+    });
+
+    setAddingToPlan(false);
+    Alert.alert('Ajouté !', `${establishment.name} a été ajouté à votre planning, dans "Lieux à visiter".`);
   }
 
   if (!establishment) {
@@ -465,6 +506,83 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
+          {/* Adresse complète */}
+          {(establishment.commune || establishment.avenue || establishment.reference) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Adresse</Text>
+              <View style={styles.addressBox}>
+                {establishment.commune && (
+                  <View style={styles.addressRow}>
+                    <MapPin size={13} color={colors.faint} />
+                    <Text style={styles.addressText}>
+                      Commune de {establishment.commune}
+                      {establishment.neighborhood ? `, ${establishment.neighborhood}` : ''}
+                    </Text>
+                  </View>
+                )}
+                {establishment.avenue && (
+                  <Text style={styles.addressSubText}>
+                    Avenue {establishment.avenue}{establishment.numero ? `, n°${establishment.numero}` : ''}
+                  </Text>
+                )}
+                {establishment.reference && (
+                  <Text style={styles.addressSubText}>📍 {establishment.reference}</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Contact & réseaux sociaux */}
+          {(establishment.phone || establishment.email || establishment.instagram || establishment.tiktok) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Contact</Text>
+              <View style={{ gap: 8 }}>
+                {establishment.phone && (
+                  <Pressable style={styles.contactRow} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
+                    <Phone size={14} color={accent} />
+                    <Text style={styles.contactText}>{establishment.phone}</Text>
+                  </Pressable>
+                )}
+                {establishment.email && (
+                  <Pressable style={styles.contactRow} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
+                    <Mail size={14} color={accent} />
+                    <Text style={styles.contactText}>{establishment.email}</Text>
+                  </Pressable>
+                )}
+                {establishment.instagram && (
+                  <Pressable
+                    style={styles.contactRow}
+                    onPress={() => Linking.openURL(`https://instagram.com/${establishment.instagram!.replace('@', '')}`)}
+                  >
+                    <AtSign size={14} color={accent} />
+                    <Text style={styles.contactText}>{establishment.instagram}</Text>
+                  </Pressable>
+                )}
+                {establishment.tiktok && (
+                  <Pressable
+                    style={styles.contactRow}
+                    onPress={() => Linking.openURL(`https://tiktok.com/@${establishment.tiktok!.replace('@', '')}`)}
+                  >
+                    <Music2 size={14} color={accent} />
+                    <Text style={styles.contactText}>{establishment.tiktok}</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Ajouter au planning */}
+          <Pressable style={styles.planBtn} onPress={handleAddToPlanning} disabled={addingToPlan}>
+            {addingToPlan ? (
+              <ActivityIndicator color={colors.lave} size="small" />
+            ) : (
+              <>
+                <CalendarPlus size={15} color={colors.lave} />
+                <Text style={styles.planBtnText}>Ajouter à mon planning</Text>
+              </>
+            )}
+          </Pressable>
+
           <View style={styles.priceCard}>
             <View>
               <Text style={styles.priceFrom}>À partir de</Text>
@@ -546,6 +664,14 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '500', color: colors.ink, marginBottom: 6 },
   description: { fontSize: 13, color: colors.muted, lineHeight: 20 },
+  addressBox: { gap: 4 },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  addressText: { fontSize: 13, color: colors.ink },
+  addressSubText: { fontSize: 12, color: colors.muted, marginLeft: 19 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  contactText: { fontSize: 13, color: colors.ink },
+  planBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12, paddingVertical: 13, marginBottom: 14, backgroundColor: colors.laveSoft },
+  planBtnText: { fontSize: 13.5, fontWeight: '500', color: colors.lave },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14 },
   priceFrom: { fontSize: 11, color: colors.muted },
