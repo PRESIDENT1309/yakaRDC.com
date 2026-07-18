@@ -24,7 +24,7 @@ export default function WelcomeScreen() {
 
       <View style={styles.center}>
         <Text style={styles.eyebrow}>BIENVENUE SUR</Text>
-        <Text style={styles.title}>Yaka !</Text>
+        <Text style={styles.title}>YakaRDC !</Text>
       </View>
 
       <View style={styles.bottom}>
