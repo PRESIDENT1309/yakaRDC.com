@@ -125,6 +125,12 @@ export default function HomeScreen() {
   const [listings, setListings] = useState<EstablishmentWithPhoto[]>([]);
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('app_settings').select('value').eq('key', 'home_hero_image_url').maybeSingle()
+      .then(({ data }) => setHeroImageUrl(data?.value ?? null));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -146,10 +152,14 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
         <View style={styles.hero}>
-          <View style={StyleSheet.absoluteFill}>
-            <HeroIllustration />
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+            {heroImageUrl ? (
+              <Image source={{ uri: heroImageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <HeroIllustration />
+            )}
           </View>
-          <View style={[StyleSheet.absoluteFill, styles.heroOverlay]} />
+          <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, styles.heroOverlay]} />
 
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
