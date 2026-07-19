@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
   Image,
+  Animated,
   FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -54,6 +55,9 @@ const FEATURED_COMMUNES = [
   { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
 ];
 
+const ROTATION_INTERVAL = 1500; // 1,5 seconde entre chaque photo
+const FADE_DURATION = 250;
+
 function HeroIllustration() {
   return (
     <Svg width="100%" height="100%" viewBox="0 0 390 260" preserveAspectRatio="xMidYMid slice">
@@ -73,6 +77,35 @@ function HeroIllustration() {
       />
       <Polygon points="290,260 325,155 360,260" fill="#1A0A03" />
     </Svg>
+  );
+}
+
+// Photos de fond en rotation automatique avec fondu — retombe sur l'illustration si aucune photo
+function RotatingHero({ photos }: { photos: string[] }) {
+  const [index, setIndex] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (photos.length < 2) return;
+    const timer = setInterval(() => {
+      Animated.timing(fadeAnim, { toValue: 0, duration: FADE_DURATION, useNativeDriver: true }).start(() => {
+        setIndex(prev => (prev + 1) % photos.length);
+        Animated.timing(fadeAnim, { toValue: 1, duration: FADE_DURATION, useNativeDriver: true }).start();
+      });
+    }, ROTATION_INTERVAL);
+    return () => clearInterval(timer);
+  }, [photos.length]);
+
+  if (photos.length === 0) {
+    return <HeroIllustration />;
+  }
+
+  return (
+    <Animated.Image
+      source={{ uri: photos[index] }}
+      style={{ width: '100%', height: '100%', opacity: fadeAnim }}
+      resizeMode="cover"
+    />
   );
 }
 
@@ -125,11 +158,14 @@ export default function HomeScreen() {
   const [listings, setListings] = useState<EstablishmentWithPhoto[]>([]);
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroPhotos, setHeroPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'home_hero_image_url').maybeSingle()
-      .then(({ data }) => setHeroImageUrl(data?.value ?? null));
+      .then(({ data }) => {
+        try { setHeroPhotos(data?.value ? JSON.parse(data.value) : []); }
+        catch { setHeroPhotos([]); }
+      });
   }, []);
 
   useEffect(() => {
@@ -153,11 +189,7 @@ export default function HomeScreen() {
 
         <View style={styles.hero}>
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-            {heroImageUrl ? (
-              <Image source={{ uri: heroImageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
-              <HeroIllustration />
-            )}
+            <RotatingHero photos={heroPhotos} />
           </View>
           <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, styles.heroOverlay]} />
 
@@ -172,7 +204,6 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.logoText}>YakaRDC</Text>
             </View>
-            {/* Notifications : réutilise les vraies mises à jour de réservations */}
             <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
               <Bell size={18} color="#FAF8F4" />
             </Pressable>
@@ -272,7 +303,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Communes — maintenant fonctionnelles : ouvrent la recherche filtrée */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Communes populaires</Text>
