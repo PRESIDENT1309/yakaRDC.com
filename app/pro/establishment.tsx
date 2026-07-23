@@ -68,6 +68,11 @@ export default function EstablishmentScreen() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Photos Menu (restaurant) ou Tarifs (site)
+  const [menuPhotos, setMenuPhotos] = useState<ListingPhoto[]>([]);
+  const [uploadingMenuPhoto, setUploadingMenuPhoto] = useState(false);
+  const [menuViewerIndex, setMenuViewerIndex] = useState<number | null>(null);
+
   // Index de la photo affichée en plein écran dans la visionneuse (null = fermée)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
@@ -98,7 +103,9 @@ export default function EstablishmentScreen() {
 
       const { data: photoRows } = await supabase.from('listing_photos')
         .select('*').eq('establishment_id', e.id).order('position', { ascending: true });
-      setPhotos((photoRows as ListingPhoto[]) ?? []);
+      const allPhotos = (photoRows as ListingPhoto[]) ?? [];
+      setPhotos(allPhotos.filter(p => !p.category || p.category === 'general'));
+      setMenuPhotos(allPhotos.filter(p => p.category === 'menu' || p.category === 'pricing'));
 
       const { data: rate } = await supabase.from('rates').select('*')
         .eq('establishment_id', e.id).maybeSingle();
@@ -124,6 +131,12 @@ export default function EstablishmentScreen() {
     if (photos.length === 0) { setViewerIndex(null); return; }
     if (viewerIndex > photos.length - 1) { setViewerIndex(photos.length - 1); }
   }, [photos.length, viewerIndex]);
+
+  useEffect(() => {
+    if (menuViewerIndex === null) return;
+    if (menuPhotos.length === 0) { setMenuViewerIndex(null); return; }
+    if (menuViewerIndex > menuPhotos.length - 1) { setMenuViewerIndex(menuPhotos.length - 1); }
+  }, [menuPhotos.length, menuViewerIndex]);
 
   // Ouvre le sélecteur d'image et retourne l'URI choisie, ou null si annulé
   async function pickImage(): Promise<string | null> {
@@ -185,7 +198,7 @@ export default function EstablishmentScreen() {
     const publicUrl = await uploadToStorage(uri, path);
     if (publicUrl) {
       const { data } = await supabase.from('listing_photos')
-        .insert({ establishment_id: establishment.id, url: publicUrl, position: photos.length })
+        .insert({ establishment_id: establishment.id, url: publicUrl, position: photos.length, category: 'general' })
         .select()
         .single();
       if (data) setPhotos(prev => [...prev, data as ListingPhoto]);
@@ -198,12 +211,51 @@ export default function EstablishmentScreen() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: async () => {
         await supabase.from('listing_photos').delete().eq('id', photo.id);
-        // Extrait le chemin du fichier depuis l'URL publique pour le supprimer du Storage aussi
         const storagePath = photo.url.split('/establishment-photos/')[1];
         if (storagePath) {
           await supabase.storage.from('establishment-photos').remove([storagePath]);
         }
         setPhotos(prev => prev.filter(p => p.id !== photo.id));
+      }},
+    ]);
+  }
+
+  // ── Photos Menu / Tarifs ──
+  const menuCategory: 'menu' | 'pricing' | null =
+    establishment?.type === 'restaurant' ? 'menu' :
+    establishment?.type === 'site' ? 'pricing' : null;
+
+  async function handleAddMenuPhoto() {
+    if (!establishment || !menuCategory) return;
+    if (menuPhotos.length >= 10) {
+      Alert.alert('Limite atteinte', 'Vous ne pouvez pas ajouter plus de 10 photos.');
+      return;
+    }
+    const uri = await pickImage();
+    if (!uri) return;
+    setUploadingMenuPhoto(true);
+    const path = `${establishment.id}/${menuCategory}-${Date.now()}.jpg`;
+    const publicUrl = await uploadToStorage(uri, path);
+    if (publicUrl) {
+      const { data } = await supabase.from('listing_photos')
+        .insert({ establishment_id: establishment.id, url: publicUrl, position: menuPhotos.length, category: menuCategory })
+        .select()
+        .single();
+      if (data) setMenuPhotos(prev => [...prev, data as ListingPhoto]);
+    }
+    setUploadingMenuPhoto(false);
+  }
+
+  async function handleDeleteMenuPhoto(photo: ListingPhoto) {
+    Alert.alert('Supprimer cette photo', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: async () => {
+        await supabase.from('listing_photos').delete().eq('id', photo.id);
+        const storagePath = photo.url.split('/establishment-photos/')[1];
+        if (storagePath) {
+          await supabase.storage.from('establishment-photos').remove([storagePath]);
+        }
+        setMenuPhotos(prev => prev.filter(p => p.id !== photo.id));
       }},
     ]);
   }
@@ -254,6 +306,11 @@ export default function EstablishmentScreen() {
   const unitLabel = establishment.type === 'hotel' || establishment.type === 'furnished_house'
     ? 'nuit' : 'personne';
   const currentViewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
+  const currentMenuViewerPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
+  const menuSectionTitle = menuCategory === 'menu' ? '🍽️ Photos du menu' : '🎫 Tarifs des attractions';
+  const menuSectionHint = menuCategory === 'menu'
+    ? 'Prenez en photo votre carte ou votre menu — les voyageurs la verront sur votre fiche.'
+    : "Prenez en photo votre grille tarifaire — les voyageurs la verront sur votre fiche.";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -350,6 +407,41 @@ export default function EstablishmentScreen() {
             </View>
           </View>
 
+          {/* Menu (restaurant) ou Tarifs (site) — uniquement pour ces deux types */}
+          {menuCategory && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>{menuSectionTitle}</Text>
+              <Text style={styles.promoHint}>{menuSectionHint}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {menuPhotos.map((photo, index) => (
+                  <View key={photo.id} style={styles.photoThumbWrap}>
+                    <Pressable onPress={() => setMenuViewerIndex(index)}>
+                      <Image source={{ uri: photo.url }} style={styles.photoThumb} />
+                    </Pressable>
+                    <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeleteMenuPhoto(photo)} hitSlop={6}>
+                      <X size={11} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+                {menuPhotos.length < 10 && (
+                  <Pressable style={styles.addPhotoBtn} onPress={handleAddMenuPhoto} disabled={uploadingMenuPhoto}>
+                    {uploadingMenuPhoto ? (
+                      <ActivityIndicator color={colors.faint} size="small" />
+                    ) : (
+                      <>
+                        <Camera size={20} color={colors.faint} />
+                        <Text style={{ fontSize: 10, color: colors.faint, marginTop: 4, textAlign: 'center' }}>
+                          Ajouter
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                )}
+              </View>
+              <Text style={styles.hint}>{menuPhotos.length}/10 photos</Text>
+            </View>
+          )}
+
           {/* Infos générales */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>📋 Informations générales</Text>
@@ -435,7 +527,7 @@ export default function EstablishmentScreen() {
           </Pressable>
         </ScrollView>
 
-        {/* Visionneuse plein écran : défiler les photos une par une */}
+        {/* Visionneuse plein écran : photos générales */}
         <Modal
           visible={viewerIndex !== null}
           transparent
@@ -484,6 +576,63 @@ export default function EstablishmentScreen() {
                 style={[styles.viewerNavBtn, viewerIndex === photos.length - 1 && styles.viewerNavBtnDisabled]}
                 onPress={() => setViewerIndex(i => (i !== null && i < photos.length - 1 ? i + 1 : i))}
                 disabled={viewerIndex === photos.length - 1}
+                hitSlop={10}
+              >
+                <ChevronRight size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Visionneuse plein écran : Menu / Tarifs */}
+        <Modal
+          visible={menuViewerIndex !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuViewerIndex(null)}
+        >
+          <View style={styles.viewerOverlay}>
+            <View style={styles.viewerHeader}>
+              <Text style={styles.viewerCounter}>
+                {menuViewerIndex !== null ? `${menuViewerIndex + 1} / ${menuPhotos.length}` : ''}
+              </Text>
+              <Pressable onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
+                <X size={22} color="#FFFFFF" />
+              </Pressable>
+            </View>
+
+            <View style={styles.viewerImageWrap}>
+              {currentMenuViewerPhoto && (
+                <Image
+                  source={{ uri: currentMenuViewerPhoto.url }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            <View style={styles.viewerFooter}>
+              <Pressable
+                style={[styles.viewerNavBtn, menuViewerIndex === 0 && styles.viewerNavBtnDisabled]}
+                onPress={() => setMenuViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
+                disabled={menuViewerIndex === 0}
+                hitSlop={10}
+              >
+                <ChevronLeft size={22} color="#FFFFFF" />
+              </Pressable>
+
+              <Pressable
+                style={styles.viewerDeleteBtn}
+                onPress={() => currentMenuViewerPhoto && handleDeleteMenuPhoto(currentMenuViewerPhoto)}
+              >
+                <Trash2 size={15} color="#FFFFFF" />
+                <Text style={styles.viewerDeleteText}>Supprimer</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.viewerNavBtn, menuViewerIndex === menuPhotos.length - 1 && styles.viewerNavBtnDisabled]}
+                onPress={() => setMenuViewerIndex(i => (i !== null && i < menuPhotos.length - 1 ? i + 1 : i))}
+                disabled={menuViewerIndex === menuPhotos.length - 1}
                 hitSlop={10}
               >
                 <ChevronRight size={22} color="#FFFFFF" />

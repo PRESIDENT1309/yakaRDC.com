@@ -10,6 +10,7 @@ import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
   Phone, Mail, AtSign, Music2, CalendarPlus,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -250,6 +251,8 @@ export default function ListingDetailScreen() {
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [rate, setRate] = useState<Rate | null>(null);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
+  const [menuPhotos, setMenuPhotos] = useState<ListingPhoto[]>([]);
+  const [menuViewerIndex, setMenuViewerIndex] = useState<number | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -277,7 +280,11 @@ export default function ListingDetailScreen() {
     supabase.from('rates').select('*').eq('establishment_id', id).limit(1).maybeSingle()
       .then(({ data }) => setRate(data as Rate | null));
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
-      .then(({ data }) => setPhotos((data as ListingPhoto[]) ?? []));
+      .then(({ data }) => {
+        const all = (data as ListingPhoto[]) ?? [];
+        setPhotos(all.filter(p => !p.category || p.category === 'general'));
+        setMenuPhotos(all.filter(p => p.category === 'menu' || p.category === 'pricing'));
+      });
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
     supabase.rpc('increment_establishment_views', { p_establishment_id: id });
   }, [id]);
@@ -356,6 +363,8 @@ export default function ListingDetailScreen() {
   const isHotel = establishment.type === 'hotel' || establishment.type === 'furnished_house';
   const isRestaurant = establishment.type === 'restaurant';
   const isSite = establishment.type === 'site';
+  const menuSectionTitle = isRestaurant ? 'Menu' : 'Tarifs des attractions';
+  const currentMenuPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
 
   async function handleSubmit() {
     if (!session?.user) return;
@@ -488,6 +497,38 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
+          {/* Contact — rangée compacte d'icônes rondes */}
+          {(establishment.phone || establishment.email || establishment.instagram || establishment.tiktok) && (
+            <View style={styles.contactIconsRow}>
+              {establishment.phone && (
+                <Pressable style={[styles.contactIconBtn, { backgroundColor: soft }]} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
+                  <Phone size={17} color={accent} />
+                </Pressable>
+              )}
+              {establishment.email && (
+                <Pressable style={[styles.contactIconBtn, { backgroundColor: soft }]} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
+                  <Mail size={17} color={accent} />
+                </Pressable>
+              )}
+              {establishment.instagram && (
+                <Pressable
+                  style={[styles.contactIconBtn, { backgroundColor: soft }]}
+                  onPress={() => Linking.openURL(`https://instagram.com/${establishment.instagram!.replace('@', '')}`)}
+                >
+                  <AtSign size={17} color={accent} />
+                </Pressable>
+              )}
+              {establishment.tiktok && (
+                <Pressable
+                  style={[styles.contactIconBtn, { backgroundColor: soft }]}
+                  onPress={() => Linking.openURL(`https://tiktok.com/@${establishment.tiktok!.replace('@', '')}`)}
+                >
+                  <Music2 size={17} color={accent} />
+                </Pressable>
+              )}
+            </View>
+          )}
+
           {establishment.amenities?.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.amenitiesRow}>
               {establishment.amenities.map(a => (
@@ -503,6 +544,20 @@ export default function ListingDetailScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>À propos</Text>
               <Text style={styles.description}>{establishment.description}</Text>
+            </View>
+          )}
+
+          {/* Menu (restaurant) ou Tarifs (site) */}
+          {menuPhotos.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{menuSectionTitle}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+                {menuPhotos.map((photo, i) => (
+                  <Pressable key={photo.id} onPress={() => setMenuViewerIndex(i)}>
+                    <Image source={{ uri: photo.url }} style={styles.menuThumb} resizeMode="cover" />
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
           )}
 
@@ -527,45 +582,6 @@ export default function ListingDetailScreen() {
                 )}
                 {establishment.reference && (
                   <Text style={styles.addressSubText}>📍 {establishment.reference}</Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Contact & réseaux sociaux */}
-          {(establishment.phone || establishment.email || establishment.instagram || establishment.tiktok) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Contact</Text>
-              <View style={{ gap: 8 }}>
-                {establishment.phone && (
-                  <Pressable style={styles.contactRow} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
-                    <Phone size={14} color={accent} />
-                    <Text style={styles.contactText}>{establishment.phone}</Text>
-                  </Pressable>
-                )}
-                {establishment.email && (
-                  <Pressable style={styles.contactRow} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
-                    <Mail size={14} color={accent} />
-                    <Text style={styles.contactText}>{establishment.email}</Text>
-                  </Pressable>
-                )}
-                {establishment.instagram && (
-                  <Pressable
-                    style={styles.contactRow}
-                    onPress={() => Linking.openURL(`https://instagram.com/${establishment.instagram!.replace('@', '')}`)}
-                  >
-                    <AtSign size={14} color={accent} />
-                    <Text style={styles.contactText}>{establishment.instagram}</Text>
-                  </Pressable>
-                )}
-                {establishment.tiktok && (
-                  <Pressable
-                    style={styles.contactRow}
-                    onPress={() => Linking.openURL(`https://tiktok.com/@${establishment.tiktok!.replace('@', '')}`)}
-                  >
-                    <Music2 size={14} color={accent} />
-                    <Text style={styles.contactText}>{establishment.tiktok}</Text>
-                  </Pressable>
                 )}
               </View>
             </View>
@@ -624,6 +640,50 @@ export default function ListingDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Visionneuse plein écran : Menu / Tarifs */}
+      <Modal visible={menuViewerIndex !== null} transparent animationType="fade" onRequestClose={() => setMenuViewerIndex(null)}>
+        <View style={styles.viewerOverlay}>
+          <View style={styles.viewerHeader}>
+            <Text style={styles.viewerCounter}>
+              {menuViewerIndex !== null ? `${menuViewerIndex + 1} / ${menuPhotos.length}` : ''}
+            </Text>
+            <Pressable onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
+              <X size={22} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          <View style={styles.viewerImageWrap}>
+            {currentMenuPhoto && (
+              <Image
+                source={{ uri: currentMenuPhoto.url }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+
+          <View style={styles.viewerFooter}>
+            <Pressable
+              style={[styles.viewerNavBtn, menuViewerIndex === 0 && styles.viewerNavBtnDisabled]}
+              onPress={() => setMenuViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
+              disabled={menuViewerIndex === 0}
+              hitSlop={10}
+            >
+              <ChevronLeft size={22} color="#FFFFFF" />
+            </Pressable>
+            <View style={{ width: 44 }} />
+            <Pressable
+              style={[styles.viewerNavBtn, menuViewerIndex === menuPhotos.length - 1 && styles.viewerNavBtnDisabled]}
+              onPress={() => setMenuViewerIndex(i => (i !== null && i < menuPhotos.length - 1 ? i + 1 : i))}
+              disabled={menuViewerIndex === menuPhotos.length - 1}
+              hitSlop={10}
+            >
+              <ChevronRight size={22} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -657,6 +717,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAEEDA', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   ratingText: { fontSize: 12, color: '#854F0B', fontWeight: '500' },
   ratingCount: { fontSize: 11, color: colors.muted },
+  contactIconsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  contactIconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   amenitiesRow: { marginBottom: 16 },
   amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF',
     borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8 },
@@ -664,12 +726,11 @@ const styles = StyleSheet.create({
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '500', color: colors.ink, marginBottom: 6 },
   description: { fontSize: 13, color: colors.muted, lineHeight: 20 },
+  menuThumb: { width: 130, height: 170, borderRadius: 12, backgroundColor: '#F5F4F0', marginRight: 4 },
   addressBox: { gap: 4 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   addressText: { fontSize: 13, color: colors.ink },
   addressSubText: { fontSize: 12, color: colors.muted, marginLeft: 19 },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  contactText: { fontSize: 13, color: colors.ink },
   planBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12, paddingVertical: 13, marginBottom: 14, backgroundColor: colors.laveSoft },
   planBtnText: { fontSize: 13.5, fontWeight: '500', color: colors.lave },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -709,4 +770,22 @@ const styles = StyleSheet.create({
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, borderRadius: 12, paddingVertical: 14, marginTop: 8 },
   submitBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+
+  // Visionneuse Menu / Tarifs
+  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
+  viewerHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: 12,
+  },
+  viewerCounter: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
+  viewerImageWrap: { flex: 1, paddingHorizontal: 10 },
+  viewerFooter: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: 12,
+  },
+  viewerNavBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
+  viewerNavBtnDisabled: { opacity: 0.3 },
 });

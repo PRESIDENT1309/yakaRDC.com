@@ -51,10 +51,13 @@ export interface Establishment {
   created_at: string;
 }
 
+export type PhotoCategory = 'general' | 'menu' | 'pricing';
+
 export interface ListingPhoto {
   id: string;
   establishment_id: string;
   url: string;
+  category: PhotoCategory;
   position: number;
   created_at: string;
 }
