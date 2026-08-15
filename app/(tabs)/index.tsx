@@ -26,62 +26,60 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, typography, spacing, radii } from '../../lib/theme';
+import { useResponsive } from '../../lib/responsive';
+import SectionHeading from '../../components/SectionHeading';
+import RiverMotif from '../../components/RiverMotif';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type EstablishmentWithPhoto = Establishment & {
   listing_photos?: { url: string; position: number }[];
+  avgRating?: number | null;
+  reviewCount?: number;
 };
 
 const CATEGORIES: {
   key: EstablishmentType;
   label: string;
-  icon: React.ReactNode;
-  color: string;
-  bg: string;
+  Icon: typeof Building2;
+  tone: string;
 }[] = [
-  { key: 'hotel', label: 'Hôtels', icon: <Building2 size={22} color="#712B13" />, color: '#712B13', bg: '#FAECE7' },
-  { key: 'furnished_house', label: 'Maisons', icon: <Home size={22} color="#085041" />, color: '#085041', bg: '#E1F5EE' },
-  { key: 'restaurant', label: 'Restaurants', icon: <UtensilsCrossed size={22} color="#854F0B" />, color: '#854F0B', bg: '#FAEEDA' },
-  { key: 'site', label: 'Sites', icon: <Mountain size={22} color="#1F4D3A" />, color: '#1F4D3A', bg: '#DCEEE3' },
+  { key: 'hotel', label: 'Hôtels', Icon: Building2, tone: colors.lave },
+  { key: 'furnished_house', label: 'Maisons meublées', Icon: Home, tone: colors.fleuveDark },
+  { key: 'restaurant', label: 'Restaurants', Icon: UtensilsCrossed, tone: colors.or },
+  { key: 'site', label: 'Sites touristiques', Icon: Mountain, tone: colors.foret },
 ];
 
 // Quelques-unes des 24 communes de Kinshasa, mises en avant sur l'accueil
-const FEATURED_COMMUNES = [
-  { label: 'Gombe', color: '#FAECE7', accent: '#712B13' },
-  { label: 'Limete', color: '#E1F5EE', accent: '#085041' },
-  { label: 'Bandal', color: '#FAEEDA', accent: '#854F0B' },
-  { label: "N'Sele", color: '#DCEEE3', accent: '#1F4D3A' },
-  { label: 'Ngaliema', color: '#FAECE7', accent: '#712B13' },
-];
+const FEATURED_COMMUNES = ['Gombe', 'Limete', 'Bandal', "N'Sele", 'Ngaliema'];
 
 const ROTATION_INTERVAL = 1500; // 1,5 seconde entre chaque photo
 const FADE_DURATION = 250;
 
-function HeroIllustration() {
+function CategoryIcon({ type, size = 24, color }: { type: EstablishmentType; size?: number; color: string }) {
+  const props = { size, color };
+  switch (type) {
+    case 'hotel': return <Building2 {...props} />;
+    case 'furnished_house': return <Home {...props} />;
+    case 'restaurant': return <UtensilsCrossed {...props} />;
+    case 'site': return <Mountain {...props} />;
+  }
+}
+
+// Logo — petit blason existant, conservé tel quel (repère de marque stable).
+function LogoMark() {
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 390 260" preserveAspectRatio="xMidYMid slice">
-      <Circle cx="300" cy="70" r="52" fill="#FAC775" opacity={0.9} />
-      <Circle cx="300" cy="70" r="40" fill="#F0A040" />
-      <Circle cx="300" cy="70" r="28" fill="#D85A30" />
-      <Polygon points="0,260 60,130 120,260" fill="#2A1005" />
-      <Polygon points="80,260 135,100 190,260" fill="#1A0A03" />
-      <Polygon points="175,260 220,75 232,70 244,75 300,260" fill="#0D0602" />
-      <Path
-        d="M226,70 C224,55 235,48 229,32"
-        stroke="#FAF8F4"
-        strokeWidth="2.5"
-        fill="none"
-        opacity={0.25}
-        strokeLinecap="round"
-      />
-      <Polygon points="290,260 325,155 360,260" fill="#1A0A03" />
+    <Svg width="18" height="18" viewBox="0 0 120 120">
+      <Circle cx="60" cy="48" r="22" fill={colors.amber} />
+      <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
+      <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
     </Svg>
   );
 }
 
-// Photos de fond en rotation automatique avec fondu — retombe sur l'illustration si aucune photo
-function RotatingHero({ photos }: { photos: string[] }) {
+// Photos de fond en rotation automatique avec fondu — retombe sur le motif
+// de marque (fleuve au crépuscule) tant qu'aucune photo n'est renseignée.
+function RotatingHero({ photos, width, height }: { photos: string[]; width: number; height: number }) {
   const [index, setIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -97,7 +95,7 @@ function RotatingHero({ photos }: { photos: string[] }) {
   }, [photos.length]);
 
   if (photos.length === 0) {
-    return <HeroIllustration />;
+    return <RiverMotif width={width} height={height} variant="hero" />;
   }
 
   return (
@@ -109,45 +107,68 @@ function RotatingHero({ photos }: { photos: string[] }) {
   );
 }
 
-function ListingCard({ item }: { item: EstablishmentWithPhoto }) {
-  const cat = categoryColors[item.type];
-  const icons: Record<EstablishmentType, React.ReactNode> = {
-    hotel: <Building2 size={28} color={cat?.accent ?? colors.lave} />,
-    furnished_house: <Home size={28} color={cat?.accent ?? colors.fleuve} />,
-    restaurant: <UtensilsCrossed size={28} color={cat?.accent ?? colors.or} />,
-    site: <Mountain size={28} color={cat?.accent ?? colors.foret} />,
-  };
+function CategoryTile({
+  cat,
+  active,
+  onPress,
+  style,
+  iconSize = 26,
+}: {
+  cat: (typeof CATEGORIES)[number];
+  active: boolean;
+  onPress: () => void;
+  style?: any;
+  iconSize?: number;
+}) {
+  const { Icon } = cat;
+  return (
+    <Pressable
+      style={[styles.tile, { backgroundColor: cat.tone }, active && styles.tileActive, style]}
+      onPress={onPress}
+    >
+      <Icon size={iconSize} color={colors.cream} strokeWidth={1.6} />
+      <Text style={styles.tileLabel}>{cat.label}</Text>
+    </Pressable>
+  );
+}
 
+function ListingCard({ item, width }: { item: EstablishmentWithPhoto; width?: number }) {
+  const cat = categoryColors[item.type];
+  const tone = cat?.accent ?? colors.lave;
   const sortedPhotos = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
   const coverPhoto = sortedPhotos[0];
 
   return (
     <Pressable
-      style={styles.card}
+      style={[styles.card, width ? { width } : null]}
       onPress={() => router.push(`/listing/${item.id}`)}
     >
-      <View style={[styles.cardThumb, { backgroundColor: cat?.soft ?? '#FAECE7' }]}>
+      <View style={[styles.cardImage, { backgroundColor: tone }]}>
         {coverPhoto ? (
-          <Image source={{ uri: coverPhoto.url }} style={styles.cardThumbImage} resizeMode="cover" />
+          <Image source={{ uri: coverPhoto.url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
         ) : (
-          icons[item.type]
+          <CategoryIcon type={item.type} size={30} color="rgba(250,248,244,0.85)" />
         )}
-        <View style={styles.ratingBadge}>
-          <Star size={8} color="#854F0B" fill="#854F0B" />
-          <Text style={styles.ratingText}>4.8</Text>
-        </View>
+        {item.avgRating != null ? (
+          <View style={styles.ratingPill}>
+            <Star size={9} color={colors.or} fill={colors.or} />
+            <Text style={styles.ratingPillText}>{item.avgRating.toFixed(1)}</Text>
+          </View>
+        ) : (
+          <View style={styles.newPill}>
+            <Text style={styles.newPillText}>Nouveau</Text>
+          </View>
+        )}
       </View>
       <View style={styles.cardBody}>
+        <Text style={styles.cardCategory}>{cat?.label ?? 'Établissement'}</Text>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-        <View style={styles.cardLocation}>
+        <View style={styles.cardLocationRow}>
           <MapPin size={10} color={colors.faint} />
           <Text style={styles.cardLocationText} numberOfLines={1}>
             {item.neighborhood ?? item.city}
           </Text>
         </View>
-        <Text style={[styles.cardPrice, { color: cat?.accent ?? colors.lave }]}>
-          Voir détails
-        </Text>
       </View>
     </Pressable>
   );
@@ -155,10 +176,15 @@ function ListingCard({ item }: { item: EstablishmentWithPhoto }) {
 
 export default function HomeScreen() {
   const { profile } = useAuth();
+  const { width, isDesktop, isWide, contentWidth } = useResponsive();
+
   const [listings, setListings] = useState<EstablishmentWithPhoto[]>([]);
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
   const [loading, setLoading] = useState(true);
   const [heroPhotos, setHeroPhotos] = useState<string[]>([]);
+  const [storyPhoto, setStoryPhoto] = useState<string | null>(null);
+
+  const firstName = profile?.full_name?.split(' ')[0];
 
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'home_hero_image_url').maybeSingle()
@@ -166,115 +192,154 @@ export default function HomeScreen() {
         try { setHeroPhotos(data?.value ? JSON.parse(data.value) : []); }
         catch { setHeroPhotos([]); }
       });
+    // Nouvelle clé (facultative) pour la bande "Le Fleuve Congo" — même
+    // mécanisme que le hero, sans changement de schéma : si elle n'est pas
+    // encore renseignée, le motif de marque prend le relais.
+    supabase.from('app_settings').select('value').eq('key', 'home_story_image_url').maybeSingle()
+      .then(({ data }) => setStoryPhoto(data?.value ?? null));
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    supabase
-      .from('establishments')
-      .select('*, listing_photos(url, position)')
-      .eq('status', 'approved')
-      .eq('type', activeCategory)
-      .limit(10)
-      .then(({ data, error }) => {
-        if (error) console.error('SUPABASE ERREUR:', JSON.stringify(error));
-        setListings((data as EstablishmentWithPhoto[]) ?? []);
-        setLoading(false);
+    Promise.all([
+      supabase
+        .from('establishments')
+        .select('*, listing_photos(url, position)')
+        .eq('status', 'approved')
+        .eq('type', activeCategory)
+        .limit(10),
+      supabase.from('establishment_ratings').select('*'),
+    ]).then(([{ data, error }, { data: ratings }]) => {
+      if (error) console.error('SUPABASE ERREUR:', JSON.stringify(error));
+      const ratingMap = new Map<string, { avg_rating: number | null; review_count: number }>();
+      (ratings ?? []).forEach((r: any) => {
+        ratingMap.set(r.establishment_id, { avg_rating: r.avg_rating, review_count: r.review_count });
       });
+      const enriched: EstablishmentWithPhoto[] = ((data as EstablishmentWithPhoto[]) ?? []).map(e => {
+        const rating = ratingMap.get(e.id);
+        return {
+          ...e,
+          avgRating: rating?.avg_rating != null ? Number(rating.avg_rating) : null,
+          reviewCount: rating?.review_count ?? 0,
+        };
+      });
+      setListings(enriched);
+      setLoading(false);
+    });
   }, [activeCategory]);
+
+  const heroHeight = isDesktop ? 560 : isWide ? 460 : 400;
+  const storyHeight = isDesktop ? 420 : isWide ? 380 : 320;
+  const desktopColumns = 4;
+  const desktopGap = 16;
+  const desktopCardWidth = isDesktop
+    ? (contentWidth - desktopGap * (desktopColumns - 1)) / desktopColumns
+    : undefined;
+
+  const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
 
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
-        <View style={styles.hero}>
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-            <RotatingHero photos={heroPhotos} />
+        {/* ── Hero immersif ── */}
+        <View style={[styles.hero, { height: heroHeight }]}>
+          <View style={StyleSheet.absoluteFillObject}>
+            <RotatingHero photos={heroPhotos} width={width} height={heroHeight} />
           </View>
-          <View style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }, styles.heroOverlay]} />
+          <View style={[StyleSheet.absoluteFillObject, styles.heroScrim]} />
 
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
-              <View style={styles.logoBadge}>
-                <Svg width="18" height="18" viewBox="0 0 120 120">
-                  <Circle cx="60" cy="48" r="22" fill="#FAC775" />
-                  <Polygon points="34,80 60,38 86,80" fill="#712B13" />
-                  <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
-                </Svg>
-              </View>
+              <View style={styles.logoBadge}><LogoMark /></View>
               <Text style={styles.logoText}>YakaRDC</Text>
             </View>
             <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
-              <Bell size={18} color="#FAF8F4" />
+              <Bell size={18} color={colors.cream} />
             </Pressable>
           </View>
 
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, isDesktop && { maxWidth: 640 }]}>
             <View style={styles.locationRow}>
               <MapPin size={12} color="rgba(250,248,244,0.7)" />
-              <Text style={styles.locationText}>Kinshasa, RDC</Text>
+              <Text style={styles.locationText}>
+                {firstName ? `Bonjour, ${firstName} · Kinshasa, RDC` : 'Kinshasa, RDC'}
+              </Text>
             </View>
-            <Text style={styles.heroTitle}>
+            <Text style={[styles.heroTitle, { fontSize: isDesktop ? 56 : isWide ? 48 : 34, lineHeight: isDesktop ? 60 : isWide ? 52 : 40 }]}>
               Où voulez-vous{'\n'}aller aujourd'hui ?
             </Text>
           </View>
         </View>
 
-        <View style={styles.searchWrapper}>
-          <Pressable
-            style={styles.searchBar}
-            onPress={() => router.push('/(tabs)/search')}
-          >
-            <Search size={16} color={colors.faint} />
-            <Text style={styles.searchPlaceholder}>
-              Hôtel, restaurant, site...
-            </Text>
-            <View style={styles.filterBtn}>
-              <SlidersHorizontal size={14} color="#FAF8F4" />
-            </View>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Catégories</Text>
-          </View>
-          <View style={styles.categoriesRow}>
-            {CATEGORIES.map((cat) => (
-              <Pressable
-                key={cat.key}
-                style={styles.categoryItem}
-                onPress={() => setActiveCategory(cat.key)}
-              >
-                <View
-                  style={[
-                    styles.categoryIcon,
-                    { backgroundColor: cat.bg },
-                    activeCategory === cat.key && styles.categoryIconActive,
-                  ]}
-                >
-                  {cat.icon}
-                </View>
-                <Text
-                  style={[
-                    styles.categoryLabel,
-                    activeCategory === cat.key && { color: cat.color, fontWeight: '500' },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recommandés</Text>
-            <Pressable style={styles.seeAll} onPress={() => router.push('/(tabs)/search')}>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-              <ChevronRight size={14} color={colors.lave} />
+        {/* ── Bande de recherche ── */}
+        <View style={styles.searchBand}>
+          <View style={[wide, !isWide && { paddingHorizontal: spacing.md }]}>
+            <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
+              <Search size={16} color={colors.faint} />
+              <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
+              <View style={styles.filterBtn}>
+                <SlidersHorizontal size={14} color={colors.cream} />
+              </View>
             </Pressable>
+          </View>
+        </View>
+
+        {/* ── Bande éditoriale ── */}
+        <View style={styles.introBand}>
+          <Text style={[styles.introText, isWide && { fontSize: 20, lineHeight: 30, maxWidth: 620 }]}>
+            YakaRDC réunit les adresses qui font la fierté de Kinshasa — hôtels, tables,
+            maisons meublées et lieux à découvrir, choisis avec exigence.
+          </Text>
+        </View>
+
+        {/* ── Catégories ── */}
+        <View style={styles.section}>
+          <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
+            <SectionHeading kicker="Explorez" title="Quatre façons de découvrir Kinshasa" />
+          </View>
+          <View style={{ marginTop: 14 }}>
+            {isDesktop ? (
+              <View style={[wide, styles.tilesRow]}>
+                {CATEGORIES.map((cat, i) => (
+                  <CategoryTile
+                    key={cat.key}
+                    cat={cat}
+                    active={activeCategory === cat.key}
+                    onPress={() => setActiveCategory(cat.key)}
+                    iconSize={30}
+                    style={{ flex: i === 0 ? 1.7 : 1, height: 240 }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 18, gap: 10 }}
+              >
+                {CATEGORIES.map((cat, i) => (
+                  <CategoryTile
+                    key={cat.key}
+                    cat={cat}
+                    active={activeCategory === cat.key}
+                    onPress={() => setActiveCategory(cat.key)}
+                    style={{ width: i === 0 ? 176 : 138, height: 200 }}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+
+        {/* ── Recommandés ── */}
+        <View style={styles.section}>
+          <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
+            <SectionHeading
+              kicker="Sélection"
+              title="Recommandés à Kinshasa"
+              onSeeAll={() => router.push('/(tabs)/search')}
+            />
           </View>
 
           {loading ? (
@@ -288,11 +353,17 @@ export default function HomeScreen() {
                 Les établissements apparaîtront ici une fois approuvés.
               </Text>
             </View>
+          ) : isDesktop ? (
+            <View style={[wide, styles.desktopGrid]}>
+              {listings.map(item => (
+                <ListingCard key={item.id} item={item} width={desktopCardWidth} />
+              ))}
+            </View>
           ) : (
             <FlatList
               data={listings}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ListingCard item={item} />}
+              renderItem={({ item }) => <ListingCard item={item} width={190} />}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingLeft: 18, paddingRight: 8 }}
@@ -303,18 +374,46 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Communes populaires</Text>
+        {/* ── Bande "Le Fleuve Congo" ── */}
+        <View style={[styles.storyBand, { height: storyHeight }]}>
+          <View style={StyleSheet.absoluteFillObject}>
+            {storyPhoto ? (
+              <Image source={{ uri: storyPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            ) : (
+              <RiverMotif width={width} height={storyHeight} variant="band" />
+            )}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 18 }}>
-            {FEATURED_COMMUNES.map((q) => (
+          <View style={[StyleSheet.absoluteFillObject, styles.storyScrim]} />
+          <View style={[styles.storyContent, isWide && { maxWidth: 560, alignItems: 'flex-start' }]}>
+            <Text style={styles.storyKicker}>Le fleuve Congo</Text>
+            <Text style={[styles.storyTitle, isWide && { fontSize: 34, lineHeight: 40, textAlign: 'left' }]}>
+              Il façonne Kinshasa depuis toujours.
+            </Text>
+            <Text style={[styles.storySub, isWide && { textAlign: 'left' }]}>
+              Chaque adresse YakaRDC porte une part de cette histoire — entre les rives,
+              les collines et les avenues de la capitale.
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Communes populaires ── */}
+        <View style={styles.section}>
+          <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
+            <SectionHeading kicker="À proximité" title="Communes populaires" />
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 18, gap: 10, marginTop: 12 }}
+          >
+            {FEATURED_COMMUNES.map((c) => (
               <Pressable
-                key={q.label}
-                style={[styles.communePill, { backgroundColor: q.color }]}
-                onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: q.label } })}
+                key={c}
+                style={styles.communePill}
+                onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: c } })}
               >
-                <Text style={[styles.communeLabel, { color: q.accent }]}>{q.label}</Text>
+                <MapPin size={12} color={colors.lave} />
+                <Text style={styles.communeLabel}>{c}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -327,15 +426,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  hero: {
-    height: 260,
-    backgroundColor: '#1A0A03',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  heroOverlay: {
-    backgroundColor: 'rgba(10,4,1,0.45)',
-  },
+
+  // Hero
+  hero: { backgroundColor: colors.nuit, overflow: 'hidden', position: 'relative' },
+  heroScrim: { backgroundColor: 'rgba(26,10,3,0.4)' },
   topBar: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 54 : 20,
@@ -348,146 +442,100 @@ const styles = StyleSheet.create({
   },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    backgroundColor: '#712B13',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 9,
+    backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center',
   },
-  logoText: {
-    fontFamily: 'PlayfairDisplay_400Regular_Italic',
-    fontSize: 20,
-    color: '#FAF8F4',
-  },
+  logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 20, color: colors.cream },
   bellBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
-  heroContent: {
-    position: 'absolute',
-    bottom: 24,
-    left: 18,
-    zIndex: 2,
-  },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  locationText: { fontSize: 12, color: 'rgba(250,248,244,0.7)' },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '500',
-    color: '#FAF8F4',
-    lineHeight: 30,
-  },
-  searchWrapper: {
-    paddingHorizontal: 18,
-    marginTop: -20,
-    zIndex: 10,
-  },
+  heroContent: { position: 'absolute', bottom: 32, left: 18, right: 18, zIndex: 2 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
+  locationText: { ...typography.overline, color: 'rgba(250,248,244,0.75)', letterSpacing: 0.6 },
+  heroTitle: { fontFamily: 'PlayfairDisplay_500Medium', color: colors.cream },
+
+  // Search band
+  searchBand: { backgroundColor: colors.cream, paddingTop: 18, paddingBottom: 4 },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E3DA',
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.white, borderRadius: radii.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingLeft: 14, paddingRight: 6, paddingVertical: 10,
   },
-  searchPlaceholder: { flex: 1, fontSize: 14, color: colors.faint },
+  searchPlaceholder: { flex: 1, ...typography.body, color: colors.faint },
   filterBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    backgroundColor: '#712B13',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 9,
+    backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center',
   },
-  section: { marginTop: 22 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    marginBottom: 12,
+
+  // Intro band
+  introBand: {
+    backgroundColor: colors.surfaceSunken, marginTop: 22,
+    paddingVertical: 26, paddingHorizontal: 32, alignItems: 'center',
   },
-  sectionTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  seeAllText: { fontSize: 12, color: colors.lave },
-  categoriesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
+  introText: {
+    fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, lineHeight: 25,
+    color: colors.laveDeep, textAlign: 'center', maxWidth: 520,
   },
-  categoryItem: { alignItems: 'center', gap: 6 },
-  categoryIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  // Sections
+  section: { marginTop: 26 },
+
+  // Category tiles
+  tilesRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 0 },
+  tile: {
+    borderRadius: radii.lg, alignItems: 'flex-start', justifyContent: 'flex-end',
+    padding: 16, overflow: 'hidden',
   },
-  categoryIconActive: {
-    shadowColor: '#712B13',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+  tileActive: { borderWidth: 2, borderColor: colors.cream },
+  tileLabel: {
+    fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: colors.cream, marginTop: 10,
   },
-  categoryLabel: { fontSize: 11, color: colors.muted },
-  card: {
-    width: 160,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E3DA',
-    overflow: 'hidden',
+
+  // Listing cards
+  card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  cardImage: { height: 130, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  ratingPill: {
+    position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
   },
-  cardThumb: {
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+  ratingPillText: { ...typography.caption, fontSize: 10.5, color: colors.or },
+  newPill: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
   },
-  cardThumbImage: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-  },
-  ratingBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  ratingText: { fontSize: 10, color: '#854F0B', fontWeight: '500' },
-  cardBody: { padding: 10 },
-  cardName: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 3 },
-  cardLocation: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 5 },
-  cardLocationText: { fontSize: 10, color: colors.faint, flex: 1 },
-  cardPrice: { fontSize: 12, fontWeight: '500' },
+  newPillText: { fontFamily: 'Manrope_600SemiBold', fontSize: 9.5, color: colors.fleuveDark },
+  cardBody: { padding: 12 },
+  cardCategory: { fontFamily: 'Manrope_600SemiBold', fontSize: 10, letterSpacing: 0.5, color: colors.faint, textTransform: 'uppercase', marginBottom: 3 },
+  cardName: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 15.5, color: colors.ink, marginBottom: 4 },
+  cardLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  cardLocationText: { ...typography.caption, color: colors.faint, flex: 1 },
+
+  desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+
   emptyState: { paddingHorizontal: 18 },
-  emptyText: { fontSize: 13, color: colors.muted, paddingHorizontal: 18 },
-  emptySubtext: { fontSize: 11, color: colors.faint, marginTop: 4 },
-  communePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    marginRight: 8,
+  emptyText: { ...typography.body, color: colors.muted, paddingHorizontal: 18 },
+  emptySubtext: { ...typography.caption, color: colors.faint, marginTop: 4, paddingHorizontal: 18 },
+
+  // Story band
+  storyBand: { marginTop: 30, position: 'relative', overflow: 'hidden' },
+  storyScrim: { backgroundColor: 'rgba(26,10,3,0.32)' },
+  storyContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase', marginBottom: 10 },
+  storyTitle: {
+    fontFamily: 'PlayfairDisplay_700Bold_Italic', fontSize: 27, lineHeight: 33,
+    color: colors.cream, textAlign: 'center', marginBottom: 10,
   },
-  communeLabel: { fontSize: 13, fontWeight: '500' },
+  storySub: {
+    ...typography.body, color: 'rgba(250,248,244,0.85)', textAlign: 'center', maxWidth: 420,
+  },
+
+  // Communes
+  communePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 9, borderRadius: radii.pill,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+  },
+  communeLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: colors.ink },
 });
