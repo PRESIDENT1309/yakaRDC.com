@@ -13,7 +13,21 @@ import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
+import {
+  PhotoIcon, InfoIcon, ContactIcon, LocationIcon,
+  AmenityIcon, PromoIcon, PriceIcon, MenuIcon, TicketIcon, IconBadge,
+} from '../../components/SectionIcons';
 import type { Establishment, ListingPhoto } from '../../lib/types';
+
+// Titre de section : pastille + libellé, en remplacement des emoji
+function CardTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <View style={styles.cardTitleRow}>
+      <IconBadge>{icon}</IconBadge>
+      <Text style={styles.cardTitleText}>{label}</Text>
+    </View>
+  );
+}
 
 const ALL_AMENITIES = [
   'Wifi', 'Parking', 'Climatisation', 'Petit-déjeuner',
@@ -58,6 +72,7 @@ export default function EstablishmentScreen() {
   const [amenities, setAmenities]     = useState<string[]>([]);
   const [price, setPrice]             = useState('');
   const [currency, setCurrency]       = useState('USD');
+  const [capacity, setCapacity]       = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
   const [discountLabel, setDiscountLabel]     = useState('');
   const [pendingCount, setPendingCount] = useState(0);
@@ -99,6 +114,7 @@ export default function EstablishmentScreen() {
       setAmenities(e.amenities ?? []);
       setDiscountPercent(e.discount_percent != null ? String(e.discount_percent) : '');
       setDiscountLabel(e.discount_label ?? '');
+      setCapacity(e.capacity != null ? String(e.capacity) : '');
       setLogoUrl(e.logo_url ?? null);
 
       const { data: photoRows } = await supabase.from('listing_photos')
@@ -269,6 +285,7 @@ export default function EstablishmentScreen() {
       commune, neighborhood, avenue, numero, reference, amenities,
       discount_percent: discountPercent ? parseInt(discountPercent, 10) : null,
       discount_label: discountLabel.trim() || null,
+      capacity: capacity ? parseInt(capacity, 10) : null,
     }).eq('id', establishment.id);
 
     if (price) {
@@ -307,7 +324,7 @@ export default function EstablishmentScreen() {
     ? 'nuit' : 'personne';
   const currentViewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   const currentMenuViewerPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
-  const menuSectionTitle = menuCategory === 'menu' ? '🍽️ Photos du menu' : '🎫 Tarifs des attractions';
+  const menuSectionTitle = menuCategory === 'menu' ? 'Photos du menu' : 'Tarifs des attractions';
   const menuSectionHint = menuCategory === 'menu'
     ? 'Prenez en photo votre carte ou votre menu — les voyageurs la verront sur votre fiche.'
     : "Prenez en photo votre grille tarifaire — les voyageurs la verront sur votre fiche.";
@@ -354,7 +371,7 @@ export default function EstablishmentScreen() {
 
           {/* Logo + Photos */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>🖼️ Logo & Photos</Text>
+            <CardTitle icon={<PhotoIcon />} label="Logo & Photos" />
             <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
               <View style={{ alignItems: 'center', gap: 5 }}>
                 <Text style={styles.subLabel}>Logo</Text>
@@ -410,7 +427,7 @@ export default function EstablishmentScreen() {
           {/* Menu (restaurant) ou Tarifs (site) — uniquement pour ces deux types */}
           {menuCategory && (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>{menuSectionTitle}</Text>
+              <CardTitle icon={menuCategory === 'menu' ? <MenuIcon /> : <TicketIcon />} label={menuSectionTitle} />
               <Text style={styles.promoHint}>{menuSectionHint}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {menuPhotos.map((photo, index) => (
@@ -444,7 +461,7 @@ export default function EstablishmentScreen() {
 
           {/* Infos générales */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>📋 Informations générales</Text>
+            <CardTitle icon={<InfoIcon />} label="Informations générales" />
             <Field label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
             <Field label="Description" value={description} onChange={setDescription}
               placeholder="Décrivez votre établissement en quelques phrases..." multiline />
@@ -452,7 +469,7 @@ export default function EstablishmentScreen() {
 
           {/* Contact */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>📞 Contact & Réseaux sociaux</Text>
+            <CardTitle icon={<ContactIcon />} label="Contact & Réseaux sociaux" />
             <View style={styles.row}>
               <View style={{ flex: 1 }}><Field label="📱 Téléphone" value={phone} onChange={setPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
               <View style={{ flex: 1 }}><Field label="✉️ Email" value={email} onChange={setEmail} placeholder="contact@exemple.cd" keyboardType="email-address" /></View>
@@ -465,7 +482,7 @@ export default function EstablishmentScreen() {
 
           {/* Adresse */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>📍 Adresse complète</Text>
+            <CardTitle icon={<LocationIcon />} label="Adresse complète" />
             <View style={styles.row}>
               <View style={{ flex: 1 }}><Field label="Commune" value={commune} onChange={setCommune} placeholder="Ex : Gombe" /></View>
               <View style={{ flex: 1 }}><Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" /></View>
@@ -480,7 +497,7 @@ export default function EstablishmentScreen() {
 
           {/* Équipements */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>✅ Équipements & services</Text>
+            <CardTitle icon={<AmenityIcon />} label="Équipements & services" />
             <View style={styles.amenitiesGrid}>
               {ALL_AMENITIES.map(a => {
                 const active = amenities.includes(a);
@@ -498,7 +515,7 @@ export default function EstablishmentScreen() {
 
           {/* Promotion du jour */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>🏷️ Promotion du jour</Text>
+            <CardTitle icon={<PromoIcon />} label="Promotion du jour" />
             <Text style={styles.promoHint}>
               Affichez une réduction dans le planificateur de voyage des utilisateurs. Laissez vide pour ne pas afficher de promotion.
             </Text>
@@ -514,11 +531,25 @@ export default function EstablishmentScreen() {
 
           {/* Tarif */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>💰 Tarif</Text>
+            <CardTitle icon={<PriceIcon />} label="Tarif" />
             <View style={styles.row}>
               <View style={{ flex: 2 }}><Field label={`Prix (par ${unitLabel})`} value={price} onChange={setPrice} placeholder="Ex : 45" keyboardType="decimal-pad" /></View>
               <View style={{ flex: 1 }}><Field label="Devise" value={currency} onChange={setCurrency} placeholder="USD" /></View>
             </View>
+            <Field
+              label={
+                establishment.type === 'restaurant' ? 'Capacité (couverts par créneau)'
+                : establishment.type === 'site' ? 'Capacité (visiteurs par créneau)'
+                : 'Capacité (personnes par nuit)'
+              }
+              value={capacity}
+              onChange={setCapacity}
+              placeholder="Ex : 40 — laissez vide pour aucune limite"
+              keyboardType="number-pad"
+            />
+            <Text style={styles.hint}>
+              Sert à bloquer automatiquement les dates complètes côté voyageur. Ce nombre ne lui est jamais affiché.
+            </Text>
           </View>
 
           <Pressable style={[styles.saveBtnFull, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
@@ -669,6 +700,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 9, color: colors.muted, marginTop: 2 },
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14 },
   cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
+  cardTitleText: { fontSize: 13, fontWeight: '600', color: colors.ink },
   subLabel: { fontSize: 10, color: colors.faint },
   logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: 12 },
