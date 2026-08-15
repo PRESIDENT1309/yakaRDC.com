@@ -9,6 +9,7 @@ export interface Profile {
   email: string | null;
   phone: string | null;
   full_name: string | null;
+  avatar_url: string | null;
   role: UserRole;
   created_at: string;
 }
@@ -117,6 +118,7 @@ export interface Review {
   traveler_id: string;
   rating: number;
   comment: string | null;
+  is_verified_stay: boolean;
   partner_reply: string | null;
   partner_replied_at: string | null;
   created_at: string;

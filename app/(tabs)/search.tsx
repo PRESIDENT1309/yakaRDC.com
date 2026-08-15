@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   ScrollView,
+  Image,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -30,6 +31,16 @@ import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type CategoryFilter = EstablishmentType | 'all';
 
+// Établissement enrichi avec ses vraies données liées (note, prix, photo)
+type EnrichedEstablishment = Establishment & {
+  avgRating: number | null;
+  reviewCount: number;
+  price: number | null;
+  currency: string;
+  priceUnit: string | null;
+  coverPhoto: string | null;
+};
+
 const CATEGORIES: { key: CategoryFilter; label: string }[] = [
   { key: 'all', label: 'Tout' },
   { key: 'hotel', label: 'Hôtels' },
@@ -43,8 +54,22 @@ const COMMUNES = [
   'Toutes', 'Gombe', 'Limete', 'Bandal', 'Ngaliema', "N'Sele",
   'Kintambo', 'Lemba', 'Kalamu', 'Ngiri-Ngiri', 'Barumbu',
 ];
-const PRIX = ['Tous', '0–20 $', '20–50 $', '50–100 $', '100 $ +'];
-const NOTES = ['Toutes', '4.5 +', '4.0 +', '3.5 +'];
+
+// Chaque fourchette porte ses bornes réelles, pour que le filtre agisse vraiment
+const PRIX: { label: string; min: number | null; max: number | null }[] = [
+  { label: 'Tous', min: null, max: null },
+  { label: '0–20 $', min: 0, max: 20 },
+  { label: '20–50 $', min: 20, max: 50 },
+  { label: '50–100 $', min: 50, max: 100 },
+  { label: '100 $ +', min: 100, max: null },
+];
+
+const NOTES: { label: string; min: number | null }[] = [
+  { label: 'Toutes', min: null },
+  { label: '4.5 +', min: 4.5 },
+  { label: '4.0 +', min: 4.0 },
+  { label: '3.5 +', min: 3.5 },
+];
 
 function CategoryIcon({ type, size = 24 }: { type: EstablishmentType; size?: number }) {
   const cat = categoryColors[type];
@@ -57,17 +82,17 @@ function CategoryIcon({ type, size = 24 }: { type: EstablishmentType; size?: num
   }
 }
 
-function ResultCard({ item }: { item: Establishment }) {
+function unitLabel(unit: string | null): string {
+  if (unit === 'night') return '/ nuit';
+  if (unit === 'person') return '/ pers.';
+  if (unit === 'visit') return '/ visite';
+  return '';
+}
+
+function ResultCard({ item }: { item: EnrichedEstablishment }) {
   const cat = categoryColors[item.type];
   const accent = cat?.accent ?? colors.lave;
   const soft = cat?.soft ?? '#FAECE7';
-
-  const priceLabel: Record<EstablishmentType, string> = {
-    hotel: '45 $ / nuit',
-    furnished_house: '35 $ / nuit',
-    restaurant: 'Sur place',
-    site: '10 $ / pers.',
-  };
 
   return (
     <Pressable
@@ -75,15 +100,25 @@ function ResultCard({ item }: { item: Establishment }) {
       onPress={() => router.push(`/listing/${item.id}`)}
     >
       <View style={[styles.cardThumb, { backgroundColor: soft }]}>
-        <CategoryIcon type={item.type} size={28} />
+        {item.coverPhoto ? (
+          <Image source={{ uri: item.coverPhoto }} style={styles.cardThumbImage} resizeMode="cover" />
+        ) : (
+          <CategoryIcon type={item.type} size={28} />
+        )}
       </View>
       <View style={styles.cardInfo}>
         <View style={styles.cardTopRow}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.ratingBadge}>
-            <Star size={9} color="#854F0B" fill="#854F0B" />
-            <Text style={styles.ratingText}>4.8</Text>
-          </View>
+          {item.avgRating != null ? (
+            <View style={styles.ratingBadge}>
+              <Star size={9} color="#854F0B" fill="#854F0B" />
+              <Text style={styles.ratingText}>{item.avgRating.toFixed(1)}</Text>
+            </View>
+          ) : (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>Nouveau</Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardLocationRow}>
           <MapPin size={10} color={colors.faint} />
@@ -93,11 +128,15 @@ function ResultCard({ item }: { item: Establishment }) {
         </View>
         <View style={styles.cardBottomRow}>
           <Text style={[styles.cardPrice, { color: accent }]}>
-            {priceLabel[item.type]}
+            {item.price != null
+              ? `${item.price} ${item.currency} ${unitLabel(item.priceUnit)}`.trim()
+              : 'Tarif sur demande'}
           </Text>
-          <View style={styles.availableBadge}>
-            <Text style={styles.availableText}>Disponible</Text>
-          </View>
+          {item.reviewCount > 0 && (
+            <Text style={styles.reviewCountText}>
+              {item.reviewCount} avis
+            </Text>
+          )}
         </View>
       </View>
     </Pressable>
@@ -153,34 +192,78 @@ export default function SearchScreen() {
   const [commune, setCommune] = useState('Toutes');
   const [prix, setPrix] = useState('Tous');
   const [note, setNote] = useState('Toutes');
-  const [results, setResults] = useState<Establishment[]>([]);
+  const [results, setResults] = useState<EnrichedEstablishment[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeModal, setActiveModal] = useState<'commune' | 'prix' | 'note' | null>(null);
 
   // Si on arrive depuis une commune tapée sur l'accueil, on pré-remplit le filtre
   useEffect(() => {
-    if (params.commune && COMMUNES.includes(params.commune)) {
-      setCommune(params.commune);
-    } else if (params.commune) {
-      setCommune(params.commune);
-    }
+    if (params.commune) setCommune(params.commune);
   }, [params.commune]);
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
+
+    // On récupère les tarifs et photos liés en une seule requête,
+    // plutôt qu'un appel supplémentaire par établissement
     let q = supabase
       .from('establishments')
-      .select('*')
+      .select('*, rates(price, currency, unit), listing_photos(url, position, category)')
       .eq('status', 'approved');
 
     if (category !== 'all') q = q.eq('type', category);
     if (commune !== 'Toutes') q = q.eq('commune', commune);
     if (query.trim()) q = q.ilike('name', `%${query.trim()}%`);
 
-    const { data } = await q.limit(30);
-    setResults((data as Establishment[]) ?? []);
+    const [{ data }, { data: ratings }] = await Promise.all([
+      q.limit(50),
+      supabase.from('establishment_ratings').select('*'),
+    ]);
+
+    // Index des notes par établissement, pour une association rapide
+    const ratingMap = new Map<string, { avg_rating: number | null; review_count: number }>();
+    (ratings ?? []).forEach((r: any) => {
+      ratingMap.set(r.establishment_id, { avg_rating: r.avg_rating, review_count: r.review_count });
+    });
+
+    let enriched: EnrichedEstablishment[] = ((data as any[]) ?? []).map(e => {
+      const rating = ratingMap.get(e.id);
+      const rate = Array.isArray(e.rates) ? e.rates[0] : e.rates;
+      const generalPhotos = (e.listing_photos ?? [])
+        .filter((p: any) => !p.category || p.category === 'general')
+        .sort((a: any, b: any) => a.position - b.position);
+
+      return {
+        ...e,
+        avgRating: rating?.avg_rating != null ? Number(rating.avg_rating) : null,
+        reviewCount: rating?.review_count ?? 0,
+        price: rate?.price != null ? Number(rate.price) : null,
+        currency: rate?.currency ?? 'USD',
+        priceUnit: rate?.unit ?? null,
+        coverPhoto: generalPhotos[0]?.url ?? null,
+      };
+    });
+
+    // Filtre prix — appliqué sur le vrai tarif enregistré
+    const priceRange = PRIX.find(p => p.label === prix);
+    if (priceRange && (priceRange.min != null || priceRange.max != null)) {
+      enriched = enriched.filter(e => {
+        if (e.price == null) return false; // sans tarif, ne peut pas correspondre
+        if (priceRange.min != null && e.price < priceRange.min) return false;
+        if (priceRange.max != null && e.price > priceRange.max) return false;
+        return true;
+      });
+    }
+
+    // Filtre note — appliqué sur la vraie moyenne
+    const noteRange = NOTES.find(n => n.label === note);
+    if (noteRange?.min != null) {
+      enriched = enriched.filter(e => e.avgRating != null && e.avgRating >= noteRange.min!);
+    }
+
+    setResults(enriched);
     setLoading(false);
-  }, [query, category, commune]);
+  }, [query, category, commune, prix, note]);
 
   useEffect(() => {
     const timer = setTimeout(fetchResults, 350);
@@ -312,7 +395,7 @@ export default function SearchScreen() {
       <FilterModal
         visible={activeModal === 'prix'}
         title="Fourchette de prix"
-        options={PRIX}
+        options={PRIX.map(p => p.label)}
         selected={prix}
         onSelect={setPrix}
         onClose={() => setActiveModal(null)}
@@ -320,7 +403,7 @@ export default function SearchScreen() {
       <FilterModal
         visible={activeModal === 'note'}
         title="Note minimale"
-        options={NOTES}
+        options={NOTES.map(n => n.label)}
         selected={note}
         onSelect={setNote}
         onClose={() => setActiveModal(null)}
@@ -401,6 +484,10 @@ const styles = StyleSheet.create({
     width: 85,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  cardThumbImage: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
   cardInfo: { flex: 1, padding: 12 },
   cardTopRow: {
@@ -420,6 +507,13 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   ratingText: { fontSize: 10, color: '#854F0B', fontWeight: '500' },
+  newBadge: {
+    backgroundColor: '#E1F5EE',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  newBadgeText: { fontSize: 9.5, color: '#0F6E56', fontWeight: '500' },
   cardLocationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,13 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardPrice: { fontSize: 12, fontWeight: '500' },
-  availableBadge: {
-    backgroundColor: '#E1F5EE',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  availableText: { fontSize: 10, color: '#0F6E56', fontWeight: '500' },
+  reviewCountText: { fontSize: 10, color: colors.faint },
   emptyState: {
     alignItems: 'center',
     paddingTop: 60,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput, KeyboardAvoidingView,
@@ -10,12 +10,12 @@ import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
   Phone, Mail, AtSign, Music2, CalendarPlus,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
-import type { Establishment, Rate, EstablishmentType, ListingPhoto } from '../../lib/types';
+import type { Establishment, Rate, EstablishmentType, ListingPhoto, Review } from '../../lib/types';
 
 type TimeSlot = string;
 
@@ -253,6 +253,12 @@ export default function ListingDetailScreen() {
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [menuPhotos, setMenuPhotos] = useState<ListingPhoto[]>([]);
   const [menuViewerIndex, setMenuViewerIndex] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [myReview, setMyReview] = useState<Review | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -288,6 +294,58 @@ export default function ListingDetailScreen() {
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
     supabase.rpc('increment_establishment_views', { p_establishment_id: id });
   }, [id]);
+
+  const fetchReviews = useCallback(async () => {
+    const { data } = await supabase.from('reviews').select('*')
+      .eq('establishment_id', id)
+      .order('created_at', { ascending: false });
+    const all = (data as Review[]) ?? [];
+    setReviews(all);
+    const mine = session?.user ? all.find(r => r.traveler_id === session.user.id) ?? null : null;
+    setMyReview(mine);
+  }, [id, session?.user?.id]);
+
+  useEffect(() => { fetchReviews(); }, [fetchReviews]);
+
+  function openReviewForm() {
+    setReviewRating(myReview?.rating ?? 0);
+    setReviewComment(myReview?.comment ?? '');
+    setShowReviewForm(true);
+  }
+
+  async function handleSaveReview() {
+    if (!session?.user || reviewRating === 0) return;
+    setSavingReview(true);
+
+    const payload = {
+      establishment_id: id,
+      traveler_id: session.user.id,
+      rating: reviewRating,
+      comment: reviewComment.trim() || null,
+    };
+
+    const { error } = myReview
+      ? await supabase.from('reviews').update(payload).eq('id', myReview.id)
+      : await supabase.from('reviews').insert(payload);
+
+    setSavingReview(false);
+    if (error) { Alert.alert('Erreur', error.message); return; }
+
+    setShowReviewForm(false);
+    fetchReviews();
+  }
+
+  function confirmDeleteReview() {
+    if (!myReview) return;
+    Alert.alert('Supprimer mon avis', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: async () => {
+        await supabase.from('reviews').delete().eq('id', myReview.id);
+        setShowReviewForm(false);
+        fetchReviews();
+      }},
+    ]);
+  }
 
   useEffect(() => {
     if (!session?.user) return;
@@ -587,6 +645,69 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
+          {/* Avis */}
+          <View style={styles.section}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionTitle}>
+                Avis {reviews.length > 0 ? `(${reviews.length})` : ''}
+              </Text>
+              {session?.user && (
+                <Pressable style={styles.writeReviewBtn} onPress={openReviewForm}>
+                  {myReview ? <Pencil size={12} color={accent} /> : <Star size={12} color={accent} />}
+                  <Text style={[styles.writeReviewText, { color: accent }]}>
+                    {myReview ? 'Modifier mon avis' : 'Donner mon avis'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
+            {reviews.length === 0 ? (
+              <Text style={styles.noReviewsText}>
+                Aucun avis pour le moment. Soyez le premier à partager votre expérience.
+              </Text>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {reviews.slice(0, 3).map(r => (
+                  <View key={r.id} style={styles.reviewCard}>
+                    <View style={styles.reviewTopRow}>
+                      <View style={{ flexDirection: 'row', gap: 1 }}>
+                        {[1, 2, 3, 4, 5].map(i => (
+                          <Star key={i} size={11} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                        ))}
+                      </View>
+                      {r.is_verified_stay && (
+                        <View style={styles.verifiedBadge}>
+                          <BadgeCheck size={10} color="#0F6E56" />
+                          <Text style={styles.verifiedText}>Client vérifié</Text>
+                        </View>
+                      )}
+                      <Text style={styles.reviewDate}>
+                        {new Date(r.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </Text>
+                    </View>
+
+                    {r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
+
+                    {r.partner_reply && (
+                      <View style={styles.partnerReplyBox}>
+                        <MessageCircle size={11} color={colors.lave} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.partnerReplyLabel}>Réponse de l'établissement</Text>
+                          <Text style={styles.partnerReplyText}>{r.partner_reply}</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+                {reviews.length > 3 && (
+                  <Text style={styles.moreReviewsText}>
+                    + {reviews.length - 3} autre{reviews.length - 3 > 1 ? 's' : ''} avis
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+
           {/* Ajouter au planning */}
           <Pressable style={styles.planBtn} onPress={handleAddToPlanning} disabled={addingToPlan}>
             {addingToPlan ? (
@@ -637,6 +758,64 @@ export default function ListingDetailScreen() {
             {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} />}
             {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} />}
             {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} />}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Formulaire d'avis */}
+      <Modal visible={showReviewForm} transparent animationType="slide" onRequestClose={() => setShowReviewForm(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowReviewForm(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>{myReview ? 'Modifier mon avis' : 'Donner mon avis'}</Text>
+                <Text style={styles.modalSub}>{establishment.name}</Text>
+              </View>
+              <Pressable onPress={() => setShowReviewForm(false)} hitSlop={8}>
+                <X size={20} color={colors.muted} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.fieldLabel}>Votre note</Text>
+            <View style={styles.starPicker}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <Pressable key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
+                  <Star
+                    size={34}
+                    color="#854F0B"
+                    fill={i <= reviewRating ? '#854F0B' : 'transparent'}
+                  />
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.fieldLabel}>Votre commentaire (optionnel)</Text>
+            <TextInput
+              style={[styles.fieldInput, { height: 100, textAlignVertical: 'top' }]}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              placeholder="Qu'avez-vous pensé de votre expérience ?"
+              placeholderTextColor={colors.faint}
+              multiline
+            />
+
+            <Pressable
+              style={[styles.submitBtn, { backgroundColor: accent }, (reviewRating === 0 || savingReview) && { opacity: 0.5 }]}
+              onPress={handleSaveReview}
+              disabled={reviewRating === 0 || savingReview}
+            >
+              {savingReview
+                ? <ActivityIndicator color="#FAF8F4" />
+                : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>{myReview ? 'Enregistrer' : 'Publier mon avis'}</Text></>}
+            </Pressable>
+
+            {myReview && (
+              <Pressable style={styles.deleteReviewBtn} onPress={confirmDeleteReview}>
+                <Text style={styles.deleteReviewText}>Supprimer mon avis</Text>
+              </Pressable>
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -733,6 +912,23 @@ const styles = StyleSheet.create({
   addressSubText: { fontSize: 12, color: colors.muted, marginLeft: 19 },
   planBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12, paddingVertical: 13, marginBottom: 14, backgroundColor: colors.laveSoft },
   planBtnText: { fontSize: 13.5, fontWeight: '500', color: colors.lave },
+  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  writeReviewText: { fontSize: 11.5, fontWeight: '600' },
+  noReviewsText: { fontSize: 12, color: colors.muted, lineHeight: 18 },
+  reviewCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#E1F5EE', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  verifiedText: { fontSize: 9, color: '#0F6E56', fontWeight: '600' },
+  reviewDate: { fontSize: 10, color: colors.faint, marginLeft: 'auto' },
+  reviewComment: { fontSize: 12.5, color: colors.ink, lineHeight: 18 },
+  partnerReplyBox: { flexDirection: 'row', gap: 7, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 9, marginTop: 9 },
+  partnerReplyLabel: { fontSize: 9.5, color: colors.lave, fontWeight: '600', marginBottom: 2 },
+  partnerReplyText: { fontSize: 11.5, color: colors.ink, lineHeight: 16 },
+  moreReviewsText: { fontSize: 11.5, color: colors.muted, textAlign: 'center', paddingTop: 2 },
+  starPicker: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 16, marginTop: 4 },
+  deleteReviewBtn: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
+  deleteReviewText: { fontSize: 12, color: '#C0392B' },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14 },
   priceFrom: { fontSize: 11, color: colors.muted },

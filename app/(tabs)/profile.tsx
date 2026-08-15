@@ -8,8 +8,11 @@ import {
   Platform,
   Alert,
   Modal,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Settings,
   User,
@@ -23,18 +26,13 @@ import {
   ChevronRight,
   X,
   Store,
+  Camera,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
 
-function MenuSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{title}</Text>
@@ -46,7 +44,6 @@ function MenuSection({
 function MenuItem({
   icon,
   iconBg,
-  iconColor,
   label,
   value,
   onPress,
@@ -54,7 +51,6 @@ function MenuItem({
 }: {
   icon: React.ReactNode;
   iconBg: string;
-  iconColor: string;
   label: string;
   value?: string;
   onPress?: () => void;
@@ -62,15 +58,17 @@ function MenuItem({
 }) {
   return (
     <Pressable
-      style={[styles.menuItem, !last && styles.menuItemBorder]}
+      style={({ pressed }) => [
+        styles.menuItem,
+        !last && styles.menuItemBorder,
+        pressed && { backgroundColor: '#FAFAF9' },
+      ]}
       onPress={onPress}
     >
-      <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>
-        {icon}
-      </View>
+      <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <Text style={styles.menuLabel}>{label}</Text>
       {value && <Text style={styles.menuValue}>{value}</Text>}
-      <ChevronRight size={14} color={colors.borderStrong} />
+      <ChevronRight size={15} color="#C4C2BA" />
     </Pressable>
   );
 }
@@ -112,10 +110,12 @@ function LogoutModal({
 }
 
 export default function ProfileScreen() {
-  const { profile, session } = useAuth();
+  const { profile, session, refreshProfile } = useAuth();
   const [showLogout, setShowLogout] = useState(false);
   const [bookingCount, setBookingCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const initial = profile?.full_name
     ? profile.full_name.charAt(0).toUpperCase()
@@ -128,15 +128,59 @@ export default function ProfileScreen() {
     if (!session?.user) return;
     supabase
       .from('bookings')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('traveler_id', session.user.id)
       .then(({ count }) => setBookingCount(count ?? 0));
     supabase
       .from('favorites')
-      .select('id', { count: 'exact' })
+      .select('id', { count: 'exact', head: true })
       .eq('traveler_id', session.user.id)
       .then(({ count }) => setFavoriteCount(count ?? 0));
+    supabase
+      .from('reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('traveler_id', session.user.id)
+      .then(({ count }) => setReviewCount(count ?? 0));
   }, [session?.user?.id]);
+
+  async function handleChangeAvatar() {
+    if (!session?.user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', "L'accès à vos photos est nécessaire.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setUploadingAvatar(true);
+    try {
+      const response = await fetch(result.assets[0].uri);
+      const blob = await response.blob();
+      const path = `avatars/${session.user.id}/avatar-${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('establishment-photos')
+        .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+
+      if (uploadError) {
+        Alert.alert('Erreur', uploadError.message);
+        setUploadingAvatar(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
+      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id);
+      await refreshProfile();
+    } catch (e: any) {
+      Alert.alert('Erreur', e?.message ?? "L'envoi de la photo a échoué.");
+    }
+    setUploadingAvatar(false);
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -145,7 +189,7 @@ export default function ProfileScreen() {
   }
 
   function showComingSoon(feature: string) {
-    Alert.alert(feature, "Cette fonctionnalité arrive bientôt sur YakaRDC.");
+    Alert.alert(feature, 'Cette fonctionnalité arrive bientôt sur YakaRDC.');
   }
 
   return (
@@ -154,17 +198,27 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* ── Header ── */}
+        {/* ── En-tête ── */}
         <View style={styles.header}>
           <Pressable style={styles.settingsBtn} onPress={() => showComingSoon('Paramètres')}>
             <Settings size={16} color="#FAF8F4" />
           </Pressable>
 
-          <View style={styles.avatarWrapper}>
+          {/* Photo de profil, modifiable au clic */}
+          <Pressable style={styles.avatarWrapper} onPress={handleChangeAvatar} disabled={uploadingAvatar}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
+              {uploadingAvatar ? (
+                <ActivityIndicator color={colors.lave} />
+              ) : profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
             </View>
-          </View>
+            <View style={styles.cameraBadge}>
+              <Camera size={12} color={colors.lave} />
+            </View>
+          </Pressable>
 
           <Text style={styles.name}>{displayName}</Text>
           <Text style={styles.contact}>{displayEmail}</Text>
@@ -181,7 +235,7 @@ export default function ProfileScreen() {
             </Pressable>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{reviewCount}</Text>
               <Text style={styles.statLabel}>Avis</Text>
             </View>
           </View>
@@ -189,80 +243,74 @@ export default function ProfileScreen() {
 
         <View style={styles.content}>
           {/* ── Mon compte ── */}
-          <MenuSection title="Mon compte">
+          <MenuSection title="MON COMPTE">
             <MenuItem
-              icon={<User size={16} color="#712B13" />}
+              icon={<User size={15} color="#712B13" />}
               iconBg="#FAECE7"
-              iconColor="#712B13"
               label="Modifier le profil"
               onPress={() => router.push('/edit-profile')}
             />
             <MenuItem
-              icon={<Heart size={16} color="#712B13" />}
+              icon={<Heart size={15} color="#712B13" />}
               iconBg="#FAECE7"
-              iconColor="#712B13"
               label="Mes favoris"
               value={favoriteCount > 0 ? String(favoriteCount) : undefined}
               onPress={() => router.push('/favorites')}
             />
             <MenuItem
-              icon={<CalendarCheck size={16} color="#712B13" />}
+              icon={<CalendarCheck size={15} color="#712B13" />}
               iconBg="#FAECE7"
-              iconColor="#712B13"
               label="Historique des réservations"
               onPress={() => router.push('/(tabs)/bookings')}
               last
             />
           </MenuSection>
 
-          {/* ── Devenir partenaire ── */}
-          <MenuSection title="Vous avez un établissement ?">
+          {/* ── Préférences ── */}
+          <MenuSection title="PRÉFÉRENCES">
             <MenuItem
-              icon={<Store size={16} color="#712B13" />}
-              iconBg="#FAECE7"
-              iconColor="#712B13"
+              icon={<Bell size={15} color="#085041" />}
+              iconBg="#E1F5EE"
+              label="Notifications"
+              onPress={() => router.push('/notifications')}
+            />
+            <MenuItem
+              icon={<Languages size={15} color="#085041" />}
+              iconBg="#E1F5EE"
+              label="Langue"
+              value="Français"
+              onPress={() =>
+                Alert.alert(
+                  'Langue',
+                  "YakaRDC est disponible en français pour le moment. D'autres langues (lingala, anglais) arriveront bientôt."
+                )
+              }
+              last
+            />
+          </MenuSection>
+
+          {/* ── Devenir partenaire ── */}
+          <MenuSection title="VOUS AVEZ UN ÉTABLISSEMENT ?">
+            <MenuItem
+              icon={<Store size={15} color="#854F0B" />}
+              iconBg="#FAEEDA"
               label="Devenir partenaire"
               onPress={() => router.push('/become-partner')}
               last
             />
           </MenuSection>
 
-          {/* ── Préférences ── */}
-          <MenuSection title="Préférences">
-            <MenuItem
-              icon={<Bell size={16} color="#085041" />}
-              iconBg="#E1F5EE"
-              iconColor="#085041"
-              label="Notifications"
-              onPress={() => router.push('/notifications')}
-            />
-            <MenuItem
-              icon={<Languages size={16} color="#085041" />}
-              iconBg="#E1F5EE"
-              iconColor="#085041"
-              label="Langue"
-              value="Français"
-              onPress={() => Alert.alert(
-                'Langue',
-                "YakaRDC est disponible en français pour le moment. D'autres langues (lingala, anglais) arriveront bientôt."
-              )}
-              last
-            />
-          </MenuSection>
-
           {/* ── Assistance ── */}
-          <MenuSection title="Assistance">
+          <MenuSection title="ASSISTANCE">
             <MenuItem
-              icon={<HelpCircle size={16} color="#854F0B" />}
+              icon={<HelpCircle size={15} color="#854F0B" />}
               iconBg="#FAEEDA"
-              iconColor="#854F0B"
               label="Centre d'aide"
               onPress={() => showComingSoon("Centre d'aide")}
             />
             <MenuItem
-              icon={<Shield size={16} color="#854F0B" />}
+              icon={<Shield size={15} color="#854F0B" />}
               iconBg="#FAEEDA"
-              iconColor="#854F0B"
               label="Confidentialité"
               onPress={() => showComingSoon('Politique de confidentialité')}
               last
@@ -270,11 +318,8 @@ export default function ProfileScreen() {
           </MenuSection>
 
           {/* ── Déconnexion ── */}
-          <Pressable
-            style={styles.logoutButton}
-            onPress={() => setShowLogout(true)}
-          >
-            <LogOut color={colors.lave} size={16} />
+          <Pressable style={styles.logoutButton} onPress={() => setShowLogout(true)}>
+            <LogOut color="#C0392B" size={15} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
         </View>
@@ -290,12 +335,14 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.cream },
+  screen: { flex: 1, backgroundColor: '#F5F4EF' },
   header: {
     backgroundColor: colors.lave,
     paddingTop: Platform.OS === 'ios' ? 60 : 32,
-    paddingBottom: 28,
+    paddingBottom: 26,
     alignItems: 'center',
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
     position: 'relative',
   },
   settingsBtn: {
@@ -311,89 +358,106 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     marginBottom: 12,
+    position: 'relative',
   },
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: '#FAC775',
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '500',
     color: colors.lave,
   },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.lave,
+  },
   name: {
-    fontSize: 18,
-    fontWeight: '500',
+    fontFamily: 'PlayfairDisplay_400Regular_Italic',
+    fontSize: 21,
     color: '#FAF8F4',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   contact: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(250,248,244,0.7)',
     marginBottom: 20,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
+    gap: 22,
   },
   stat: { alignItems: 'center' },
   statValue: {
-    fontSize: 20,
-    fontWeight: '500',
+    fontSize: 19,
+    fontWeight: '600',
     color: '#FAF8F4',
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: 'rgba(250,248,244,0.65)',
     marginTop: 2,
   },
   statDivider: {
     width: 1,
-    height: 28,
+    height: 26,
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   content: {
     padding: 16,
-    gap: 10,
+    gap: 16,
   },
-  section: { gap: 4 },
+  section: { gap: 7 },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.faint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 4,
-    marginBottom: 4,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9A9892',
+    letterSpacing: 0.6,
+    paddingHorizontal: 6,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#F5F4F0',
   },
   menuIcon: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
@@ -405,22 +469,20 @@ const styles = StyleSheet.create({
   },
   menuValue: {
     fontSize: 12,
-    color: colors.muted,
-    marginRight: 4,
+    color: '#9A9892',
+    marginRight: 2,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginTop: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 2,
   },
-  logoutText: { color: colors.lave, fontSize: 13, fontWeight: '500' },
+  logoutText: { color: '#C0392B', fontSize: 13, fontWeight: '500' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
