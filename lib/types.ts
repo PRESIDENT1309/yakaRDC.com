@@ -48,6 +48,7 @@ export interface Establishment {
   suspension_reason: string | null;
   discount_percent: number | null;
   discount_label: string | null;
+  capacity: number | null;
   view_count: number;
   created_at: string;
 }

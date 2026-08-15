@@ -15,7 +15,15 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
+import Calendar, { formatFrench } from '../../components/Calendar';
 import type { Establishment, Rate, EstablishmentType, ListingPhoto, Review } from '../../lib/types';
+
+// Disponibilités transmises aux formulaires de réservation
+interface Availability {
+  fullDays: Set<string>;
+  slotLoads: Record<string, number>;
+  capacity: number | null;
+}
 
 type TimeSlot = string;
 
@@ -123,8 +131,60 @@ function FormField({ label, value, onChange, placeholder, keyboardType = 'defaul
   );
 }
 
-function HotelBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: HotelForm; setForm: (f: HotelForm) => void; onSubmit: () => void; loading: boolean }) {
+// Sélecteur de créneau qui grise les horaires complets
+function SlotPicker({ slots, selected, onSelect, accent, slotLoads, capacity, partySize }:
+  { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string;
+    slotLoads: Record<string, number>; capacity: number | null; partySize: number }) {
+  return (
+    <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
+      {slots.map(s => {
+        const taken = slotLoads[s] ?? 0;
+        const isFull = capacity != null && taken + partySize > capacity;
+        const isSelected = selected === s;
+        return (
+          <Pressable
+            key={s}
+            style={[
+              styles.chip,
+              isSelected && { backgroundColor: accent, borderColor: accent },
+              isFull && styles.chipFull,
+            ]}
+            onPress={() => !isFull && onSelect(s)}
+            disabled={isFull}
+          >
+            <Text style={[
+              styles.chipText,
+              isSelected && { color: '#FAF8F4', fontWeight: '500' },
+              isFull && styles.chipTextFull,
+            ]}>
+              {s}{isFull ? ' · complet' : ''}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+  { accent: string; form: HotelForm; setForm: (f: HotelForm) => void; onSubmit: () => void;
+    loading: boolean; availability: Availability }) {
+  const [dateMode, setDateMode] = useState<'in' | 'out'>('in');
+
+  function handleSelectDate(iso: string) {
+    if (dateMode === 'in') {
+      const nextOut = form.checkOut && form.checkOut <= iso ? '' : form.checkOut;
+      setForm({ ...form, checkIn: iso, checkOut: nextOut });
+      setDateMode('out');
+    } else {
+      if (form.checkIn && iso <= form.checkIn) {
+        Alert.alert('Date invalide', "Le départ doit être après l'arrivée.");
+        return;
+      }
+      setForm({ ...form, checkOut: iso });
+    }
+  }
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
@@ -132,10 +192,38 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading }:
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
       </View>
       <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-      <View style={styles.formRow}>
-        <View style={{ flex: 1 }}><FormField label="Arrivée (JJ/MM/AAAA)" value={form.checkIn} onChange={v => setForm({ ...form, checkIn: v })} placeholder="20/06/2026" /></View>
-        <View style={{ flex: 1 }}><FormField label="Départ (JJ/MM/AAAA)" value={form.checkOut} onChange={v => setForm({ ...form, checkOut: v })} placeholder="23/06/2026" /></View>
+
+      <Text style={styles.fieldLabel}>Dates du séjour</Text>
+      <View style={styles.dateTabs}>
+        <Pressable
+          style={[styles.dateTab, dateMode === 'in' && { borderColor: accent, backgroundColor: '#FFFFFF' }]}
+          onPress={() => setDateMode('in')}
+        >
+          <Text style={styles.dateTabLabel}>Arrivée</Text>
+          <Text style={[styles.dateTabValue, !form.checkIn && styles.dateTabPlaceholder]}>
+            {form.checkIn ? formatFrench(form.checkIn) : 'Choisir'}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.dateTab, dateMode === 'out' && { borderColor: accent, backgroundColor: '#FFFFFF' }]}
+          onPress={() => setDateMode('out')}
+        >
+          <Text style={styles.dateTabLabel}>Départ</Text>
+          <Text style={[styles.dateTabValue, !form.checkOut && styles.dateTabPlaceholder]}>
+            {form.checkOut ? formatFrench(form.checkOut) : 'Choisir'}
+          </Text>
+        </Pressable>
       </View>
+
+      <View style={{ marginBottom: 12 }}>
+        <Calendar
+          value={dateMode === 'in' ? form.checkIn || null : form.checkOut || null}
+          onSelect={handleSelectDate}
+          fullDays={availability.fullDays}
+          accent={accent}
+        />
+      </View>
+
       <Text style={styles.fieldLabel}>Voyageurs</Text>
       <View style={styles.formRow}>
         <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
@@ -157,8 +245,9 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading }:
   );
 }
 
-function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void; onSubmit: () => void; loading: boolean }) {
+function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+  { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void; onSubmit: () => void;
+    loading: boolean; availability: Availability }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
@@ -166,15 +255,34 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading }:
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
       </View>
       <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-      <FormField label="Date (JJ/MM/AAAA)" value={form.visitDate} onChange={v => setForm({ ...form, visitDate: v })} placeholder="21/06/2026" />
-      <Text style={styles.fieldLabel}>Créneau horaire</Text>
-      <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
-        {RESTAURANT_SLOTS.map(s => (
-          <Pressable key={s} style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, timeSlot: s })}>
-            <Text style={[styles.chipText, form.timeSlot === s && { color: '#FAF8F4', fontWeight: '500' }]}>{s}</Text>
-          </Pressable>
-        ))}
+
+      <Text style={styles.fieldLabel}>
+        Date{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
+      </Text>
+      <View style={{ marginBottom: 12 }}>
+        <Calendar
+          value={form.visitDate || null}
+          onSelect={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+          fullDays={availability.fullDays}
+          accent={accent}
+        />
       </View>
+
+      <Text style={styles.fieldLabel}>Créneau horaire</Text>
+      {!form.visitDate ? (
+        <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+      ) : (
+        <SlotPicker
+          slots={RESTAURANT_SLOTS}
+          selected={form.timeSlot}
+          onSelect={s => setForm({ ...form, timeSlot: s })}
+          accent={accent}
+          slotLoads={availability.slotLoads}
+          capacity={availability.capacity}
+          partySize={form.adults + form.children}
+        />
+      )}
+
       <Text style={styles.fieldLabel}>Couverts</Text>
       <View style={styles.formRow}>
         <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
@@ -196,8 +304,9 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading }:
   );
 }
 
-function SiteBookingForm({ accent, form, setForm, onSubmit, loading }:
-  { accent: string; form: SiteForm; setForm: (f: SiteForm) => void; onSubmit: () => void; loading: boolean }) {
+function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+  { accent: string; form: SiteForm; setForm: (f: SiteForm) => void; onSubmit: () => void;
+    loading: boolean; availability: Availability }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
       <View style={styles.formRow}>
@@ -205,15 +314,34 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading }:
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
       </View>
       <FormField label="Téléphone (responsable)" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
-      <FormField label="Date de visite (JJ/MM/AAAA)" value={form.visitDate} onChange={v => setForm({ ...form, visitDate: v })} placeholder="22/06/2026" />
-      <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
-      <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
-        {SITE_SLOTS.map(s => (
-          <Pressable key={s} style={[styles.chip, form.timeSlot === s && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, timeSlot: s })}>
-            <Text style={[styles.chipText, form.timeSlot === s && { color: '#FAF8F4', fontWeight: '500' }]}>{s}</Text>
-          </Pressable>
-        ))}
+
+      <Text style={styles.fieldLabel}>
+        Date de visite{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
+      </Text>
+      <View style={{ marginBottom: 12 }}>
+        <Calendar
+          value={form.visitDate || null}
+          onSelect={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+          fullDays={availability.fullDays}
+          accent={accent}
+        />
       </View>
+
+      <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
+      {!form.visitDate ? (
+        <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+      ) : (
+        <SlotPicker
+          slots={SITE_SLOTS}
+          selected={form.timeSlot}
+          onSelect={s => setForm({ ...form, timeSlot: s })}
+          accent={accent}
+          slotLoads={availability.slotLoads}
+          capacity={availability.capacity}
+          partySize={form.adults + form.children}
+        />
+      )}
+
       <Text style={styles.fieldLabel}>Composition du groupe</Text>
       <View style={styles.formRow}>
         <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
@@ -267,6 +395,10 @@ export default function ListingDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Disponibilités
+  const [fullDays, setFullDays] = useState<Set<string>>(new Set());
+  const [slotLoads, setSlotLoads] = useState<Record<string, number>>({});
+
   const [hotelForm, setHotelForm] = useState<HotelForm>({
     firstName: '', lastName: '', phone: profile?.phone ?? '',
     adults: 1, children: 0, checkIn: '', checkOut: '', paymentMethod: 'cash', notes: '',
@@ -294,6 +426,46 @@ export default function ListingDetailScreen() {
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
     supabase.rpc('increment_establishment_views', { p_establishment_id: id });
   }, [id]);
+
+  // Charge les journées complètes sur 4 mois, à l'ouverture du formulaire
+  useEffect(() => {
+    if (!showForm || !establishment?.capacity) { setFullDays(new Set()); return; }
+
+    const from = new Date();
+    const to = new Date();
+    to.setMonth(to.getMonth() + 4);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+    supabase.rpc('establishment_daily_load', {
+      p_establishment_id: id,
+      p_from: iso(from),
+      p_to: iso(to),
+    }).then(({ data }) => {
+      const capacity = establishment.capacity!;
+      const full = new Set<string>();
+      ((data as any[]) ?? []).forEach(row => {
+        if (row.guests >= capacity) full.add(row.day);
+      });
+      setFullDays(full);
+    });
+  }, [showForm, id, establishment?.capacity]);
+
+  // Charge la fréquentation par créneau quand la date choisie change
+  const selectedVisitDate =
+    establishment?.type === 'restaurant' ? restaurantForm.visitDate :
+    establishment?.type === 'site' ? siteForm.visitDate : '';
+
+  useEffect(() => {
+    if (!selectedVisitDate) { setSlotLoads({}); return; }
+    supabase.rpc('establishment_slot_load', {
+      p_establishment_id: id,
+      p_date: selectedVisitDate,
+    }).then(({ data }) => {
+      const loads: Record<string, number> = {};
+      ((data as any[]) ?? []).forEach(row => { loads[row.slot] = row.guests; });
+      setSlotLoads(loads);
+    });
+  }, [selectedVisitDate, id]);
 
   const fetchReviews = useCallback(async () => {
     const { data } = await supabase.from('reviews').select('*')
@@ -424,6 +596,17 @@ export default function ListingDetailScreen() {
   const menuSectionTitle = isRestaurant ? 'Menu' : 'Tarifs des attractions';
   const currentMenuPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
 
+  const availability: Availability = {
+    fullDays,
+    slotLoads,
+    capacity: establishment.capacity ?? null,
+  };
+
+  // Note moyenne réelle, calculée depuis les avis chargés
+  const avgRating = reviews.length > 0
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : null;
+
   async function handleSubmit() {
     if (!session?.user) return;
     setSubmitting(true);
@@ -548,11 +731,17 @@ export default function ListingDetailScreen() {
                 {establishment.neighborhood ? `${establishment.neighborhood}, ` : ''}{establishment.city}
               </Text>
             </View>
-            <View style={styles.ratingRow}>
-              <Star size={12} color="#854F0B" fill="#854F0B" />
-              <Text style={styles.ratingText}>4.8</Text>
-              <Text style={styles.ratingCount}>(212)</Text>
-            </View>
+            {avgRating != null ? (
+              <View style={styles.ratingRow}>
+                <Star size={12} color="#854F0B" fill="#854F0B" />
+                <Text style={styles.ratingText}>{avgRating.toFixed(1)}</Text>
+                <Text style={styles.ratingCount}>({reviews.length})</Text>
+              </View>
+            ) : (
+              <View style={styles.newRow}>
+                <Text style={styles.newRowText}>Nouveau</Text>
+              </View>
+            )}
           </View>
 
           {/* Contact — rangée compacte d'icônes rondes */}
@@ -755,9 +944,9 @@ export default function ListingDetailScreen() {
                 <X size={20} color={colors.muted} />
               </Pressable>
             </View>
-            {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} />}
-            {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} />}
-            {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} />}
+            {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+            {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+            {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -896,6 +1085,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAEEDA', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   ratingText: { fontSize: 12, color: '#854F0B', fontWeight: '500' },
   ratingCount: { fontSize: 11, color: colors.muted },
+  newRow: { backgroundColor: '#E1F5EE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  newRowText: { fontSize: 11, color: '#0F6E56', fontWeight: '600' },
+  dateTabs: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  dateTab: {
+    flex: 1, backgroundColor: '#F5F4F0', borderWidth: 1.5, borderColor: 'transparent',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+  },
+  dateTabLabel: { fontSize: 10, color: colors.muted, marginBottom: 2 },
+  dateTabValue: { fontSize: 12.5, fontWeight: '500', color: colors.ink },
+  dateTabPlaceholder: { color: colors.faint, fontWeight: '400' },
+  slotHint: { fontSize: 12, color: colors.faint, marginBottom: 12 },
+  chipFull: { backgroundColor: '#FFF0F0', borderColor: '#F5D5D5' },
+  chipTextFull: { color: '#C0392B', textDecorationLine: 'line-through' },
   contactIconsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   contactIconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   amenitiesRow: { marginBottom: 16 },
