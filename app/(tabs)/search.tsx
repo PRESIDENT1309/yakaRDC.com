@@ -182,7 +182,7 @@ export default function SearchScreen() {
             title={selectedCity?.name ? `Trouver une adresse à ${selectedCity.name}` : 'Rechercher'}
           />
 
-          <View style={[styles.searchBar, { marginTop: 16 }]}>
+          <View style={[styles.searchBar, { marginTop: 12 }]}>
             <Search size={16} color={colors.faint} />
             <TextInput
               style={styles.searchInput}
@@ -200,23 +200,13 @@ export default function SearchScreen() {
             )}
           </View>
 
-          {isWide ? (
-            <View style={styles.chipWrap}>
-              {CATEGORIES.map((cat) => (
-                <Chip key={cat.key} label={cat.label} active={category === cat.key} onPress={() => setCategory(cat.key)} />
-              ))}
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {CATEGORIES.map((cat) => (
-                <Chip key={cat.key} label={cat.label} active={category === cat.key} onPress={() => setCategory(cat.key)} />
-              ))}
-            </ScrollView>
-          )}
-
           {(() => {
-            const filterChips = (
+            const chips = (
               <>
+                {CATEGORIES.map((cat) => (
+                  <Chip key={cat.key} label={cat.label} active={category === cat.key} onPress={() => setCategory(cat.key)} />
+                ))}
+                <View style={styles.chipGroupGap} />
                 {communeOptions && (
                   <Chip
                     variant="filter"
@@ -243,10 +233,10 @@ export default function SearchScreen() {
               </>
             );
             return isWide ? (
-              <View style={styles.chipWrap}>{filterChips}</View>
+              <View style={styles.chipWrap}>{chips}</View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-                {filterChips}
+                {chips}
               </ScrollView>
             );
           })()}
@@ -341,13 +331,14 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
   },
   searchInput: { flex: 1, ...typography.body, color: colors.ink },
-  chipRow: { gap: 8, marginBottom: 10 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  resultCount: { ...typography.caption, color: colors.faint, marginTop: 2 },
+  chipRow: { gap: 8, marginBottom: 6 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  chipGroupGap: { width: 4 },
+  resultCount: { ...typography.caption, color: colors.faint },
   listContent: { padding: 18, paddingBottom: 90 },
   gridRow: { gap: 12, marginBottom: 12 },
 });
