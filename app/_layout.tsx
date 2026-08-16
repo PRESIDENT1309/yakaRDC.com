@@ -13,6 +13,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../lib/auth-context';
+import { CityProvider } from '../lib/city-context';
 
 export default function RootLayout() {
   // Playfair Display (voix éditoriale) + Manrope (interface) — direction
@@ -32,7 +33,9 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAF8F4' } }} />
+      <CityProvider>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAF8F4' } }} />
+      </CityProvider>
     </AuthProvider>
   );
 }

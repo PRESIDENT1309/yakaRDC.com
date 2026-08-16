@@ -9,6 +9,7 @@ import {
   Image,
   Animated,
   FlatList,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
@@ -22,11 +23,14 @@ import {
   Mountain,
   Star,
   MapPin,
+  ChevronDown,
+  Check,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography, spacing, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useSelectedCity } from '../../lib/city-context';
+import { getCitySubdivisions } from '../../lib/geography';
 import SectionHeading from '../../components/SectionHeading';
 import RiverMotif from '../../components/RiverMotif';
 import PhotoScrim from '../../components/PhotoScrim';
@@ -52,11 +56,8 @@ const CATEGORIES: {
   { key: 'site', label: 'Sites touristiques', kicker: 'Découvrir', tone: colors.foret, settingKey: 'home_category_site_url' },
 ];
 
-// Quelques-unes des 24 communes de Kinshasa, mises en avant sur l'accueil
-const FEATURED_COMMUNES = ['Gombe', 'Limete', 'Bandal', "N'Sele", 'Ngaliema'];
-
-const ROTATION_INTERVAL = 1500; // 1,5 seconde entre chaque photo
-const FADE_DURATION = 250;
+const ROTATION_INTERVAL = 4000; // temps d'affichage de chaque photo
+const SLIDE_DURATION = 650; // durée du défilement entre deux photos
 
 function CategoryIcon({ type, size = 24, color }: { type: EstablishmentType; size?: number; color: string }) {
   const props = { size, color };
@@ -83,33 +84,37 @@ function LogoLockup() {
   );
 }
 
-// Photos de fond en rotation automatique avec fondu — retombe sur le motif
-// de marque (fleuve au crépuscule) tant qu'aucune photo n'est renseignée.
+// Photos de fond en rotation automatique, défilement horizontal droite→gauche
+// (la photo suivante entre par la droite) — retombe sur le motif de marque
+// (fleuve au crépuscule) tant qu'aucune photo n'est renseignée.
 function RotatingHero({ photos, width, height }: { photos: string[]; width: number; height: number }) {
   const [index, setIndex] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (photos.length < 2) return;
     const timer = setInterval(() => {
-      Animated.timing(fadeAnim, { toValue: 0, duration: FADE_DURATION, useNativeDriver: true }).start(() => {
+      Animated.timing(translateX, { toValue: -width, duration: SLIDE_DURATION, useNativeDriver: true }).start(() => {
         setIndex(prev => (prev + 1) % photos.length);
-        Animated.timing(fadeAnim, { toValue: 1, duration: FADE_DURATION, useNativeDriver: true }).start();
+        translateX.setValue(0);
       });
     }, ROTATION_INTERVAL);
     return () => clearInterval(timer);
-  }, [photos.length]);
+  }, [photos.length, width]);
 
   if (photos.length === 0) {
     return <RiverMotif width={width} height={height} variant="hero" />;
   }
 
+  const nextIndex = (index + 1) % photos.length;
+
   return (
-    <Animated.Image
-      source={{ uri: photos[index] }}
-      style={{ width: '100%', height: '100%', opacity: fadeAnim }}
-      resizeMode="cover"
-    />
+    <View style={{ width, height, overflow: 'hidden' }}>
+      <Animated.View style={{ flexDirection: 'row', width: width * 2, height, transform: [{ translateX }] }}>
+        <Image source={{ uri: photos[index] }} style={{ width, height }} resizeMode="cover" />
+        <Image source={{ uri: photos[nextIndex] }} style={{ width, height }} resizeMode="cover" />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -187,8 +192,8 @@ function ListingCard({ item, width }: { item: EstablishmentWithPhoto; width?: nu
 }
 
 export default function HomeScreen() {
-  const { profile } = useAuth();
   const { width, isDesktop, isWide, contentWidth } = useResponsive();
+  const { selectedCity, cities, setSelectedCity, hasMultipleCities } = useSelectedCity();
 
   const [listings, setListings] = useState<EstablishmentWithPhoto[]>([]);
   const [activeCategory, setActiveCategory] = useState<EstablishmentType>('hotel');
@@ -196,8 +201,9 @@ export default function HomeScreen() {
   const [heroPhotos, setHeroPhotos] = useState<string[]>([]);
   const [storyPhoto, setStoryPhoto] = useState<string | null>(null);
   const [categoryPhotos, setCategoryPhotos] = useState<Record<string, string | null>>({});
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
-  const firstName = profile?.full_name?.split(' ')[0];
+  const subdivisions = getCitySubdivisions(selectedCity?.name);
 
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'home_hero_image_url').maybeSingle()
@@ -220,6 +226,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (!selectedCity) return;
     setLoading(true);
     Promise.all([
       supabase
@@ -227,6 +234,7 @@ export default function HomeScreen() {
         .select('*, listing_photos(url, position)')
         .eq('status', 'approved')
         .eq('type', activeCategory)
+        .eq('city', selectedCity.name)
         .limit(10),
       supabase.from('establishment_ratings').select('*'),
     ]).then(([{ data, error }, { data: ratings }]) => {
@@ -246,7 +254,7 @@ export default function HomeScreen() {
       setListings(enriched);
       setLoading(false);
     });
-  }, [activeCategory]);
+  }, [activeCategory, selectedCity]);
 
   const storyHeight = isDesktop ? 420 : isWide ? 380 : 320;
   const desktopColumns = 4;
@@ -256,7 +264,22 @@ export default function HomeScreen() {
     : undefined;
 
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
-  const greeting = firstName ? `Bonjour, ${firstName} · Kinshasa, RDC` : 'Kinshasa, RDC';
+
+  function AvailabilityMarker() {
+    return (
+      <Pressable
+        style={styles.availabilityRow}
+        disabled={!hasMultipleCities}
+        onPress={() => setCityPickerOpen(true)}
+        hitSlop={6}
+      >
+        <Text style={styles.locationText}>
+          Disponible actuellement à {selectedCity?.name ?? '…'}
+        </Text>
+        {hasMultipleCities && <ChevronDown size={12} color="rgba(250,248,244,0.8)" />}
+      </Pressable>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -279,9 +302,9 @@ export default function HomeScreen() {
                   </Pressable>
                 </View>
                 <View>
-                  <Text style={styles.locationText}>{greeting}</Text>
+                  <AvailabilityMarker />
                   <Text style={[styles.heroTitle, { fontSize: 44, lineHeight: 48, marginTop: 12 }]}>
-                    Où voulez-vous{'\n'}aller aujourd'hui ?
+                    Découvrez la RDC{'\n'}autrement.
                   </Text>
                 </View>
                 <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
@@ -310,9 +333,9 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             <View style={styles.heroContentOverlay}>
-              <Text style={styles.locationText}>{greeting}</Text>
+              <AvailabilityMarker />
               <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: 10 }]}>
-                Où voulez-vous{'\n'}aller aujourd'hui ?
+                Découvrez la RDC{'\n'}autrement.
               </Text>
             </View>
           </View>
@@ -333,15 +356,15 @@ export default function HomeScreen() {
         {/* ── Bande éditoriale ── */}
         <View style={styles.introBand}>
           <Text style={[styles.introText, isWide && { fontSize: 20, lineHeight: 30, maxWidth: 620 }]}>
-            YakaRDC réunit les adresses qui font la fierté de Kinshasa — hôtels, tables,
-            maisons meublées et lieux à découvrir, choisis avec exigence.
+            YakaRDC réunit les adresses qui font la richesse de la RDC — hôtels, tables,
+            maisons meublées et lieux à découvrir, sélectionnés avec exigence.
           </Text>
         </View>
 
         {/* ── Catégories ── */}
         <View style={styles.section}>
           <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
-            <SectionHeading kicker="Explorez" title="Quatre façons de découvrir Kinshasa" />
+            <SectionHeading kicker="Explorez" title="Quatre façons de découvrir la RDC" />
           </View>
           <View style={{ marginTop: 14 }}>
             {isDesktop ? (
@@ -383,7 +406,7 @@ export default function HomeScreen() {
           <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
             <SectionHeading
               kicker="Sélection"
-              title="Recommandés à Kinshasa"
+              title={`Recommandés à ${selectedCity?.name ?? '…'}`}
               onSeeAll={() => router.push('/(tabs)/search')}
             />
           </View>
@@ -434,37 +457,62 @@ export default function HomeScreen() {
             <Text style={styles.storyKicker}>Le fleuve Congo</Text>
             <View style={[styles.storyRule, isWide && { alignSelf: 'flex-start' }]} />
             <Text style={[styles.storyTitle, isWide && { fontSize: 34, lineHeight: 40, textAlign: 'left' }]}>
-              Il façonne Kinshasa depuis toujours.
+              Il traverse la RDC de part en part.
             </Text>
             <Text style={[styles.storySub, isWide && { textAlign: 'left' }]}>
-              Chaque adresse YakaRDC porte une part de cette histoire — entre les rives,
-              les collines et les avenues de la capitale.
+              Chaque adresse YakaRDC porte une part de cette histoire — des rives du
+              fleuve aux collines et avenues qui font le pays.
             </Text>
           </View>
         </View>
 
-        {/* ── Communes populaires ── */}
-        <View style={styles.section}>
-          <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
-            <SectionHeading kicker="À proximité" title="Communes populaires" />
+        {/* ── Communes — seulement si la ville sélectionnée en a de configurées ── */}
+        {subdivisions && (
+          <View style={styles.section}>
+            <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
+              <SectionHeading kicker="À proximité" title={`Communes de ${selectedCity?.name}`} />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 18, gap: 10, marginTop: 12 }}
+            >
+              {subdivisions.featured.map((c) => (
+                <Pressable
+                  key={c}
+                  style={styles.communePill}
+                  onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: c } })}
+                >
+                  <MapPin size={12} color={colors.lave} />
+                  <Text style={styles.communeLabel}>{c}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 18, gap: 10, marginTop: 12 }}
-          >
-            {FEATURED_COMMUNES.map((c) => (
-              <Pressable
-                key={c}
-                style={styles.communePill}
-                onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: c } })}
-              >
-                <MapPin size={12} color={colors.lave} />
-                <Text style={styles.communeLabel}>{c}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
+        )}
+
+        {hasMultipleCities && (
+          <Modal visible={cityPickerOpen} transparent animationType="slide" onRequestClose={() => setCityPickerOpen(false)}>
+            <Pressable style={styles.modalOverlay} onPress={() => setCityPickerOpen(false)}>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <Text style={styles.modalTitle}>Choisir une ville</Text>
+                {cities.map(c => (
+                  <Pressable
+                    key={c.id}
+                    style={styles.modalOption}
+                    onPress={() => { setSelectedCity(c); setCityPickerOpen(false); }}
+                  >
+                    <Text style={[styles.modalOptionText, selectedCity?.id === c.id && { color: colors.lave, fontWeight: '600' }]}>
+                      {c.name}
+                    </Text>
+                    {selectedCity?.id === c.id && <Check size={16} color={colors.lave} />}
+                  </Pressable>
+                ))}
+              </View>
+            </Pressable>
+          </Modal>
+        )}
 
       </ScrollView>
     </View>
@@ -498,6 +546,7 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 20, right: 20, bottom: 26, zIndex: 2,
   },
   searchZone: { backgroundColor: colors.cream, paddingHorizontal: 20, paddingTop: 18 },
+  availabilityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
   locationText: {
     ...typography.overline, color: 'rgba(250,248,244,0.8)', letterSpacing: 0.6, textTransform: 'uppercase',
     textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
@@ -600,4 +649,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
   },
   communeLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: colors.ink },
+
+  // Sélecteur de ville — n'apparaît que si plusieurs villes sont actives
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
+  modalTitle: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 17, color: colors.ink, marginBottom: 10 },
+  modalOption: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  modalOptionText: { fontFamily: 'Manrope_500Medium', fontSize: 15, color: colors.ink },
 });

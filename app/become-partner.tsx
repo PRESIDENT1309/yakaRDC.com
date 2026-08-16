@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   TextInput, Platform, KeyboardAvoidingView, ActivityIndicator,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { colors, categoryColors } from '../lib/theme';
+import { useActiveCities } from '../lib/cities';
 import type { EstablishmentType } from '../lib/types';
 
 const TYPES: { key: EstablishmentType; label: string; icon: (c: string) => React.ReactNode }[] = [
@@ -41,6 +42,15 @@ function Field({ label, value, onChange, placeholder, keyboardType = 'default', 
 }
 
 export default function BecomePartnerScreen() {
+  // `cities` (Admin → Villes & catégories) est la source de vérité — tant
+  // qu'une seule ville est active, elle est choisie automatiquement et
+  // aucun sélecteur ne s'affiche.
+  const { cities: activeCities } = useActiveCities();
+  const [cityName, setCityName] = useState('');
+  useEffect(() => {
+    if (activeCities.length > 0 && !cityName) setCityName(activeCities[0].name);
+  }, [activeCities]);
+
   const [type, setType] = useState<EstablishmentType | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -64,13 +74,17 @@ export default function BecomePartnerScreen() {
       setError('Veuillez indiquer votre nom et votre téléphone.');
       return;
     }
+    if (!cityName) {
+      setError('Veuillez choisir une ville.');
+      return;
+    }
 
     setSubmitting(true);
     const { error: insertError } = await supabase.from('partner_requests').insert({
       establishment_type: type,
       establishment_name: name.trim(),
       description: description.trim() || null,
-      city: 'Kinshasa',
+      city: cityName,
       commune: commune.trim() || null,
       neighborhood: neighborhood.trim() || null,
       avenue: avenue.trim() || null,
@@ -163,6 +177,27 @@ export default function BecomePartnerScreen() {
           <Field label="Description" value={description} onChange={setDescription}
             placeholder="Décrivez votre établissement en quelques phrases..." multiline />
 
+          {/* Ville — ne s'affiche que s'il y a un vrai choix à faire */}
+          {activeCities.length > 1 && (
+            <>
+              <Text style={styles.sectionLabel}>Ville</Text>
+              <View style={styles.typeGrid}>
+                {activeCities.map(c => {
+                  const active = cityName === c.name;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      style={[styles.cityChip, active && styles.cityChipActive]}
+                      onPress={() => setCityName(c.name)}
+                    >
+                      <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
           {/* Localisation */}
           <Text style={styles.sectionLabel}>Localisation</Text>
           <View style={styles.row}>
@@ -229,6 +264,13 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingVertical: 14,
   },
   typeLabel: { fontSize: 12, color: colors.muted },
+  cityChip: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
+    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: colors.border,
+  },
+  cityChipActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
+  cityChipText: { fontSize: 12.5, color: colors.muted },
+  cityChipTextActive: { color: colors.lave, fontWeight: '500' },
   row: { flexDirection: 'row', gap: 10 },
   fieldWrap: { marginBottom: 12 },
   fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },

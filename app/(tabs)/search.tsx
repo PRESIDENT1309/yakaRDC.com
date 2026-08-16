@@ -27,6 +27,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, categoryColors } from '../../lib/theme';
+import { useSelectedCity } from '../../lib/city-context';
+import { getCitySubdivisions } from '../../lib/geography';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type CategoryFilter = EstablishmentType | 'all';
@@ -47,12 +49,6 @@ const CATEGORIES: { key: CategoryFilter; label: string }[] = [
   { key: 'furnished_house', label: 'Maisons' },
   { key: 'restaurant', label: 'Restaurants' },
   { key: 'site', label: 'Sites' },
-];
-
-// Communes de Kinshasa (liste non exhaustive — la ville en compte 24 au total)
-const COMMUNES = [
-  'Toutes', 'Gombe', 'Limete', 'Bandal', 'Ngaliema', "N'Sele",
-  'Kintambo', 'Lemba', 'Kalamu', 'Ngiri-Ngiri', 'Barumbu',
 ];
 
 // Chaque fourchette porte ses bornes réelles, pour que le filtre agisse vraiment
@@ -187,6 +183,10 @@ function FilterModal({
 
 export default function SearchScreen() {
   const params = useLocalSearchParams<{ commune?: string }>();
+  const { selectedCity } = useSelectedCity();
+  const subdivisions = getCitySubdivisions(selectedCity?.name);
+  const communeOptions = subdivisions ? ['Toutes', ...subdivisions.all] : null;
+
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [commune, setCommune] = useState('Toutes');
@@ -201,7 +201,14 @@ export default function SearchScreen() {
     if (params.commune) setCommune(params.commune);
   }, [params.commune]);
 
+  // La ville sélectionnée n'a pas de subdivisions configurées : le filtre
+  // "Commune" n'a plus de sens, on l'efface pour éviter un filtre fantôme.
+  useEffect(() => {
+    if (!subdivisions) setCommune('Toutes');
+  }, [subdivisions]);
+
   const fetchResults = useCallback(async () => {
+    if (!selectedCity) return;
     setLoading(true);
 
     // On récupère les tarifs et photos liés en une seule requête,
@@ -209,7 +216,8 @@ export default function SearchScreen() {
     let q = supabase
       .from('establishments')
       .select('*, rates(price, currency, unit), listing_photos(url, position, category)')
-      .eq('status', 'approved');
+      .eq('status', 'approved')
+      .eq('city', selectedCity.name);
 
     if (category !== 'all') q = q.eq('type', category);
     if (commune !== 'Toutes') q = q.eq('commune', commune);
@@ -263,7 +271,7 @@ export default function SearchScreen() {
 
     setResults(enriched);
     setLoading(false);
-  }, [query, category, commune, prix, note]);
+  }, [query, category, commune, prix, note, selectedCity]);
 
   useEffect(() => {
     const timer = setTimeout(fetchResults, 350);
@@ -325,16 +333,18 @@ export default function SearchScreen() {
           style={styles.filterRow}
           contentContainerStyle={{ gap: 6 }}
         >
-          <Pressable
-            style={[styles.filterPill, commune !== 'Toutes' && styles.filterPillActive]}
-            onPress={() => setActiveModal('commune')}
-          >
-            <MapPin size={12} color={commune !== 'Toutes' ? colors.lave : colors.muted} />
-            <Text style={[styles.filterPillText, commune !== 'Toutes' && { color: colors.lave }]}>
-              {commune === 'Toutes' ? 'Commune' : commune}
-            </Text>
-            <ChevronDown size={12} color={commune !== 'Toutes' ? colors.lave : colors.faint} />
-          </Pressable>
+          {communeOptions && (
+            <Pressable
+              style={[styles.filterPill, commune !== 'Toutes' && styles.filterPillActive]}
+              onPress={() => setActiveModal('commune')}
+            >
+              <MapPin size={12} color={commune !== 'Toutes' ? colors.lave : colors.muted} />
+              <Text style={[styles.filterPillText, commune !== 'Toutes' && { color: colors.lave }]}>
+                {commune === 'Toutes' ? 'Commune' : commune}
+              </Text>
+              <ChevronDown size={12} color={commune !== 'Toutes' ? colors.lave : colors.faint} />
+            </Pressable>
+          )}
 
           <Pressable
             style={[styles.filterPill, prix !== 'Tous' && styles.filterPillActive]}
@@ -384,14 +394,16 @@ export default function SearchScreen() {
         }
       />
 
-      <FilterModal
-        visible={activeModal === 'commune'}
-        title="Choisir une commune"
-        options={COMMUNES}
-        selected={commune}
-        onSelect={setCommune}
-        onClose={() => setActiveModal(null)}
-      />
+      {communeOptions && (
+        <FilterModal
+          visible={activeModal === 'commune'}
+          title="Choisir une commune"
+          options={communeOptions}
+          selected={commune}
+          onSelect={setCommune}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
       <FilterModal
         visible={activeModal === 'prix'}
         title="Fourchette de prix"
