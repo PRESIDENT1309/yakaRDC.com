@@ -4,15 +4,19 @@ import {
   Platform, TextInput, ActivityIndicator, Modal, Alert,
 } from 'react-native';
 import {
-  CalendarRange, Plus, Trash2, X, Building2, Home,
-  UtensilsCrossed, Mountain, MapPin, Check, Edit3,
+  CalendarRange, Plus, Trash2, X,
+  Check, Edit3,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
+import { useResponsive } from '../../lib/responsive';
+import CategoryIcon from '../../components/CategoryIcon';
+import StatusBadge from '../../components/StatusBadge';
+import Chip from '../../components/Chip';
 import type {
   TripPlan, TripPlanItem, TripPackingItem, Establishment,
-  EstablishmentType, Booking, PackingCategory,
+  Booking, PackingCategory,
 } from '../../lib/types';
 
 type Tab = 'itineraire' | 'budget' | 'reservations' | 'lieux' | 'prepa' | 'notes';
@@ -32,17 +36,6 @@ const PACKING_CATEGORIES: { key: PackingCategory; label: string }[] = [
   { key: 'personal', label: '🧴 Objets personnels' },
   { key: 'custom', label: '✨ Autres' },
 ];
-
-function TypeIcon({ type, size = 14 }: { type: EstablishmentType; size?: number }) {
-  const cat = categoryColors[type];
-  const props = { size, color: cat?.accent ?? colors.lave };
-  switch (type) {
-    case 'hotel': return <Building2 {...props} />;
-    case 'furnished_house': return <Home {...props} />;
-    case 'restaurant': return <UtensilsCrossed {...props} />;
-    case 'site': return <Mountain {...props} />;
-  }
-}
 
 function dateRange(start: string, end: string): string[] {
   const dates: string[] = [];
@@ -77,6 +70,11 @@ function toFr(iso: string): string {
 
 export default function PlannerScreen() {
   const { session } = useAuth();
+  const { isWide, contentWidth } = useResponsive();
+  // Contenu plafonné et centré dans contentMax dès la tablette — pas de
+  // grille : les onglets (chronologie, tableau de bord, checklist) ne se
+  // découpent pas naturellement en cartes, contrairement à Réservations.
+  const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<TripPlan | null>(null);
   const [items, setItems] = useState<TripPlanItem[]>([]);
@@ -313,39 +311,40 @@ export default function PlannerScreen() {
     <View style={styles.screen}>
       {/* ── En-tête fixe ── */}
       <View style={styles.header}>
-        <View style={styles.dashboardRow}>
-          <Text style={styles.dashItem}>📍 {plan?.destination ?? '—'}</Text>
-          <Text style={styles.dashItem}>📅 {days.length}j</Text>
-          <Text style={[styles.dashItem, { color: '#FAC775' }]}>💰 {estimatedTotal.toFixed(0)}$</Text>
-          <Text style={styles.dashItem}>🎯 {itineraryItems.length}</Text>
-          <Text style={styles.dashItem}>🏨 {bookings.length}</Text>
-        </View>
-
-        <Pressable style={styles.tripCard} onPress={() => openTripForm(true)}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.tripTitle}>{plan?.title}</Text>
-            <Text style={styles.tripMeta}>
-              {plan && `${formatDayLabel(plan.start_date).day} → ${formatDayLabel(plan.end_date).day} · ${plan.traveler_count} voyageur${plan.traveler_count > 1 ? 's' : ''}`}
-            </Text>
+        <View style={[styles.headerInner, isWide && wide]}>
+          <View style={styles.dashboardRow}>
+            <Text style={styles.dashItem}>📍 {plan?.destination ?? '—'}</Text>
+            <Text style={styles.dashItem}>📅 {days.length}j</Text>
+            <Text style={[styles.dashItem, { color: colors.amber }]}>💰 {estimatedTotal.toFixed(0)}$</Text>
+            <Text style={styles.dashItem}>🎯 {itineraryItems.length}</Text>
+            <Text style={styles.dashItem}>🏨 {bookings.length}</Text>
           </View>
-          <Edit3 size={14} color={colors.lave} />
-        </Pressable>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-          {TABS.map(t => (
-            <Pressable
-              key={t.key}
-              style={[styles.tabPill, activeTab === t.key && styles.tabPillActive]}
-              onPress={() => setActiveTab(t.key)}
-            >
-              <Text style={[styles.tabPillText, activeTab === t.key && styles.tabPillTextActive]}>{t.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <Pressable style={styles.tripCard} onPress={() => openTripForm(true)}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tripTitle}>{plan?.title}</Text>
+              <Text style={styles.tripMeta}>
+                {plan && `${formatDayLabel(plan.start_date).day} → ${formatDayLabel(plan.end_date).day} · ${plan.traveler_count} voyageur${plan.traveler_count > 1 ? 's' : ''}`}
+              </Text>
+            </View>
+            <Edit3 size={14} color={colors.lave} />
+          </Pressable>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingLeft: 18 }}>
+            {TABS.map(t => (
+              <Chip
+                key={t.key}
+                label={t.label}
+                active={activeTab === t.key}
+                onPress={() => setActiveTab(t.key)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       {/* ── Contenu défilant selon l'onglet ── */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[{ paddingBottom: 100 }, isWide && wide]}>
 
         {/* ITINÉRAIRE */}
         {activeTab === 'itineraire' && (
@@ -432,7 +431,7 @@ export default function PlannerScreen() {
               </View>
               <View style={styles.budgetBox}>
                 <Text style={styles.budgetBoxLabel}>Dépensé réel</Text>
-                <Text style={[styles.budgetBoxValue, { color: '#1F4D3A' }]}>{actualTotal.toFixed(0)} $</Text>
+                <Text style={[styles.budgetBoxValue, { color: colors.success }]}>{actualTotal.toFixed(0)} $</Text>
               </View>
             </View>
 
@@ -466,8 +465,8 @@ export default function PlannerScreen() {
               <View style={{ gap: 8, paddingHorizontal: 18 }}>
                 {bookings.map(b => (
                   <View key={b.id} style={styles.reservationCard}>
-                    <View style={[styles.reservationIcon, { backgroundColor: categoryColors[b.establishment?.type]?.soft ?? '#FAECE7' }]}>
-                      <TypeIcon type={b.establishment?.type} size={16} />
+                    <View style={[styles.reservationIcon, { backgroundColor: categoryColors[b.establishment?.type]?.soft ?? colors.laveSoft }]}>
+                      <CategoryIcon type={b.establishment?.type} size={16} color={categoryColors[b.establishment?.type]?.accent ?? colors.lave} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.reservationName}>{b.establishment?.name}</Text>
@@ -475,19 +474,7 @@ export default function PlannerScreen() {
                         {b.check_in ? `${b.check_in} → ${b.check_out}` : b.visit_date}
                       </Text>
                     </View>
-                    <View style={[
-                      styles.reservationBadge,
-                      b.status === 'confirmed' ? { backgroundColor: '#DCEEE3' } :
-                      b.status === 'rejected' ? { backgroundColor: '#FFF0F0' } : { backgroundColor: '#FAEEDA' },
-                    ]}>
-                      <Text style={[
-                        styles.reservationBadgeText,
-                        b.status === 'confirmed' ? { color: '#1F4D3A' } :
-                        b.status === 'rejected' ? { color: '#C0392B' } : { color: '#854F0B' },
-                      ]}>
-                        {b.status === 'confirmed' ? 'Confirmé' : b.status === 'rejected' ? 'Refusé' : 'En attente'}
-                      </Text>
-                    </View>
+                    <StatusBadge status={b.status} />
                   </View>
                 ))}
               </View>
@@ -505,14 +492,14 @@ export default function PlannerScreen() {
                 {wishlistItems.map(item => (
                   <View key={item.id} style={styles.wishlistCard}>
                     <Pressable onPress={() => toggleVisited(item)} style={[styles.checkCircle, item.visited && styles.checkCircleActive]}>
-                      {item.visited && <Check size={12} color="#FFF" />}
+                      {item.visited && <Check size={12} color={colors.white} />}
                     </Pressable>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.itemTitle, item.visited && styles.itemTitleDone]}>{item.title}</Text>
                       <Text style={styles.itemNotes}>{Number(item.estimated_cost).toFixed(0)} $</Text>
                     </View>
-                    <View style={[styles.wishlistBadge, item.visited ? { backgroundColor: '#DCEEE3' } : { backgroundColor: '#FAEEDA' }]}>
-                      <Text style={[styles.wishlistBadgeText, item.visited ? { color: '#1F4D3A' } : { color: '#854F0B' }]}>
+                    <View style={[styles.wishlistBadge, item.visited ? { backgroundColor: colors.successSoft } : { backgroundColor: colors.warningSoft }]}>
+                      <Text style={[styles.wishlistBadgeText, item.visited ? { color: colors.success } : { color: colors.warning }]}>
                         {item.visited ? 'Visité' : 'À visiter'}
                       </Text>
                     </View>
@@ -548,7 +535,7 @@ export default function PlannerScreen() {
                       {catItems.map(item => (
                         <View key={item.id} style={styles.packingRow}>
                           <Pressable onPress={() => togglePacking(item)} style={[styles.checkSquare, item.is_checked && styles.checkSquareActive]}>
-                            {item.is_checked && <Check size={11} color="#FFF" />}
+                            {item.is_checked && <Check size={11} color={colors.white} />}
                           </Pressable>
                           <Text style={[styles.packingLabel, item.is_checked && styles.packingLabelDone]}>{item.label}</Text>
                           <Pressable onPress={() => deletePacking(item.id)} hitSlop={8}>
@@ -688,13 +675,12 @@ export default function PlannerScreen() {
             <Text style={styles.fieldLabel}>Catégorie</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
               {PACKING_CATEGORIES.map(c => (
-                <Pressable
+                <Chip
                   key={c.key}
-                  style={[styles.catChip, packingCategory === c.key && styles.catChipActive]}
+                  label={c.label}
+                  active={packingCategory === c.key}
                   onPress={() => setPackingCategory(c.key)}
-                >
-                  <Text style={[styles.catChipText, packingCategory === c.key && { color: '#FAF8F4' }]}>{c.label}</Text>
-                </Pressable>
+                />
               ))}
             </View>
 
@@ -719,8 +705,8 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: '#FAF8F4',
     borderBottomWidth: 1, borderBottomColor: colors.border,
-    gap: 10,
   },
+  headerInner: { gap: 10 },
   headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink, paddingHorizontal: 18 },
   dashboardRow: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -735,10 +721,6 @@ const styles = StyleSheet.create({
   },
   tripTitle: { fontSize: 14, fontWeight: '500', color: colors.ink },
   tripMeta: { fontSize: 10.5, color: colors.muted, marginTop: 2 },
-  tabPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, marginLeft: 18 },
-  tabPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  tabPillText: { fontSize: 11.5, color: colors.muted },
-  tabPillTextActive: { color: '#FAF8F4', fontWeight: '500' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   emptyIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   emptyTitle: { fontSize: 18, fontWeight: '500', color: colors.ink },
@@ -770,15 +752,15 @@ const styles = StyleSheet.create({
   addItemBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginHorizontal: 18, marginTop: 6, backgroundColor: colors.laveSoft, borderRadius: 10, paddingVertical: 11 },
   addItemBtnText: { fontSize: 12.5, color: colors.lave, fontWeight: '500' },
   budgetHero: { alignItems: 'center', backgroundColor: colors.lave, marginHorizontal: 18, borderRadius: 16, padding: 20, marginBottom: 14 },
-  budgetHeroLabel: { fontSize: 11, color: 'rgba(250,248,244,0.7)' },
-  budgetHeroValue: { fontSize: 30, fontWeight: '600', color: '#FAC775', marginTop: 4 },
-  budgetHeroSub: { fontSize: 10.5, color: 'rgba(250,248,244,0.6)', marginTop: 2 },
+  budgetHeroLabel: { fontSize: 11, color: colors.cream + 'B3' },
+  budgetHeroValue: { fontSize: 30, fontWeight: '600', color: colors.amber, marginTop: 4 },
+  budgetHeroSub: { fontSize: 10.5, color: colors.cream + '99', marginTop: 2 },
   budgetGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 18, marginBottom: 14 },
   budgetBox: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
   budgetBoxLabel: { fontSize: 10.5, color: colors.muted },
   budgetBoxValue: { fontSize: 18, fontWeight: '500', color: colors.ink, marginTop: 3 },
   progressTrack: { height: 8, backgroundColor: '#F0EEE4', borderRadius: 4, marginHorizontal: 18, marginBottom: 18, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#1F4D3A', borderRadius: 4 },
+  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 4 },
   budgetDayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0EEE4' },
   budgetDayLabel: { fontSize: 12, color: colors.ink, textTransform: 'capitalize' },
   budgetDayValue: { fontSize: 12, fontWeight: '500', color: colors.lave },
@@ -786,11 +768,9 @@ const styles = StyleSheet.create({
   reservationIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   reservationName: { fontSize: 12.5, fontWeight: '500', color: colors.ink },
   reservationDate: { fontSize: 10.5, color: colors.muted, marginTop: 2 },
-  reservationBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-  reservationBadgeText: { fontSize: 9.5, fontWeight: '500' },
   wishlistCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
   checkCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
-  checkCircleActive: { backgroundColor: '#1F4D3A', borderColor: '#1F4D3A' },
+  checkCircleActive: { backgroundColor: colors.success, borderColor: colors.success },
   wishlistBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   wishlistBadgeText: { fontSize: 9, fontWeight: '500' },
   packingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
@@ -808,7 +788,4 @@ const styles = StyleSheet.create({
   fieldInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: colors.ink },
   row: { flexDirection: 'row', gap: 10 },
   errorText: { fontSize: 12, color: '#C0392B', backgroundColor: '#FFF0F0', borderRadius: 8, padding: 10, marginTop: 12, textAlign: 'center' },
-  catChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
-  catChipActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  catChipText: { fontSize: 11.5, color: colors.muted },
 });

@@ -23,6 +23,7 @@ import { useResponsive } from '../../lib/responsive';
 import CategoryIcon from '../../components/CategoryIcon';
 import EmptyState from '../../components/EmptyState';
 import Chip from '../../components/Chip';
+import StatusBadge from '../../components/StatusBadge';
 import type { Booking, Establishment } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
@@ -34,25 +35,6 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'confirmed', label: 'Confirmées' },
   { key: 'past', label: 'Passées' },
 ];
-
-function StatusBadge({ status }: { status: Booking['status'] }) {
-  const config = {
-    pending: { label: 'En attente', bg: colors.warningSoft, color: colors.warning },
-    confirmed: { label: 'Confirmée', bg: colors.successSoft, color: colors.success },
-    // checked_in et cancelled ne sont pas des états de succès/alerte : ils
-    // gardent leur propre traitement (fleuve / neutre) plutôt que d'être
-    // forcés dans les 3 jetons sémantiques.
-    checked_in: { label: 'Utilisée', bg: colors.fleuveSoft, color: colors.fleuveDark },
-    rejected: { label: 'Refusée', bg: colors.dangerSoft, color: colors.danger },
-    cancelled: { label: 'Annulée', bg: '#F5F4F0', color: colors.faint },
-  };
-  const c = config[status] ?? config.pending;
-  return (
-    <View style={[styles.badge, { backgroundColor: c.bg }]}>
-      <Text style={[styles.badgeText, { color: c.color }]}>{c.label}</Text>
-    </View>
-  );
-}
 
 function TicketModal({
   booking,
@@ -375,8 +357,6 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   cardName: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.ink },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
-  badgeText: { fontSize: 10, fontWeight: '500' },
   cardMeta: { fontSize: 11, color: colors.muted },
   cardDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
   cardBottom: {
