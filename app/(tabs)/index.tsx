@@ -295,32 +295,38 @@ export default function HomeScreen() {
             </View>
           </View>
         ) : (
-          // Mobile / tablette : la photo occupe sa propre zone, sans texte —
-          // le titre et la recherche vivent dans une bande de fond uni juste en dessous.
-          <View>
-            <View style={[styles.heroPhotoZone, { height: isWide ? 360 : 300 }]}>
-              <RotatingHero photos={heroPhotos} width={width} height={isWide ? 360 : 300} />
-              <PhotoScrim from="top" intensity={0.4} />
-              <View style={styles.topBarFloating}>
-                <LogoLockup />
-                <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
-                  <Bell size={17} color={colors.cream} strokeWidth={1.75} />
-                </Pressable>
-              </View>
+          // Mobile / tablette : la photo remonte jusqu'au niveau du titre —
+          // le repère de lieu et le titre vivent dans l'image, pas sur un
+          // fond de couleur séparé. La recherche reprend juste après, sur le
+          // canevas crème normal de la page.
+          <View style={[styles.heroPhotoZone, { height: isWide ? 460 : 400 }]}>
+            <RotatingHero photos={heroPhotos} width={width} height={isWide ? 460 : 400} />
+            <PhotoScrim from="top" intensity={0.4} />
+            <PhotoScrim from="bottom" intensity={0.65} />
+            <View style={styles.topBarFloating}>
+              <LogoLockup />
+              <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
+                <Bell size={17} color={colors.cream} strokeWidth={1.75} />
+              </Pressable>
             </View>
-            <View style={styles.heroDarkBand}>
+            <View style={styles.heroContentOverlay}>
               <Text style={styles.locationText}>{greeting}</Text>
               <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: 10 }]}>
                 Où voulez-vous{'\n'}aller aujourd'hui ?
               </Text>
-              <Pressable style={[styles.searchBar, { marginTop: 20 }]} onPress={() => router.push('/(tabs)/search')}>
-                <Search size={16} color={colors.faint} />
-                <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
-                <View style={styles.filterBtn}>
-                  <SlidersHorizontal size={14} color={colors.cream} />
-                </View>
-              </Pressable>
             </View>
+          </View>
+        )}
+
+        {!isDesktop && (
+          <View style={styles.searchZone}>
+            <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
+              <Search size={16} color={colors.faint} />
+              <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
+              <View style={styles.filterBtn}>
+                <SlidersHorizontal size={14} color={colors.cream} />
+              </View>
+            </Pressable>
           </View>
         )}
 
@@ -479,7 +485,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
 
-  // Hero — mobile/tablette (photo + bande de fond uni)
+  // Hero — mobile/tablette : la photo remonte jusqu'au titre, le texte vit dedans
   heroPhotoZone: { backgroundColor: colors.nuit, overflow: 'hidden', position: 'relative' },
   topBarFloating: {
     position: 'absolute',
@@ -488,9 +494,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     zIndex: 2,
   },
-  heroDarkBand: { backgroundColor: colors.nuit, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 26 },
-  locationText: { ...typography.overline, color: 'rgba(250,248,244,0.75)', letterSpacing: 0.6, textTransform: 'uppercase' },
-  heroTitle: { fontFamily: 'PlayfairDisplay_500Medium', color: colors.cream },
+  heroContentOverlay: {
+    position: 'absolute', left: 20, right: 20, bottom: 26, zIndex: 2,
+  },
+  searchZone: { backgroundColor: colors.cream, paddingHorizontal: 20, paddingTop: 18 },
+  locationText: {
+    ...typography.overline, color: 'rgba(250,248,244,0.8)', letterSpacing: 0.6, textTransform: 'uppercase',
+    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  heroTitle: {
+    fontFamily: 'PlayfairDisplay_500Medium', color: colors.cream,
+    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+  },
 
   // Hero — desktop (deux panneaux)
   heroDesktopOuter: { paddingTop: 20, paddingHorizontal: 20 },
