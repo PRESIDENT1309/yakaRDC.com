@@ -228,6 +228,35 @@ export default function AppearanceScreen() {
           description="Jusqu'à 10 photos — défilent automatiquement si plus d'une"
         />
 
+        <Text style={styles.groupLabel}>Catégories — page d'accueil</Text>
+        <SingleImageSlot
+          settingKey="home_category_hotel_url"
+          title="Hôtels"
+          description="Vignette de la catégorie « Hôtels » sur l'accueil"
+        />
+        <SingleImageSlot
+          settingKey="home_category_furnished_house_url"
+          title="Maisons meublées"
+          description="Vignette de la catégorie « Maisons meublées » sur l'accueil"
+        />
+        <SingleImageSlot
+          settingKey="home_category_restaurant_url"
+          title="Restaurants"
+          description="Vignette de la catégorie « Restaurants » sur l'accueil"
+        />
+        <SingleImageSlot
+          settingKey="home_category_site_url"
+          title="Sites touristiques"
+          description="Vignette de la catégorie « Sites touristiques » sur l'accueil"
+        />
+
+        <Text style={styles.groupLabel}>Bande éditoriale</Text>
+        <SingleImageSlot
+          settingKey="home_story_image_url"
+          title="« Le Fleuve Congo »"
+          description="Section pleine largeur sur l'accueil, sous les recommandations"
+        />
+
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
             💡 Sans photo, l'illustration dessinée s'affiche automatiquement. Avec 2 photos ou plus, elles défilent toutes seules avec un fondu, dans l'ordre où vous les avez ajoutées.
@@ -248,6 +277,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
   headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
   content: { padding: 20, gap: 14, maxWidth: 500 },
+  groupLabel: { fontSize: 11, fontWeight: '600', color: colors.faint, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
   cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink },
   cardDescription: { fontSize: 10.5, color: colors.faint, marginTop: 2, marginBottom: 12 },

@@ -22,7 +22,6 @@ import {
   Mountain,
   Star,
   MapPin,
-  ChevronRight,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -30,6 +29,8 @@ import { colors, categoryColors, typography, spacing, radii } from '../../lib/th
 import { useResponsive } from '../../lib/responsive';
 import SectionHeading from '../../components/SectionHeading';
 import RiverMotif from '../../components/RiverMotif';
+import PhotoScrim from '../../components/PhotoScrim';
+import CategoryTexture from '../../components/CategoryTexture';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type EstablishmentWithPhoto = Establishment & {
@@ -41,13 +42,14 @@ type EstablishmentWithPhoto = Establishment & {
 const CATEGORIES: {
   key: EstablishmentType;
   label: string;
-  Icon: typeof Building2;
+  kicker: string;
   tone: string;
+  settingKey: string;
 }[] = [
-  { key: 'hotel', label: 'Hôtels', Icon: Building2, tone: colors.lave },
-  { key: 'furnished_house', label: 'Maisons meublées', Icon: Home, tone: colors.fleuveDark },
-  { key: 'restaurant', label: 'Restaurants', Icon: UtensilsCrossed, tone: colors.or },
-  { key: 'site', label: 'Sites touristiques', Icon: Mountain, tone: colors.foret },
+  { key: 'hotel', label: 'Hôtels', kicker: 'Séjourner', tone: colors.lave, settingKey: 'home_category_hotel_url' },
+  { key: 'furnished_house', label: 'Maisons meublées', kicker: "S'installer", tone: colors.fleuveDark, settingKey: 'home_category_furnished_house_url' },
+  { key: 'restaurant', label: 'Restaurants', kicker: 'Se régaler', tone: colors.or, settingKey: 'home_category_restaurant_url' },
+  { key: 'site', label: 'Sites touristiques', kicker: 'Découvrir', tone: colors.foret, settingKey: 'home_category_site_url' },
 ];
 
 // Quelques-unes des 24 communes de Kinshasa, mises en avant sur l'accueil
@@ -66,14 +68,18 @@ function CategoryIcon({ type, size = 24, color }: { type: EstablishmentType; siz
   }
 }
 
-// Logo — petit blason existant, conservé tel quel (repère de marque stable).
-function LogoMark() {
+// Blason existant (cercle/montagne/vague) + nom en Playfair — la marque telle
+// qu'elle existait déjà, sans badge circulaire générique autour du blason.
+function LogoLockup() {
   return (
-    <Svg width="18" height="18" viewBox="0 0 120 120">
-      <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-      <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-      <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-    </Svg>
+    <View style={styles.logoRow}>
+      <Svg width="22" height="22" viewBox="0 0 120 120">
+        <Circle cx="60" cy="48" r="22" fill={colors.amber} />
+        <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
+        <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
+      </Svg>
+      <Text style={styles.logoText}>YakaRDC</Text>
+    </View>
   );
 }
 
@@ -112,22 +118,28 @@ function CategoryTile({
   active,
   onPress,
   style,
-  iconSize = 26,
+  photoUrl,
 }: {
   cat: (typeof CATEGORIES)[number];
   active: boolean;
   onPress: () => void;
   style?: any;
-  iconSize?: number;
+  photoUrl: string | null;
 }) {
-  const { Icon } = cat;
   return (
-    <Pressable
-      style={[styles.tile, { backgroundColor: cat.tone }, active && styles.tileActive, style]}
-      onPress={onPress}
-    >
-      <Icon size={iconSize} color={colors.cream} strokeWidth={1.6} />
-      <Text style={styles.tileLabel}>{cat.label}</Text>
+    <Pressable style={[styles.tile, active && styles.tileActive, style]} onPress={onPress}>
+      {photoUrl ? (
+        <>
+          <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <PhotoScrim from="bottom" intensity={0.68} />
+        </>
+      ) : (
+        <CategoryTexture tone={cat.tone} />
+      )}
+      <View style={styles.tileTextWrap}>
+        <Text style={styles.tileKicker}>{cat.kicker}</Text>
+        <Text style={styles.tileLabel}>{cat.label}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -183,6 +195,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [heroPhotos, setHeroPhotos] = useState<string[]>([]);
   const [storyPhoto, setStoryPhoto] = useState<string | null>(null);
+  const [categoryPhotos, setCategoryPhotos] = useState<Record<string, string | null>>({});
 
   const firstName = profile?.full_name?.split(' ')[0];
 
@@ -192,11 +205,18 @@ export default function HomeScreen() {
         try { setHeroPhotos(data?.value ? JSON.parse(data.value) : []); }
         catch { setHeroPhotos([]); }
       });
-    // Nouvelle clé (facultative) pour la bande "Le Fleuve Congo" — même
-    // mécanisme que le hero, sans changement de schéma : si elle n'est pas
-    // encore renseignée, le motif de marque prend le relais.
     supabase.from('app_settings').select('value').eq('key', 'home_story_image_url').maybeSingle()
       .then(({ data }) => setStoryPhoto(data?.value ?? null));
+    // Photos de catégories — choisies à la main depuis l'admin (Apparence),
+    // jamais dérivées automatiquement des établissements. Même mécanisme
+    // (app_settings, clé/valeur) que le hero et la bande Fleuve Congo.
+    supabase.from('app_settings').select('key, value')
+      .in('key', CATEGORIES.map(c => c.settingKey))
+      .then(({ data }) => {
+        const map: Record<string, string | null> = {};
+        (data ?? []).forEach((row: any) => { map[row.key] = row.value; });
+        setCategoryPhotos(map);
+      });
   }, []);
 
   useEffect(() => {
@@ -228,7 +248,6 @@ export default function HomeScreen() {
     });
   }, [activeCategory]);
 
-  const heroHeight = isDesktop ? 560 : isWide ? 460 : 400;
   const storyHeight = isDesktop ? 420 : isWide ? 380 : 320;
   const desktopColumns = 4;
   const desktopGap = 16;
@@ -237,53 +256,73 @@ export default function HomeScreen() {
     : undefined;
 
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
+  const greeting = firstName ? `Bonjour, ${firstName} · Kinshasa, RDC` : 'Kinshasa, RDC';
 
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
 
-        {/* ── Hero immersif ── */}
-        <View style={[styles.hero, { height: heroHeight }]}>
-          <View style={StyleSheet.absoluteFill}>
-            <RotatingHero photos={heroPhotos} width={width} height={heroHeight} />
-          </View>
-          <View style={[StyleSheet.absoluteFill, styles.heroScrim]} />
-
-          <View style={styles.topBar}>
-            <View style={styles.logoRow}>
-              <View style={styles.logoBadge}><LogoMark /></View>
-              <Text style={styles.logoText}>YakaRDC</Text>
-            </View>
-            <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
-              <Bell size={18} color={colors.cream} />
-            </Pressable>
-          </View>
-
-          <View style={[styles.heroContent, isDesktop && { maxWidth: 640 }]}>
-            <View style={styles.locationRow}>
-              <MapPin size={12} color="rgba(250,248,244,0.7)" />
-              <Text style={styles.locationText}>
-                {firstName ? `Bonjour, ${firstName} · Kinshasa, RDC` : 'Kinshasa, RDC'}
-              </Text>
-            </View>
-            <Text style={[styles.heroTitle, { fontSize: isDesktop ? 56 : isWide ? 48 : 34, lineHeight: isDesktop ? 60 : isWide ? 52 : 40 }]}>
-              Où voulez-vous{'\n'}aller aujourd'hui ?
-            </Text>
-          </View>
-        </View>
-
-        {/* ── Bande de recherche ── */}
-        <View style={styles.searchBand}>
-          <View style={[wide, !isWide && { paddingHorizontal: spacing.md }]}>
-            <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
-              <Search size={16} color={colors.faint} />
-              <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
-              <View style={styles.filterBtn}>
-                <SlidersHorizontal size={14} color={colors.cream} />
+        {/* ── Hero ── */}
+        {isDesktop ? (
+          // Desktop : composition en deux panneaux — la photo est cadrée,
+          // pas étirée bord à bord, et le texte vit sur un fond uni séparé.
+          <View style={styles.heroDesktopOuter}>
+            <View style={[wide, styles.heroDesktopRow]}>
+              <View style={styles.heroPhotoPanel}>
+                <RotatingHero photos={heroPhotos} width={contentWidth * 0.62} height={560} />
               </View>
-            </Pressable>
+              <View style={styles.heroContentPanel}>
+                <View style={styles.heroPanelTop}>
+                  <LogoLockup />
+                  <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
+                    <Bell size={17} color={colors.cream} strokeWidth={1.75} />
+                  </Pressable>
+                </View>
+                <View>
+                  <Text style={styles.locationText}>{greeting}</Text>
+                  <Text style={[styles.heroTitle, { fontSize: 44, lineHeight: 48, marginTop: 12 }]}>
+                    Où voulez-vous{'\n'}aller aujourd'hui ?
+                  </Text>
+                </View>
+                <Pressable style={styles.searchBar} onPress={() => router.push('/(tabs)/search')}>
+                  <Search size={16} color={colors.faint} />
+                  <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
+                  <View style={styles.filterBtn}>
+                    <SlidersHorizontal size={14} color={colors.cream} />
+                  </View>
+                </Pressable>
+              </View>
+            </View>
           </View>
-        </View>
+        ) : (
+          // Mobile / tablette : la photo occupe sa propre zone, sans texte —
+          // le titre et la recherche vivent dans une bande de fond uni juste en dessous.
+          <View>
+            <View style={[styles.heroPhotoZone, { height: isWide ? 360 : 300 }]}>
+              <RotatingHero photos={heroPhotos} width={width} height={isWide ? 360 : 300} />
+              <PhotoScrim from="top" intensity={0.4} />
+              <View style={styles.topBarFloating}>
+                <LogoLockup />
+                <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
+                  <Bell size={17} color={colors.cream} strokeWidth={1.75} />
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.heroDarkBand}>
+              <Text style={styles.locationText}>{greeting}</Text>
+              <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: 10 }]}>
+                Où voulez-vous{'\n'}aller aujourd'hui ?
+              </Text>
+              <Pressable style={[styles.searchBar, { marginTop: 20 }]} onPress={() => router.push('/(tabs)/search')}>
+                <Search size={16} color={colors.faint} />
+                <Text style={styles.searchPlaceholder}>Hôtel, restaurant, site...</Text>
+                <View style={styles.filterBtn}>
+                  <SlidersHorizontal size={14} color={colors.cream} />
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* ── Bande éditoriale ── */}
         <View style={styles.introBand}>
@@ -307,8 +346,8 @@ export default function HomeScreen() {
                     cat={cat}
                     active={activeCategory === cat.key}
                     onPress={() => setActiveCategory(cat.key)}
-                    iconSize={30}
-                    style={{ flex: i === 0 ? 1.7 : 1, height: 240 }}
+                    photoUrl={categoryPhotos[cat.settingKey] ?? null}
+                    style={{ flex: i === 0 ? 1.7 : 1, height: 260 }}
                   />
                 ))}
               </View>
@@ -324,7 +363,8 @@ export default function HomeScreen() {
                     cat={cat}
                     active={activeCategory === cat.key}
                     onPress={() => setActiveCategory(cat.key)}
-                    style={{ width: i === 0 ? 176 : 138, height: 200 }}
+                    photoUrl={categoryPhotos[cat.settingKey] ?? null}
+                    style={{ width: i === 0 ? 188 : 148, height: 220 }}
                   />
                 ))}
               </ScrollView>
@@ -383,9 +423,10 @@ export default function HomeScreen() {
               <RiverMotif width={width} height={storyHeight} variant="band" />
             )}
           </View>
-          <View style={[StyleSheet.absoluteFill, styles.storyScrim]} />
+          {storyPhoto && <PhotoScrim from="bottom" intensity={0.5} />}
           <View style={[styles.storyContent, isWide && { maxWidth: 560, alignItems: 'flex-start' }]}>
             <Text style={styles.storyKicker}>Le fleuve Congo</Text>
+            <View style={[styles.storyRule, isWide && { alignSelf: 'flex-start' }]} />
             <Text style={[styles.storyTitle, isWide && { fontSize: 34, lineHeight: 40, textAlign: 'left' }]}>
               Il façonne Kinshasa depuis toujours.
             </Text>
@@ -427,40 +468,44 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
 
-  // Hero
-  hero: { backgroundColor: colors.nuit, overflow: 'hidden', position: 'relative' },
-  heroScrim: { backgroundColor: 'rgba(26,10,3,0.4)' },
-  topBar: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 54 : 20,
-    left: 18,
-    right: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 2,
-  },
+  // Logo & top bar
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoBadge: {
-    width: 32, height: 32, borderRadius: 9,
-    backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center',
+  logoText: {
+    fontFamily: 'PlayfairDisplay_500Medium', fontSize: 21, color: colors.cream,
+    textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
-  logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 20, color: colors.cream },
   bellBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
-  heroContent: { position: 'absolute', bottom: 32, left: 18, right: 18, zIndex: 2 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
-  locationText: { ...typography.overline, color: 'rgba(250,248,244,0.75)', letterSpacing: 0.6 },
+
+  // Hero — mobile/tablette (photo + bande de fond uni)
+  heroPhotoZone: { backgroundColor: colors.nuit, overflow: 'hidden', position: 'relative' },
+  topBarFloating: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 54 : 20,
+    left: 18, right: 18,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    zIndex: 2,
+  },
+  heroDarkBand: { backgroundColor: colors.nuit, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 26 },
+  locationText: { ...typography.overline, color: 'rgba(250,248,244,0.75)', letterSpacing: 0.6, textTransform: 'uppercase' },
   heroTitle: { fontFamily: 'PlayfairDisplay_500Medium', color: colors.cream },
 
-  // Search band
-  searchBand: { backgroundColor: colors.cream, paddingTop: 18, paddingBottom: 4 },
+  // Hero — desktop (deux panneaux)
+  heroDesktopOuter: { paddingTop: 20, paddingHorizontal: 20 },
+  heroDesktopRow: { flexDirection: 'row', gap: 4, height: 560 },
+  heroPhotoPanel: { flex: 1.6, borderRadius: radii.lg, overflow: 'hidden', backgroundColor: colors.nuit },
+  heroContentPanel: {
+    flex: 1, backgroundColor: colors.nuit, borderRadius: radii.lg,
+    padding: 32, justifyContent: 'space-between',
+  },
+  heroPanelTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  // Search
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.white, borderRadius: radii.md,
-    borderWidth: 1, borderColor: colors.border,
     paddingLeft: 14, paddingRight: 6, paddingVertical: 10,
   },
   searchPlaceholder: { flex: 1, ...typography.body, color: colors.faint },
@@ -471,7 +516,7 @@ const styles = StyleSheet.create({
 
   // Intro band
   introBand: {
-    backgroundColor: colors.surfaceSunken, marginTop: 22,
+    backgroundColor: colors.surfaceSunken,
     paddingVertical: 26, paddingHorizontal: 32, alignItems: 'center',
   },
   introText: {
@@ -485,13 +530,15 @@ const styles = StyleSheet.create({
   // Category tiles
   tilesRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 0 },
   tile: {
-    borderRadius: radii.lg, alignItems: 'flex-start', justifyContent: 'flex-end',
-    padding: 16, overflow: 'hidden',
+    borderRadius: radii.lg, justifyContent: 'flex-end', overflow: 'hidden', position: 'relative',
   },
   tileActive: { borderWidth: 2, borderColor: colors.cream },
-  tileLabel: {
-    fontFamily: 'Manrope_600SemiBold', fontSize: 14, color: colors.cream, marginTop: 10,
+  tileTextWrap: { padding: 16 },
+  tileKicker: {
+    fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, letterSpacing: 1,
+    textTransform: 'uppercase', color: 'rgba(250,248,244,0.75)', marginBottom: 4,
   },
+  tileLabel: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 19, color: colors.cream },
 
   // Listing cards
   card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
@@ -520,9 +567,9 @@ const styles = StyleSheet.create({
 
   // Story band
   storyBand: { marginTop: 30, position: 'relative', overflow: 'hidden' },
-  storyScrim: { backgroundColor: 'rgba(26,10,3,0.32)' },
   storyContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase', marginBottom: 10 },
+  storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase' },
+  storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: 10, marginBottom: 16 },
   storyTitle: {
     fontFamily: 'PlayfairDisplay_700Bold_Italic', fontSize: 27, lineHeight: 33,
     color: colors.cream, textAlign: 'center', marginBottom: 10,
