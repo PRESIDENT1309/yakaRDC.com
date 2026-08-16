@@ -164,8 +164,8 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [fetchResults]);
 
-  // ── Mise en page responsive : liste (mobile) → grille 2 (tablette) → grille 3-4 (desktop) ──
-  const columns = isDesktop ? 4 : isTablet ? 2 : 1;
+  // ── Mise en page responsive : grille 2 (mobile/tablette) → grille 4 (desktop) ──
+  const columns = isDesktop ? 4 : 2;
   const gridWidth = isWide ? contentWidth : width;
   const gutter = spacing.md + 2; // 18 — gouttière de facto déjà en usage sur cet écran
   const gap = 12;
@@ -269,7 +269,6 @@ export default function SearchScreen() {
           />
         )}
         contentContainerStyle={[styles.listContent, isWide && wide]}
-        ItemSeparatorComponent={columns === 1 ? () => <View style={{ height: 12 }} /> : undefined}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           !loading ? (
