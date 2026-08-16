@@ -14,16 +14,15 @@ import {
   QrCode,
   X,
   CalendarCheck,
-  Clock,
-  CheckCircle,
-  XCircle,
-  ChevronRight,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, radii } from '../../lib/theme';
+import { useResponsive } from '../../lib/responsive';
 import CategoryIcon from '../../components/CategoryIcon';
+import EmptyState from '../../components/EmptyState';
+import Chip from '../../components/Chip';
 import type { Booking, Establishment } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
@@ -38,11 +37,14 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 
 function StatusBadge({ status }: { status: Booking['status'] }) {
   const config = {
-    pending: { label: 'En attente', bg: '#FFF8E6', color: '#854F0B' },
-    confirmed: { label: 'Confirmée', bg: '#DCEEE3', color: '#1F4D3A' },
-    checked_in: { label: 'Utilisée', bg: '#E1F5EE', color: '#085041' },
-    rejected: { label: 'Refusée', bg: '#FFF0F0', color: '#C0392B' },
-    cancelled: { label: 'Annulée', bg: '#F5F4F0', color: '#888780' },
+    pending: { label: 'En attente', bg: colors.warningSoft, color: colors.warning },
+    confirmed: { label: 'Confirmée', bg: colors.successSoft, color: colors.success },
+    // checked_in et cancelled ne sont pas des états de succès/alerte : ils
+    // gardent leur propre traitement (fleuve / neutre) plutôt que d'être
+    // forcés dans les 3 jetons sémantiques.
+    checked_in: { label: 'Utilisée', bg: colors.fleuveSoft, color: colors.fleuveDark },
+    rejected: { label: 'Refusée', bg: colors.dangerSoft, color: colors.danger },
+    cancelled: { label: 'Annulée', bg: '#F5F4F0', color: colors.faint },
   };
   const c = config[status] ?? config.pending;
   return (
@@ -145,7 +147,7 @@ function BookingCard({
   onCancel: () => void;
 }) {
   const cat = categoryColors[item.establishment.type];
-  const soft = cat?.soft ?? '#FAECE7';
+  const soft = cat?.soft ?? colors.laveSoft;
   const accent = cat?.accent ?? colors.lave;
   const isPast = item.status === 'checked_in' || item.status === 'cancelled' || item.status === 'rejected';
 
@@ -198,7 +200,7 @@ function BookingCard({
         ) : item.status === 'checked_in' ? (
           <Text style={styles.cardFooterNote}>Terminée</Text>
         ) : item.status === 'rejected' ? (
-          <Text style={[styles.cardFooterNote, { color: '#C0392B' }]}>
+          <Text style={[styles.cardFooterNote, { color: colors.danger }]}>
             Demande refusée par l'établissement
           </Text>
         ) : item.status === 'cancelled' ? (
@@ -211,6 +213,12 @@ function BookingCard({
 
 export default function BookingsScreen() {
   const { session } = useAuth();
+  const { isWide, contentWidth } = useResponsive();
+  // Grille 2 colonnes dès la tablette (contrairement à la Fiche établissement,
+  // BookingCard est une carte courte : une grille lui va mieux qu'une colonne
+  // unique étirée). `wide` centre le contenu dans contentMax, comme Recherche.
+  const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
+  const cardWidth = isWide ? (contentWidth - 14 * 2 - 10) / 2 : undefined;
   const [bookings, setBookings] = useState<BookingWithEstablishment[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [loading, setLoading] = useState(true);
@@ -252,27 +260,23 @@ export default function BookingsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mes réservations</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 6 }}
-        >
-          {STATUS_FILTERS.map((f) => (
-            <Pressable
-              key={f.key}
-              style={[styles.filterPill, filter === f.key && styles.filterPillActive]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Text style={[
-                styles.filterPillText,
-                filter === f.key && styles.filterPillTextActive,
-              ]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <View style={[styles.headerInner, isWide && wide]}>
+          <Text style={styles.headerTitle}>Mes réservations</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 6 }}
+          >
+            {STATUS_FILTERS.map((f) => (
+              <Chip
+                key={f.key}
+                label={f.label}
+                active={filter === f.key}
+                onPress={() => setFilter(f.key)}
+              />
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       {loading ? (
@@ -281,17 +285,17 @@ export default function BookingsScreen() {
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
-          <CalendarCheck size={44} color={colors.borderStrong} />
-          <Text style={styles.emptyTitle}>Aucune réservation</Text>
-          <Text style={styles.emptyText}>
-            {filter === 'all'
+          <EmptyState
+            icon={<CalendarCheck size={44} color={colors.borderStrong} />}
+            title="Aucune réservation"
+            description={filter === 'all'
               ? 'Vous n\'avez pas encore fait de demande de réservation.'
               : 'Aucune réservation dans cette catégorie.'}
-          </Text>
+          />
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, isWide && wide, isWide && styles.listGrid]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -302,12 +306,13 @@ export default function BookingsScreen() {
           }
         >
           {filtered.map((item) => (
-            <BookingCard
-              key={item.id}
-              item={item}
-              onTicket={() => setSelectedTicket(item)}
-              onCancel={() => handleCancel(item.id)}
-            />
+            <View key={item.id} style={isWide ? { width: cardWidth } : undefined}>
+              <BookingCard
+                item={item}
+                onTicket={() => setSelectedTicket(item)}
+                onCancel={() => handleCancel(item.id)}
+              />
+            </View>
           ))}
         </ScrollView>
       )}
@@ -329,31 +334,17 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    gap: 12,
   },
+  headerInner: { gap: 12 },
   headerTitle: { fontSize: 22, fontWeight: '500', color: colors.ink },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  filterPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  filterPillText: { fontSize: 12, color: colors.muted },
-  filterPillTextActive: { color: '#FAF8F4', fontWeight: '500' },
   list: { padding: 14, gap: 10, paddingBottom: 100 },
+  // Tablette/desktop uniquement : la colonne unique passe en grille 2
+  // colonnes (voir cardWidth dans BookingsScreen).
+  listGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    gap: 10,
-  },
-  emptyTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 20 },
+  // Le centrage seul : icône/titre/description/espacement viennent
+  // maintenant de EmptyState lui-même.
+  empty: { flex: 1, justifyContent: 'center' },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -384,7 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   cardName: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.ink },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
   badgeText: { fontSize: 10, fontWeight: '500' },
   cardMeta: { fontSize: 11, color: colors.muted },
   cardDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
@@ -406,13 +397,13 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: radii.sm,
   },
   actionBtnText: { fontSize: 11, color: '#FAF8F4', fontWeight: '500' },
   cancelBtn: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -461,7 +452,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
+    shadowColor: colors.nuit,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -509,7 +500,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 10,
     backgroundColor: '#F5F4F0',
-    borderRadius: 8,
+    borderRadius: radii.sm,
     alignItems: 'center',
   },
   ticketFooterText: { fontSize: 11, color: colors.muted, textAlign: 'center' },

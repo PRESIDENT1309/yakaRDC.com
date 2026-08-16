@@ -901,7 +901,7 @@ export default function ListingDetailScreen() {
           </View>
 
           <View style={isDesktop ? styles.desktopSidebar : undefined}>
-          <View style={styles.priceCard}>
+          <View style={[styles.priceCard, isDesktop && styles.priceCardSticky]}>
             <View>
               <Text style={styles.priceFrom}>À partir de</Text>
               <Text style={styles.priceValue}>{priceLabel}</Text>
@@ -1053,12 +1053,16 @@ const styles = StyleSheet.create({
   // Desktop uniquement (≥1024) : colonne éditoriale flexible + colonne prix
   // étroite et sticky. Tablette/mobile gardent la colonne unique existante
   // (voir `wide` pour le centrage tablette+desktop dans breakpoints.contentMax).
-  bodyDesktopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
+  // alignItems reste au défaut ('stretch', pas 'flex-start') : desktopSidebar
+  // doit avoir la même hauteur que desktopMain pour offrir de la place où
+  // "coller". Le sticky lui-même va sur priceCard (styles.priceCardSticky),
+  // pas sur desktopSidebar : un élément sticky doit rester plus court que son
+  // conteneur pour avoir une plage de défilement dans laquelle tenir — le
+  // mettre sur le conteneur étiré revient à l'annuler (rien ne "dépasse").
+  bodyDesktopRow: { flexDirection: 'row', gap: spacing.xl },
   desktopMain: { flex: 1, minWidth: 0 },
-  desktopSidebar: {
-    width: 320,
-    ...(Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {}),
-  },
+  desktopSidebar: { width: 320 },
+  priceCardSticky: Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {},
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locationText: { fontSize: 13, color: colors.muted },
