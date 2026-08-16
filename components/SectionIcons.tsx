@@ -1,5 +1,6 @@
 import Svg, { Path, Rect, Circle, Polygon, Line } from 'react-native-svg';
 import { View, StyleSheet } from 'react-native';
+import { colors } from '../lib/theme';
 
 // Icônes dessinées pour YakaRDC, en remplacement des emoji.
 // Chacune s'affiche dans une pastille colorée, à la manière des sections
@@ -10,7 +11,7 @@ interface IconProps {
   color?: string;
 }
 
-export function PhotoIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function PhotoIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Rect x="2" y="4" width="16" height="12" rx="2.5" fill="none" stroke={color} strokeWidth={1.6} />
@@ -20,7 +21,7 @@ export function PhotoIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function InfoIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function InfoIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Rect x="4" y="2.5" width="12" height="15" rx="2" fill="none" stroke={color} strokeWidth={1.6} />
@@ -31,7 +32,7 @@ export function InfoIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function ContactIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function ContactIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Path
@@ -42,7 +43,7 @@ export function ContactIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function LocationIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function LocationIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Path
@@ -54,7 +55,7 @@ export function LocationIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function AmenityIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function AmenityIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Polygon points="10,2.5 17.5,10 10,17.5 2.5,10" fill="none" stroke={color} strokeWidth={1.5} />
@@ -63,7 +64,7 @@ export function AmenityIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function PromoIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function PromoIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Path
@@ -75,7 +76,7 @@ export function PromoIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function PriceIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function PriceIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Circle cx="10" cy="10" r="7.5" fill="none" stroke={color} strokeWidth={1.6} />
@@ -88,7 +89,7 @@ export function PriceIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function MenuIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function MenuIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Circle cx="10" cy="10.5" r="5.5" fill="none" stroke={color} strokeWidth={1.6} />
@@ -99,7 +100,7 @@ export function MenuIcon({ size = 14, color = '#712B13' }: IconProps) {
   );
 }
 
-export function TicketIcon({ size = 14, color = '#712B13' }: IconProps) {
+export function TicketIcon({ size = 14, color = colors.lave }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       <Path
@@ -114,7 +115,7 @@ export function TicketIcon({ size = 14, color = '#712B13' }: IconProps) {
 // Pastille colorée qui entoure l'icône, comme dans les titres de section
 export function IconBadge({
   children,
-  bg = '#FAECE7',
+  bg = colors.laveSoft,
   size = 26,
 }: {
   children: React.ReactNode;

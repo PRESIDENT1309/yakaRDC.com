@@ -35,6 +35,20 @@ export const colors = {
   // Crème légèrement plus soutenu, pour distinguer une bande éditoriale
   // du canevas principal sans sortir de la famille "cream".
   surfaceSunken: '#F2EDE3',
+
+  // Jetons sémantiques (statuts, alertes) — alignés sur la palette "Terre &
+  // Fleuve" existante plutôt que sur un rouge/vert/jaune générique.
+  // success reprend exactement foret/foretSoft (déjà la couleur "site
+  // touristique validé" de l'app) ; warning reprend or/orSoft (déjà utilisé
+  // pour les notes/étoiles). danger est la seule teinte réellement nouvelle
+  // ici : un rouge terracotta de la même famille chaude que lave, mais
+  // distinct pour ne pas se confondre avec les états actifs/primaires.
+  success: '#1F4D3A',
+  successSoft: '#DCEEE3',
+  warning: '#854F0B',
+  warningSoft: '#FAEEDA',
+  danger: '#A23B2B',
+  dangerSoft: '#FBEAE5',
 } as const;
 
 export const categoryColors: Record<string, { accent: string; soft: string; label: string }> = {

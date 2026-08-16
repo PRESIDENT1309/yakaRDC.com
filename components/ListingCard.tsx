@@ -4,6 +4,11 @@ import { colors, categoryColors, typography, radii } from '../lib/theme';
 import CategoryIcon from './CategoryIcon';
 import type { EstablishmentType } from '../lib/types';
 
+export interface ListingCardBadge {
+  label: string;
+  tone: 'success' | 'warning' | 'danger';
+}
+
 export interface ListingCardProps {
   type: EstablishmentType;
   name: string;
@@ -15,16 +20,28 @@ export interface ListingCardProps {
   // "Tarif sur demande") — la carte reste sans logique de formatage propre.
   // Omis => pas de ligne prix (c'est le cas de la Homepage aujourd'hui).
   priceLabel?: string;
+  // Badge de statut (ex. "Confirmée" / "En attente" / "Refusée" pour
+  // Réservations) — indépendant de priceLabel : les deux peuvent coexister,
+  // chacun peut être omis séparément. Remplace la pastille "Nouveau" en haut
+  // à droite de la photo quand fourni (même emplacement, même logique de
+  // repli que ratingPill/newPill).
+  badge?: ListingCardBadge;
   width?: number;
   onPress: () => void;
 }
+
+const badgeTone: Record<ListingCardBadge['tone'], { bg: string; color: string }> = {
+  success: { bg: colors.successSoft, color: colors.success },
+  warning: { bg: colors.warningSoft, color: colors.warning },
+  danger: { bg: colors.dangerSoft, color: colors.danger },
+};
 
 // Carte d'établissement — source officielle, utilisée par la Homepage et
 // Recherche. Photo dominante, catégorie en légende, nom en Playfair,
 // localisation en Manrope. Pas d'icône décorative : l'icône de catégorie
 // n'apparaît qu'en repli, quand aucune photo n'est disponible.
 export default function ListingCard({
-  type, name, location, coverPhotoUrl, avgRating, reviewCount, priceLabel, width, onPress,
+  type, name, location, coverPhotoUrl, avgRating, reviewCount, priceLabel, badge, width, onPress,
 }: ListingCardProps) {
   const cat = categoryColors[type];
   const tone = cat?.accent ?? colors.lave;
@@ -37,7 +54,11 @@ export default function ListingCard({
         ) : (
           <CategoryIcon type={type} size={30} color="rgba(250,248,244,0.85)" />
         )}
-        {avgRating != null ? (
+        {badge ? (
+          <View style={[styles.statusPill, { backgroundColor: badgeTone[badge.tone].bg }]}>
+            <Text style={[styles.statusPillText, { color: badgeTone[badge.tone].color }]}>{badge.label}</Text>
+          </View>
+        ) : avgRating != null ? (
           <View style={styles.ratingPill}>
             <Star size={9} color={colors.or} fill={colors.or} />
             <Text style={styles.ratingPillText}>{avgRating.toFixed(1)}</Text>
@@ -79,6 +100,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
   },
   newPillText: { ...typography.badgeSm, color: colors.fleuveDark },
+  statusPill: {
+    position: 'absolute', top: 8, right: 8,
+    borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+  },
+  statusPillText: { ...typography.badgeSm },
   body: { padding: 12 },
   category: { ...typography.overlineXs, color: colors.faint, textTransform: 'uppercase', marginBottom: 3 },
   name: { ...typography.cardTitle, color: colors.ink, marginBottom: 4 },

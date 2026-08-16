@@ -11,10 +11,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {
-  Building2,
-  Home,
-  UtensilsCrossed,
-  Mountain,
   QrCode,
   X,
   CalendarCheck,
@@ -27,7 +23,8 @@ import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
-import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
+import CategoryIcon from '../../components/CategoryIcon';
+import type { Booking, Establishment } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'past';
@@ -38,17 +35,6 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'confirmed', label: 'Confirmées' },
   { key: 'past', label: 'Passées' },
 ];
-
-function CategoryIcon({ type }: { type: EstablishmentType }) {
-  const cat = categoryColors[type];
-  const props = { size: 20, color: cat?.accent ?? colors.lave };
-  switch (type) {
-    case 'hotel': return <Building2 {...props} />;
-    case 'furnished_house': return <Home {...props} />;
-    case 'restaurant': return <UtensilsCrossed {...props} />;
-    case 'site': return <Mountain {...props} />;
-  }
-}
 
 function StatusBadge({ status }: { status: Booking['status'] }) {
   const config = {
@@ -175,7 +161,7 @@ function BookingCard({
     <View style={[styles.card, isPast && styles.cardPast]}>
       <View style={styles.cardTop}>
         <View style={[styles.cardIcon, { backgroundColor: soft }]}>
-          <CategoryIcon type={item.establishment.type} />
+          <CategoryIcon type={item.establishment.type} size={20} color={accent} />
         </View>
         <View style={styles.cardInfo}>
           <View style={styles.cardTitleRow}>

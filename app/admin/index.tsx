@@ -4,27 +4,17 @@ import {
   Platform, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Search, Building2, Home, UtensilsCrossed, Mountain, Store, ChevronRight } from 'lucide-react-native';
+import { Search, Store, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, categoryColors } from '../../lib/theme';
-import type { Establishment, EstablishmentType, PartnerRequest } from '../../lib/types';
+import CategoryIcon from '../../components/CategoryIcon';
+import type { Establishment, PartnerRequest } from '../../lib/types';
 
 interface EstabBookingSummary {
   establishment: Establishment;
   pending: number;
   confirmed: number;
   checkedIn: number;
-}
-
-function CategoryIcon({ type, size = 14 }: { type: EstablishmentType; size?: number }) {
-  const cat = categoryColors[type];
-  const props = { size, color: cat?.accent ?? colors.lave };
-  switch (type) {
-    case 'hotel': return <Building2 {...props} />;
-    case 'furnished_house': return <Home {...props} />;
-    case 'restaurant': return <UtensilsCrossed {...props} />;
-    case 'site': return <Mountain {...props} />;
-  }
 }
 
 export default function AdminOverview() {
@@ -178,8 +168,8 @@ export default function AdminOverview() {
                     const cat = categoryColors[s.establishment.type];
                     return (
                       <View key={s.establishment.id} style={styles.estabRow}>
-                        <View style={[styles.estabIcon, { backgroundColor: cat?.soft ?? '#FAECE7' }]}>
-                          <CategoryIcon type={s.establishment.type} />
+                        <View style={[styles.estabIcon, { backgroundColor: cat?.soft ?? colors.laveSoft }]}>
+                          <CategoryIcon type={s.establishment.type} size={14} color={cat?.accent ?? colors.lave} />
                         </View>
                         <Text style={styles.estabName} numberOfLines={1}>{s.establishment.name}</Text>
                         <View style={{ flexDirection: 'row', gap: 4 }}>

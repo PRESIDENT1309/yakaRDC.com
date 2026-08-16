@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, Modal, TextInput, KeyboardAvoidingView,
+  Platform, Modal, TextInput,
   ActivityIndicator, Alert, Image, useWindowDimensions, Linking,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -14,8 +14,11 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, spacing } from '../../lib/theme';
+import { useResponsive } from '../../lib/responsive';
 import Calendar, { formatFrench } from '../../components/Calendar';
+import FormField from '../../components/FormField';
+import Sheet from '../../components/Sheet';
 import type { Establishment, Rate, EstablishmentType, ListingPhoto, Review } from '../../lib/types';
 
 // Disponibilités transmises aux formulaires de réservation
@@ -111,22 +114,6 @@ function Counter({ label, value, onDec, onInc, accent }:
           <Plus size={14} color="#FAF8F4" />
         </Pressable>
       </View>
-    </View>
-  );
-}
-
-function FormField({ label, value, onChange, placeholder, keyboardType = 'default', multiline = false }:
-  { label: string; value: string; onChange: (v: string) => void; placeholder?: string;
-    keyboardType?: any; multiline?: boolean }) {
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.fieldInput, multiline && styles.fieldInputMulti]}
-        value={value} onChangeText={onChange} placeholder={placeholder}
-        placeholderTextColor={colors.faint} keyboardType={keyboardType}
-        multiline={multiline} numberOfLines={multiline ? 3 : 1}
-      />
     </View>
   );
 }
@@ -375,6 +362,8 @@ export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
   const { width: heroWidth } = useWindowDimensions();
+  const { isWide, isDesktop, contentWidth } = useResponsive();
+  const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
   const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [rate, setRate] = useState<Rate | null>(null);
@@ -589,7 +578,7 @@ export default function ListingDetailScreen() {
 
   const cat = categoryColors[establishment.type];
   const accent = cat?.accent ?? colors.lave;
-  const soft = cat?.soft ?? '#FAECE7';
+  const soft = cat?.soft ?? colors.laveSoft;
   const isHotel = establishment.type === 'hotel' || establishment.type === 'furnished_house';
   const isRestaurant = establishment.type === 'restaurant';
   const isSite = establishment.type === 'site';
@@ -723,7 +712,8 @@ export default function ListingDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.body}>
+        <View style={[styles.body, isWide && wide, isDesktop && styles.bodyDesktopRow]}>
+          <View style={isDesktop ? styles.desktopMain : undefined}>
           <View style={styles.metaRow}>
             <View style={styles.locationRow}>
               <MapPin size={13} color={colors.faint} />
@@ -733,7 +723,7 @@ export default function ListingDetailScreen() {
             </View>
             {avgRating != null ? (
               <View style={styles.ratingRow}>
-                <Star size={12} color="#854F0B" fill="#854F0B" />
+                <Star size={12} color={colors.or} fill={colors.or} />
                 <Text style={styles.ratingText}>{avgRating.toFixed(1)}</Text>
                 <Text style={styles.ratingCount}>({reviews.length})</Text>
               </View>
@@ -861,7 +851,7 @@ export default function ListingDetailScreen() {
                     <View style={styles.reviewTopRow}>
                       <View style={{ flexDirection: 'row', gap: 1 }}>
                         {[1, 2, 3, 4, 5].map(i => (
-                          <Star key={i} size={11} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                          <Star key={i} size={11} color={colors.or} fill={i <= r.rating ? colors.or : 'transparent'} />
                         ))}
                       </View>
                       {r.is_verified_stay && (
@@ -908,7 +898,9 @@ export default function ListingDetailScreen() {
               </>
             )}
           </Pressable>
+          </View>
 
+          <View style={isDesktop ? styles.desktopSidebar : undefined}>
           <View style={styles.priceCard}>
             <View>
               <Text style={styles.priceFrom}>À partir de</Text>
@@ -917,6 +909,7 @@ export default function ListingDetailScreen() {
             <Pressable style={[styles.bookBtn, { backgroundColor: accent }]} onPress={() => setShowForm(true)}>
               <Text style={styles.bookBtnText}>Réserver</Text>
             </Pressable>
+          </View>
           </View>
         </View>
       </ScrollView>
@@ -930,84 +923,63 @@ export default function ListingDetailScreen() {
         </View>
       )}
 
-      <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={styles.modalOverlay} onPress={() => setShowForm(false)} />
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Demande de réservation</Text>
-                <Text style={styles.modalSub}>{establishment.name} · {establishment.neighborhood ?? establishment.city}</Text>
-              </View>
-              <Pressable onPress={() => setShowForm(false)} hitSlop={8}>
-                <X size={20} color={colors.muted} />
-              </Pressable>
-            </View>
-            {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
-            {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
-            {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <Sheet
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        title="Demande de réservation"
+        subtitle={`${establishment.name} · ${establishment.neighborhood ?? establishment.city}`}
+      >
+        {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+        {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+        {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+      </Sheet>
 
       {/* Formulaire d'avis */}
-      <Modal visible={showReviewForm} transparent animationType="slide" onRequestClose={() => setShowReviewForm(false)}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={styles.modalOverlay} onPress={() => setShowReviewForm(false)} />
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>{myReview ? 'Modifier mon avis' : 'Donner mon avis'}</Text>
-                <Text style={styles.modalSub}>{establishment.name}</Text>
-              </View>
-              <Pressable onPress={() => setShowReviewForm(false)} hitSlop={8}>
-                <X size={20} color={colors.muted} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.fieldLabel}>Votre note</Text>
-            <View style={styles.starPicker}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <Pressable key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
-                  <Star
-                    size={34}
-                    color="#854F0B"
-                    fill={i <= reviewRating ? '#854F0B' : 'transparent'}
-                  />
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.fieldLabel}>Votre commentaire (optionnel)</Text>
-            <TextInput
-              style={[styles.fieldInput, { height: 100, textAlignVertical: 'top' }]}
-              value={reviewComment}
-              onChangeText={setReviewComment}
-              placeholder="Qu'avez-vous pensé de votre expérience ?"
-              placeholderTextColor={colors.faint}
-              multiline
-            />
-
-            <Pressable
-              style={[styles.submitBtn, { backgroundColor: accent }, (reviewRating === 0 || savingReview) && { opacity: 0.5 }]}
-              onPress={handleSaveReview}
-              disabled={reviewRating === 0 || savingReview}
-            >
-              {savingReview
-                ? <ActivityIndicator color="#FAF8F4" />
-                : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>{myReview ? 'Enregistrer' : 'Publier mon avis'}</Text></>}
+      <Sheet
+        visible={showReviewForm}
+        onClose={() => setShowReviewForm(false)}
+        title={myReview ? 'Modifier mon avis' : 'Donner mon avis'}
+        subtitle={establishment.name}
+      >
+        <Text style={styles.fieldLabel}>Votre note</Text>
+        <View style={styles.starPicker}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <Pressable key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
+              <Star
+                size={34}
+                color={colors.or}
+                fill={i <= reviewRating ? colors.or : 'transparent'}
+              />
             </Pressable>
+          ))}
+        </View>
 
-            {myReview && (
-              <Pressable style={styles.deleteReviewBtn} onPress={confirmDeleteReview}>
-                <Text style={styles.deleteReviewText}>Supprimer mon avis</Text>
-              </Pressable>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        <Text style={styles.fieldLabel}>Votre commentaire (optionnel)</Text>
+        <TextInput
+          style={[styles.fieldInput, { height: 100, textAlignVertical: 'top' }]}
+          value={reviewComment}
+          onChangeText={setReviewComment}
+          placeholder="Qu'avez-vous pensé de votre expérience ?"
+          placeholderTextColor={colors.faint}
+          multiline
+        />
+
+        <Pressable
+          style={[styles.submitBtn, { backgroundColor: accent }, (reviewRating === 0 || savingReview) && { opacity: 0.5 }]}
+          onPress={handleSaveReview}
+          disabled={reviewRating === 0 || savingReview}
+        >
+          {savingReview
+            ? <ActivityIndicator color="#FAF8F4" />
+            : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>{myReview ? 'Enregistrer' : 'Publier mon avis'}</Text></>}
+        </Pressable>
+
+        {myReview && (
+          <Pressable style={styles.deleteReviewBtn} onPress={confirmDeleteReview}>
+            <Text style={styles.deleteReviewText}>Supprimer mon avis</Text>
+          </Pressable>
+        )}
+      </Sheet>
 
       {/* Visionneuse plein écran : Menu / Tarifs */}
       <Modal visible={menuViewerIndex !== null} transparent animationType="fade" onRequestClose={() => setMenuViewerIndex(null)}>
@@ -1067,10 +1039,10 @@ const styles = StyleSheet.create({
   photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
   photoDotActive: { backgroundColor: '#FFFFFF', width: 18 },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: 16,
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFFCC',
+    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   heartBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, right: 16,
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFFCC',
+    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   heroFooter: { position: 'absolute', bottom: 14, left: 16 },
   typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, marginBottom: 4 },
@@ -1078,15 +1050,24 @@ const styles = StyleSheet.create({
   heroName: { fontSize: 20, fontWeight: '500', color: '#FAF8F4',
     textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   body: { padding: 16 },
+  // Desktop uniquement (≥1024) : colonne éditoriale flexible + colonne prix
+  // étroite et sticky. Tablette/mobile gardent la colonne unique existante
+  // (voir `wide` pour le centrage tablette+desktop dans breakpoints.contentMax).
+  bodyDesktopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xl },
+  desktopMain: { flex: 1, minWidth: 0 },
+  desktopSidebar: {
+    width: 320,
+    ...(Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {}),
+  },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locationText: { fontSize: 13, color: colors.muted },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FAEEDA', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  ratingText: { fontSize: 12, color: '#854F0B', fontWeight: '500' },
+    backgroundColor: colors.orSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  ratingText: { fontSize: 12, color: colors.or, fontWeight: '500' },
   ratingCount: { fontSize: 11, color: colors.muted },
-  newRow: { backgroundColor: '#E1F5EE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  newRowText: { fontSize: 11, color: '#0F6E56', fontWeight: '600' },
+  newRow: { backgroundColor: colors.fleuveSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  newRowText: { fontSize: 11, color: colors.fleuveDark, fontWeight: '600' },
   dateTabs: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   dateTab: {
     flex: 1, backgroundColor: '#F5F4F0', borderWidth: 1.5, borderColor: 'transparent',
@@ -1138,23 +1119,13 @@ const styles = StyleSheet.create({
   bookBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
   bookBtnText: { fontSize: 14, fontWeight: '500', color: '#FAF8F4' },
   successBanner: { position: 'absolute', bottom: 90, left: 16, right: 16,
-    backgroundColor: '#1F4D3A', borderRadius: 14, padding: 14, gap: 6 },
+    backgroundColor: colors.success, borderRadius: 14, padding: 14, gap: 6 },
   successText: { fontSize: 13, color: '#FAF8F4' },
   successLink: { fontSize: 13, color: '#FAC775', fontWeight: '500' },
-  modalOverlay: { flex: 1 },
-  modalSheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20, maxHeight: '90%' },
-  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2,
-    alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
-  modalTitle: { fontSize: 17, fontWeight: '500', color: colors.ink },
-  modalSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
   formRow: { flexDirection: 'row', gap: 10 },
-  fieldWrap: { marginBottom: 12 },
   fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
   fieldInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink },
-  fieldInputMulti: { height: 70, textAlignVertical: 'top' },
   counter: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
     borderRadius: 10, padding: 10, gap: 4, marginBottom: 12 },
   counterLabel: { fontSize: 10, color: colors.muted },

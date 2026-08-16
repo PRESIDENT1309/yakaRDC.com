@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, typography, fonts, radii } from '../lib/theme';
 
 export interface EmptyStateProps {
-  icon: ReactNode;
+  icon?: ReactNode;
   title: string;
   description?: string;
   actionLabel?: string;
@@ -12,7 +12,10 @@ export interface EmptyStateProps {
 
 // Source officielle pour tout état vide. L'icône reste nue — jamais de
 // cercle coloré générique autour (anti-pattern explicitement interdit par le
-// Design System YakaRDC).
+// Design System YakaRDC). icon est optionnelle : pour un état vide léger en
+// ligne (ex. section vide sur l'accueil), on peut n'afficher qu'un titre —
+// {icon} ne rend rien quand icon est absente, donc gap ne réserve pas
+// d'espace pour elle.
 export default function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
     <View style={styles.container}>
