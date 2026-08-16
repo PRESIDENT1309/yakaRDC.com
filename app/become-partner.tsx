@@ -12,6 +12,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { colors, categoryColors } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
+import { getCitySubdivisions } from '../lib/geography';
 import type { EstablishmentType } from '../lib/types';
 
 const TYPES: { key: EstablishmentType; label: string; icon: (c: string) => React.ReactNode }[] = [
@@ -51,6 +52,15 @@ export default function BecomePartnerScreen() {
     if (activeCities.length > 0 && !cityName) setCityName(activeCities[0].name);
   }, [activeCities]);
 
+  // La ville choisie détermine les communes proposées — solution transitoire
+  // (lib/geography.ts), pas de table dédiée pour l'instant.
+  const subdivisions = getCitySubdivisions(cityName);
+  useEffect(() => {
+    // Si la ville change pour une ville sans subdivisions connues, on efface
+    // une éventuelle commune déjà choisie pour une autre ville.
+    if (!subdivisions) { setCommune(''); setCommuneError(false); }
+  }, [subdivisions]);
+
   const [type, setType] = useState<EstablishmentType | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -65,9 +75,11 @@ export default function BecomePartnerScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [communeError, setCommuneError] = useState(false);
 
   async function handleSubmit() {
     setError(null);
+    setCommuneError(false);
     if (!type) { setError('Veuillez choisir le type d\'établissement.'); return; }
     if (!name.trim()) { setError('Veuillez indiquer le nom de l\'établissement.'); return; }
     if (!contactName.trim() || !contactPhone.trim()) {
@@ -76,6 +88,13 @@ export default function BecomePartnerScreen() {
     }
     if (!cityName) {
       setError('Veuillez choisir une ville.');
+      return;
+    }
+    // Commune obligatoire uniquement si la ville choisie a des subdivisions
+    // connues — sinon le champ n'existe même pas dans le formulaire.
+    if (subdivisions && !commune) {
+      setCommuneError(true);
+      setError('Veuillez sélectionner une commune.');
       return;
     }
 
@@ -200,10 +219,29 @@ export default function BecomePartnerScreen() {
 
           {/* Localisation */}
           <Text style={styles.sectionLabel}>Localisation</Text>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="Commune" value={commune} onChange={setCommune} placeholder="Ex : Gombe" /></View>
-            <View style={{ flex: 1 }}><Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" /></View>
-          </View>
+          {subdivisions && (
+            <>
+              <Text style={styles.fieldLabel}>Commune</Text>
+              <View style={[styles.typeGrid, { marginBottom: 4 }]}>
+                {subdivisions.all.map(c => {
+                  const active = commune === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      style={[styles.cityChip, active && styles.cityChipActive]}
+                      onPress={() => { setCommune(c); setCommuneError(false); }}
+                    >
+                      <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {communeError && (
+                <Text style={styles.fieldErrorText}>Veuillez sélectionner une commune.</Text>
+              )}
+            </>
+          )}
+          <Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
           <View style={styles.row}>
             <View style={{ flex: 2 }}><Field label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
             <View style={{ flex: 1 }}><Field label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
@@ -280,6 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 14, color: colors.ink,
   },
   fieldInputMulti: { height: 76, textAlignVertical: 'top' },
+  fieldErrorText: { fontSize: 11.5, color: '#C0392B', marginTop: -2, marginBottom: 14 },
   errorText: { fontSize: 12, color: '#C0392B', backgroundColor: '#FFF0F0', borderRadius: 8, padding: 10, marginBottom: 14, textAlign: 'center' },
   submitBtn: { backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 6 },
   submitBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },

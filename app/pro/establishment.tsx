@@ -13,6 +13,7 @@ import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
+import { getCitySubdivisions } from '../../lib/geography';
 import {
   PhotoIcon, InfoIcon, ContactIcon, LocationIcon,
   AmenityIcon, PromoIcon, PriceIcon, MenuIcon, TicketIcon, IconBadge,
@@ -322,6 +323,13 @@ export default function EstablishmentScreen() {
 
   const unitLabel = establishment.type === 'hotel' || establishment.type === 'furnished_house'
     ? 'nuit' : 'personne';
+  // La commune est déterminée par la ville de l'établissement (fixe, non
+  // modifiable ici) — pas par une ville "actuellement parcourue".
+  const subdivisions = getCitySubdivisions(establishment.city);
+  // Donnée historique qui ne correspond à aucune commune connue (ex. saisie
+  // libre d'avant ce chantier) — à signaler, jamais à corriger seule ni à
+  // bloquer la sauvegarde du reste de la fiche.
+  const isUnknownCommune = !!(commune && subdivisions && !subdivisions.all.includes(commune));
   const currentViewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   const currentMenuViewerPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
   const menuSectionTitle = menuCategory === 'menu' ? 'Photos du menu' : 'Tarifs des attractions';
@@ -483,10 +491,33 @@ export default function EstablishmentScreen() {
           {/* Adresse */}
           <View style={styles.card}>
             <CardTitle icon={<LocationIcon />} label="Adresse complète" />
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="Commune" value={commune} onChange={setCommune} placeholder="Ex : Gombe" /></View>
-              <View style={{ flex: 1 }}><Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" /></View>
-            </View>
+            {subdivisions && (
+              <View style={styles.fieldWrap}>
+                <Text style={styles.fieldLabel}>Commune</Text>
+                {isUnknownCommune && (
+                  <View style={styles.communeWarning}>
+                    <Text style={styles.communeWarningText}>
+                      Valeur actuelle non reconnue : « {commune} ».{'\n'}Sélectionnez une commune pour mettre à jour cette information.
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.amenitiesGrid}>
+                  {subdivisions.all.map(c => {
+                    const active = commune === c;
+                    return (
+                      <Pressable
+                        key={c}
+                        style={[styles.communeChip, active && styles.communeChipActive]}
+                        onPress={() => setCommune(c)}
+                      >
+                        <Text style={[styles.communeChipText, active && styles.communeChipTextActive]}>{c}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+            <Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
             <View style={styles.row}>
               <View style={{ flex: 2 }}><Field label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
               <View style={{ flex: 1 }}><Field label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
@@ -725,6 +756,12 @@ const styles = StyleSheet.create({
   amenityChipActive: { backgroundColor: '#DCEEE3', borderColor: '#A8D5B5' },
   amenityText: { fontSize: 11, color: colors.muted },
   amenityTextActive: { color: '#1F4D3A', fontWeight: '500' },
+  communeChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+  communeChipActive: { backgroundColor: colors.laveSoft, borderColor: colors.lave },
+  communeChipText: { fontSize: 11.5, color: colors.muted },
+  communeChipTextActive: { color: colors.lave, fontWeight: '500' },
+  communeWarning: { backgroundColor: colors.orSoft, borderRadius: 8, padding: 10, marginBottom: 10 },
+  communeWarningText: { fontSize: 11, color: colors.or, lineHeight: 16 },
   saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
   saveBtnFullText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
 

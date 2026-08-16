@@ -9,7 +9,6 @@ import {
   Image,
   Animated,
   FlatList,
-  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
@@ -17,17 +16,11 @@ import {
   Search,
   Bell,
   SlidersHorizontal,
-  Building2,
-  Home,
-  UtensilsCrossed,
-  Mountain,
-  Star,
   MapPin,
   ChevronDown,
-  Check,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, categoryColors, typography, spacing, radii } from '../../lib/theme';
+import { colors, typography, spacing, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import { useSelectedCity } from '../../lib/city-context';
 import { getCitySubdivisions } from '../../lib/geography';
@@ -35,6 +28,9 @@ import SectionHeading from '../../components/SectionHeading';
 import RiverMotif from '../../components/RiverMotif';
 import PhotoScrim from '../../components/PhotoScrim';
 import CategoryTexture from '../../components/CategoryTexture';
+import ListingCard from '../../components/ListingCard';
+import Chip from '../../components/Chip';
+import BottomSheet from '../../components/BottomSheet';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type EstablishmentWithPhoto = Establishment & {
@@ -58,16 +54,6 @@ const CATEGORIES: {
 
 const ROTATION_INTERVAL = 4000; // temps d'affichage de chaque photo
 const SLIDE_DURATION = 650; // durée du défilement entre deux photos
-
-function CategoryIcon({ type, size = 24, color }: { type: EstablishmentType; size?: number; color: string }) {
-  const props = { size, color };
-  switch (type) {
-    case 'hotel': return <Building2 {...props} />;
-    case 'furnished_house': return <Home {...props} />;
-    case 'restaurant': return <UtensilsCrossed {...props} />;
-    case 'site': return <Mountain {...props} />;
-  }
-}
 
 // Blason existant (cercle/montagne/vague) + nom en Playfair — la marque telle
 // qu'elle existait déjà, sans badge circulaire générique autour du blason.
@@ -149,46 +135,12 @@ function CategoryTile({
   );
 }
 
-function ListingCard({ item, width }: { item: EstablishmentWithPhoto; width?: number }) {
-  const cat = categoryColors[item.type];
-  const tone = cat?.accent ?? colors.lave;
-  const sortedPhotos = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
-  const coverPhoto = sortedPhotos[0];
-
-  return (
-    <Pressable
-      style={[styles.card, width ? { width } : null]}
-      onPress={() => router.push(`/listing/${item.id}`)}
-    >
-      <View style={[styles.cardImage, { backgroundColor: tone }]}>
-        {coverPhoto ? (
-          <Image source={{ uri: coverPhoto.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        ) : (
-          <CategoryIcon type={item.type} size={30} color="rgba(250,248,244,0.85)" />
-        )}
-        {item.avgRating != null ? (
-          <View style={styles.ratingPill}>
-            <Star size={9} color={colors.or} fill={colors.or} />
-            <Text style={styles.ratingPillText}>{item.avgRating.toFixed(1)}</Text>
-          </View>
-        ) : (
-          <View style={styles.newPill}>
-            <Text style={styles.newPillText}>Nouveau</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.cardCategory}>{cat?.label ?? 'Établissement'}</Text>
-        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-        <View style={styles.cardLocationRow}>
-          <MapPin size={10} color={colors.faint} />
-          <Text style={styles.cardLocationText} numberOfLines={1}>
-            {item.neighborhood ?? item.city}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
+// Le composant partagé reçoit une URL déjà résolue — cet écran garde ses
+// photos non triées (listing_photos brut), donc le tri/choix de la couverture
+// reste ici plutôt que dans le composant.
+function coverPhotoOf(item: EstablishmentWithPhoto): string | null {
+  const sorted = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
+  return sorted[0]?.url ?? null;
 }
 
 export default function HomeScreen() {
@@ -425,14 +377,35 @@ export default function HomeScreen() {
           ) : isDesktop ? (
             <View style={[wide, styles.desktopGrid]}>
               {listings.map(item => (
-                <ListingCard key={item.id} item={item} width={desktopCardWidth} />
+                <ListingCard
+                  key={item.id}
+                  type={item.type}
+                  name={item.name}
+                  location={item.neighborhood ?? item.city}
+                  coverPhotoUrl={coverPhotoOf(item)}
+                  avgRating={item.avgRating}
+                  reviewCount={item.reviewCount}
+                  width={desktopCardWidth}
+                  onPress={() => router.push(`/listing/${item.id}`)}
+                />
               ))}
             </View>
           ) : (
             <FlatList
               data={listings}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ListingCard item={item} width={190} />}
+              renderItem={({ item }) => (
+                <ListingCard
+                  type={item.type}
+                  name={item.name}
+                  location={item.neighborhood ?? item.city}
+                  coverPhotoUrl={coverPhotoOf(item)}
+                  avgRating={item.avgRating}
+                  reviewCount={item.reviewCount}
+                  width={190}
+                  onPress={() => router.push(`/listing/${item.id}`)}
+                />
+              )}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingLeft: 18, paddingRight: 8 }}
@@ -478,40 +451,29 @@ export default function HomeScreen() {
               contentContainerStyle={{ paddingHorizontal: 18, gap: 10, marginTop: 12 }}
             >
               {subdivisions.featured.map((c) => (
-                <Pressable
+                <Chip
                   key={c}
-                  style={styles.communePill}
+                  label={c}
+                  icon={<MapPin size={12} color={colors.lave} />}
                   onPress={() => router.push({ pathname: '/(tabs)/search', params: { commune: c } })}
-                >
-                  <MapPin size={12} color={colors.lave} />
-                  <Text style={styles.communeLabel}>{c}</Text>
-                </Pressable>
+                />
               ))}
             </ScrollView>
           </View>
         )}
 
         {hasMultipleCities && (
-          <Modal visible={cityPickerOpen} transparent animationType="slide" onRequestClose={() => setCityPickerOpen(false)}>
-            <Pressable style={styles.modalOverlay} onPress={() => setCityPickerOpen(false)}>
-              <View style={styles.modalSheet}>
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Choisir une ville</Text>
-                {cities.map(c => (
-                  <Pressable
-                    key={c.id}
-                    style={styles.modalOption}
-                    onPress={() => { setSelectedCity(c); setCityPickerOpen(false); }}
-                  >
-                    <Text style={[styles.modalOptionText, selectedCity?.id === c.id && { color: colors.lave, fontWeight: '600' }]}>
-                      {c.name}
-                    </Text>
-                    {selectedCity?.id === c.id && <Check size={16} color={colors.lave} />}
-                  </Pressable>
-                ))}
-              </View>
-            </Pressable>
-          </Modal>
+          <BottomSheet
+            visible={cityPickerOpen}
+            title="Choisir une ville"
+            options={cities.map(c => c.name)}
+            selected={selectedCity?.name ?? ''}
+            onSelect={(name) => {
+              const city = cities.find(c => c.name === name);
+              if (city) setSelectedCity(city);
+            }}
+            onClose={() => setCityPickerOpen(false)}
+          />
         )}
 
       </ScrollView>
@@ -525,7 +487,7 @@ const styles = StyleSheet.create({
   // Logo & top bar
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   logoText: {
-    fontFamily: 'PlayfairDisplay_500Medium', fontSize: 21, color: colors.cream,
+    ...typography.brand, color: colors.cream,
     textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   bellBtn: {
@@ -552,7 +514,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   heroTitle: {
-    fontFamily: 'PlayfairDisplay_500Medium', color: colors.cream,
+    ...typography.heroTitle, color: colors.cream,
     textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
   },
 
@@ -584,7 +546,7 @@ const styles = StyleSheet.create({
     paddingVertical: 26, paddingHorizontal: 32, alignItems: 'center',
   },
   introText: {
-    fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, lineHeight: 25,
+    ...typography.displaySm,
     color: colors.laveDeep, textAlign: 'center', maxWidth: 520,
   },
 
@@ -599,29 +561,10 @@ const styles = StyleSheet.create({
   tileActive: { borderWidth: 2, borderColor: colors.cream },
   tileTextWrap: { padding: 16 },
   tileKicker: {
-    fontFamily: 'Manrope_600SemiBold', fontSize: 10.5, letterSpacing: 1,
+    ...typography.overlineSm,
     textTransform: 'uppercase', color: 'rgba(250,248,244,0.75)', marginBottom: 4,
   },
-  tileLabel: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 19, color: colors.cream },
-
-  // Listing cards
-  card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  cardImage: { height: 130, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  ratingPill: {
-    position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
-  },
-  ratingPillText: { ...typography.caption, fontSize: 10.5, color: colors.or },
-  newPill: {
-    position: 'absolute', top: 8, right: 8,
-    backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
-  },
-  newPillText: { fontFamily: 'Manrope_600SemiBold', fontSize: 9.5, color: colors.fleuveDark },
-  cardBody: { padding: 12 },
-  cardCategory: { fontFamily: 'Manrope_600SemiBold', fontSize: 10, letterSpacing: 0.5, color: colors.faint, textTransform: 'uppercase', marginBottom: 3 },
-  cardName: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 15.5, color: colors.ink, marginBottom: 4 },
-  cardLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  cardLocationText: { ...typography.caption, color: colors.faint, flex: 1 },
+  tileLabel: { ...typography.tileTitle, color: colors.cream },
 
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
 
@@ -635,32 +578,11 @@ const styles = StyleSheet.create({
   storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase' },
   storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: 10, marginBottom: 16 },
   storyTitle: {
-    fontFamily: 'PlayfairDisplay_700Bold_Italic', fontSize: 27, lineHeight: 33,
+    ...typography.editorialTitle,
     color: colors.cream, textAlign: 'center', marginBottom: 10,
   },
   storySub: {
     ...typography.body, color: 'rgba(250,248,244,0.85)', textAlign: 'center', maxWidth: 420,
   },
 
-  // Communes
-  communePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 9, borderRadius: radii.pill,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-  },
-  communeLabel: { fontFamily: 'Manrope_500Medium', fontSize: 13, color: colors.ink },
-
-  // Sélecteur de ville — n'apparaît que si plusieurs villes sont actives
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-  },
-  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
-  modalTitle: { fontFamily: 'PlayfairDisplay_500Medium', fontSize: 17, color: colors.ink, marginBottom: 10 },
-  modalOption: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  modalOptionText: { fontFamily: 'Manrope_500Medium', fontSize: 15, color: colors.ink },
 });

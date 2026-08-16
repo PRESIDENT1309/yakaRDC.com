@@ -1,60 +1,90 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { Building2, MapPin } from 'lucide-react-native';
-import { colors, categoryColors, radii } from '../lib/theme';
-import type { Establishment, Rate } from '../lib/types';
+import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { Star, MapPin } from 'lucide-react-native';
+import { colors, categoryColors, typography, radii } from '../lib/theme';
+import CategoryIcon from './CategoryIcon';
+import type { EstablishmentType } from '../lib/types';
 
-interface Props {
-  establishment: Establishment;
-  rate?: Rate;
-  rating?: number;
+export interface ListingCardProps {
+  type: EstablishmentType;
+  name: string;
+  location: string;
+  coverPhotoUrl?: string | null;
+  avgRating?: number | null;
+  reviewCount?: number;
+  // Chaîne déjà formatée par l'écran appelant (ex. "45 USD / nuit" ou
+  // "Tarif sur demande") — la carte reste sans logique de formatage propre.
+  // Omis => pas de ligne prix (c'est le cas de la Homepage aujourd'hui).
+  priceLabel?: string;
+  width?: number;
+  onPress: () => void;
 }
 
-export default function ListingCard({ establishment, rate, rating }: Props) {
-  const accent = categoryColors[establishment.type]?.accent ?? colors.lave;
-  const soft = categoryColors[establishment.type]?.soft ?? colors.laveSoft;
-
-  const priceLabel = rate
-    ? `${rate.price} ${rate.currency} / ${rate.unit === 'night' ? 'nuit' : rate.unit === 'person' ? 'pers.' : 'visite'}`
-    : 'Tarif sur demande';
+// Carte d'établissement — source officielle, utilisée par la Homepage et
+// Recherche. Photo dominante, catégorie en légende, nom en Playfair,
+// localisation en Manrope. Pas d'icône décorative : l'icône de catégorie
+// n'apparaît qu'en repli, quand aucune photo n'est disponible.
+export default function ListingCard({
+  type, name, location, coverPhotoUrl, avgRating, reviewCount, priceLabel, width, onPress,
+}: ListingCardProps) {
+  const cat = categoryColors[type];
+  const tone = cat?.accent ?? colors.lave;
 
   return (
-    <Pressable style={styles.card} onPress={() => router.push(`/listing/${establishment.id}`)}>
-      <View style={[styles.thumb, { backgroundColor: soft }]}>
-        <Building2 color={accent} size={24} />
+    <Pressable style={[styles.card, width ? { width } : null]} onPress={onPress}>
+      <View style={[styles.image, { backgroundColor: tone }]}>
+        {coverPhotoUrl ? (
+          <Image source={{ uri: coverPhotoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : (
+          <CategoryIcon type={type} size={30} color="rgba(250,248,244,0.85)" />
+        )}
+        {avgRating != null ? (
+          <View style={styles.ratingPill}>
+            <Star size={9} color={colors.or} fill={colors.or} />
+            <Text style={styles.ratingPillText}>{avgRating.toFixed(1)}</Text>
+          </View>
+        ) : (
+          <View style={styles.newPill}>
+            <Text style={styles.newPillText}>Nouveau</Text>
+          </View>
+        )}
       </View>
-      <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {establishment.name}
-        </Text>
+      <View style={styles.body}>
+        <Text style={styles.category}>{cat?.label ?? 'Établissement'}</Text>
+        <Text style={styles.name} numberOfLines={1}>{name}</Text>
         <View style={styles.locationRow}>
-          <MapPin color={colors.muted} size={11} />
-          <Text style={styles.location}>{establishment.neighborhood ?? establishment.city}</Text>
+          <MapPin size={10} color={colors.faint} />
+          <Text style={styles.locationText} numberOfLines={1}>{location}</Text>
         </View>
-        <Text style={styles.price}>
-          {priceLabel}
-          {rating ? <Text style={styles.rating}> · {rating.toFixed(1)} ★</Text> : null}
-        </Text>
+        {priceLabel ? (
+          <View style={styles.bottomRow}>
+            <Text style={[styles.price, { color: tone }]}>{priceLabel}</Text>
+            {!!reviewCount && <Text style={styles.reviewCount}>{reviewCount} avis</Text>}
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    gap: 10,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    padding: 8,
+  card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  image: { height: 130, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  ratingPill: {
+    position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
   },
-  thumb: { width: 56, height: 56, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
-  info: { flex: 1, justifyContent: 'center' },
-  name: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  location: { fontSize: 11, color: colors.muted },
-  price: { fontSize: 12, color: colors.ink, marginTop: 2 },
-  rating: { color: colors.muted },
+  ratingPillText: { ...typography.caption, fontSize: 10.5, color: colors.or },
+  newPill: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+  },
+  newPillText: { ...typography.badgeSm, color: colors.fleuveDark },
+  body: { padding: 12 },
+  category: { ...typography.overlineXs, color: colors.faint, textTransform: 'uppercase', marginBottom: 3 },
+  name: { ...typography.cardTitle, color: colors.ink, marginBottom: 4 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  locationText: { ...typography.caption, color: colors.faint, flex: 1 },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  price: { ...typography.caption, fontWeight: '600' },
+  reviewCount: { ...typography.caption, color: colors.faint },
 });

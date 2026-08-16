@@ -85,16 +85,48 @@ export const fonts = {
   sansBold: 'Manrope_700Bold',
 } as const;
 
-// Échelle typographique — à composer avec `colors` selon le contexte
+// Échelle typographique — source de vérité unique pour toute l'application.
 // (voir SectionHeading pour un exemple d'utilisation).
+//
+// Harmonisation (généralisation post-Homepage) : les entrées ci-dessous sous
+// "styles homepage généralisés" reprennent exactement les valeurs littérales
+// qui vivaient jusqu'ici dans app/(tabs)/index.tsx — mêmes graisses, mêmes
+// tailles, mêmes interlignages (ou absence d'interlignage) qu'avant. Aucune
+// n'a été ajustée pour "faire joli" : le but de cette passe est zéro
+// changement visuel, seulement un nommage propre.
 export const typography = {
+  // Échelle display existante
   displayHero: { fontFamily: fonts.displayMedium, fontSize: 40, lineHeight: 44 },
   displayLg: { fontFamily: fonts.displayMedium, fontSize: 28, lineHeight: 33 },
   displayMd: { fontFamily: fonts.displayMedium, fontSize: 21, lineHeight: 26 },
-  displaySm: { fontFamily: fonts.display, fontSize: 17, lineHeight: 22 },
+  // Interligne corrigé à 25 (au lieu de 22) pour refléter la vraie valeur
+  // utilisée par la citation de la bande éditoriale — cette entrée n'était
+  // utilisée nulle part ailleurs, la correction ne change donc rien de plus.
+  displaySm: { fontFamily: fonts.display, fontSize: 17, lineHeight: 25 },
+
+  // Échelle sans/overline existante
   overline: { fontFamily: fonts.sansSemiBold, fontSize: 11, letterSpacing: 1.4 },
   bodyLg: { fontFamily: fonts.sans, fontSize: 16, lineHeight: 24 },
   body: { fontFamily: fonts.sans, fontSize: 14.5, lineHeight: 21 },
   caption: { fontFamily: fonts.sansMedium, fontSize: 12.5, lineHeight: 17 },
   button: { fontFamily: fonts.sansSemiBold, fontSize: 15 },
+
+  // Styles homepage généralisés — noms sémantiques (par rôle), pas par taille
+  brand: { fontFamily: fonts.displayMedium, fontSize: 21 }, // logo / nom de marque
+  heroTitle: { fontFamily: fonts.displayMedium }, // titre du hero — taille responsive gérée à l'appel
+  tileTitle: { fontFamily: fonts.displayMedium, fontSize: 19 }, // libellé de tuile catégorie
+  cardTitle: { fontFamily: fonts.displayMedium, fontSize: 15.5 }, // nom d'établissement (carte)
+  editorialTitle: { fontFamily: fonts.displayBoldItalic, fontSize: 27, lineHeight: 33 }, // moment fort (ex. bande Fleuve Congo)
+  overlineSm: { fontFamily: fonts.sansSemiBold, fontSize: 10.5, letterSpacing: 1 }, // kicker sur photo (tuile)
+  overlineXs: { fontFamily: fonts.sansSemiBold, fontSize: 10, letterSpacing: 0.5 }, // étiquette de catégorie (carte)
+  badgeSm: { fontFamily: fonts.sansSemiBold, fontSize: 9.5 }, // texte de pastille ("Nouveau")
+  pillLabel: { fontFamily: fonts.sansMedium, fontSize: 13 }, // libellé de pastille (commune, filtre)
+  sheetTitle: { fontFamily: fonts.displayMedium, fontSize: 17 }, // titre de bottom-sheet
+  sheetOption: { fontFamily: fonts.sansMedium, fontSize: 15 }, // option de bottom-sheet
+
+  // Graisses SemiBold/Bold — chargées mais pas encore consommées par la
+  // Homepage (qui doit rester pixel-identique). Prêtes pour Recherche et
+  // les écrans suivants, là où une hiérarchie plus marquée sera utile.
+  displayStrong: { fontFamily: fonts.displaySemiBold, fontSize: 24, lineHeight: 29 },
+  buttonStrong: { fontFamily: fonts.sansBold, fontSize: 15 },
 } as const;
