@@ -145,7 +145,7 @@ function ListingCard({ item, width }: { item: EstablishmentWithPhoto; width?: nu
     >
       <View style={[styles.cardImage, { backgroundColor: tone }]}>
         {coverPhoto ? (
-          <Image source={{ uri: coverPhoto.url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <Image source={{ uri: coverPhoto.url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
           <CategoryIcon type={item.type} size={30} color="rgba(250,248,244,0.85)" />
         )}
@@ -244,10 +244,10 @@ export default function HomeScreen() {
 
         {/* ── Hero immersif ── */}
         <View style={[styles.hero, { height: heroHeight }]}>
-          <View style={StyleSheet.absoluteFillObject}>
+          <View style={StyleSheet.absoluteFill}>
             <RotatingHero photos={heroPhotos} width={width} height={heroHeight} />
           </View>
-          <View style={[StyleSheet.absoluteFillObject, styles.heroScrim]} />
+          <View style={[StyleSheet.absoluteFill, styles.heroScrim]} />
 
           <View style={styles.topBar}>
             <View style={styles.logoRow}>
@@ -376,14 +376,14 @@ export default function HomeScreen() {
 
         {/* ── Bande "Le Fleuve Congo" ── */}
         <View style={[styles.storyBand, { height: storyHeight }]}>
-          <View style={StyleSheet.absoluteFillObject}>
+          <View style={StyleSheet.absoluteFill}>
             {storyPhoto ? (
-              <Image source={{ uri: storyPhoto }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+              <Image source={{ uri: storyPhoto }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
               <RiverMotif width={width} height={storyHeight} variant="band" />
             )}
           </View>
-          <View style={[StyleSheet.absoluteFillObject, styles.storyScrim]} />
+          <View style={[StyleSheet.absoluteFill, styles.storyScrim]} />
           <View style={[styles.storyContent, isWide && { maxWidth: 560, alignItems: 'flex-start' }]}>
             <Text style={styles.storyKicker}>Le fleuve Congo</Text>
             <Text style={[styles.storyTitle, isWide && { fontSize: 34, lineHeight: 40, textAlign: 'left' }]}>
