@@ -14,6 +14,7 @@ import {
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../lib/auth-context';
 import { CityProvider } from '../lib/city-context';
+import { ConfirmProvider } from '../lib/confirm-context';
 
 export default function RootLayout() {
   // Playfair Display (voix éditoriale) + Manrope (interface) — direction
@@ -34,7 +35,9 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <CityProvider>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAF8F4' } }} />
+        <ConfirmProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAF8F4' } }} />
+        </ConfirmProvider>
       </CityProvider>
     </AuthProvider>
   );

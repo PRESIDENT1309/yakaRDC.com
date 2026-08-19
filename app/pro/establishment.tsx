@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Image, Modal,
 } from 'react-native';
 import { Alert } from '../../lib/alert';
+import { useConfirm } from '../../lib/confirm-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Save, Camera, Check, Building2, X,
@@ -69,6 +70,7 @@ function Field({ label, value, onChange, placeholder, multiline = false, keyboar
 
 export default function EstablishmentScreen() {
   const { profile } = useAuth();
+  const confirm = useConfirm();
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -246,17 +248,19 @@ export default function EstablishmentScreen() {
   }
 
   async function handleDeletePhoto(photo: ListingPhoto) {
-    Alert.alert('Supprimer cette photo', 'Cette action est irréversible.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await supabase.from('listing_photos').delete().eq('id', photo.id);
-        const storagePath = photo.url.split('/establishment-photos/')[1];
-        if (storagePath) {
-          await supabase.storage.from('establishment-photos').remove([storagePath]);
-        }
-        setPhotos(prev => prev.filter(p => p.id !== photo.id));
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Supprimer cette photo',
+      message: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    await supabase.from('listing_photos').delete().eq('id', photo.id);
+    const storagePath = photo.url.split('/establishment-photos/')[1];
+    if (storagePath) {
+      await supabase.storage.from('establishment-photos').remove([storagePath]);
+    }
+    setPhotos(prev => prev.filter(p => p.id !== photo.id));
   }
 
   // ── Photos Menu / Tarifs ──
@@ -286,17 +290,19 @@ export default function EstablishmentScreen() {
   }
 
   async function handleDeleteMenuPhoto(photo: ListingPhoto) {
-    Alert.alert('Supprimer cette photo', 'Cette action est irréversible.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await supabase.from('listing_photos').delete().eq('id', photo.id);
-        const storagePath = photo.url.split('/establishment-photos/')[1];
-        if (storagePath) {
-          await supabase.storage.from('establishment-photos').remove([storagePath]);
-        }
-        setMenuPhotos(prev => prev.filter(p => p.id !== photo.id));
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Supprimer cette photo',
+      message: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    await supabase.from('listing_photos').delete().eq('id', photo.id);
+    const storagePath = photo.url.split('/establishment-photos/')[1];
+    if (storagePath) {
+      await supabase.storage.from('establishment-photos').remove([storagePath]);
+    }
+    setMenuPhotos(prev => prev.filter(p => p.id !== photo.id));
   }
 
   async function handleSave() {

@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useConfirm } from '../../lib/confirm-context';
 import CategoryIcon from '../../components/CategoryIcon';
 import StatusBadge from '../../components/StatusBadge';
 import Chip from '../../components/Chip';
@@ -71,6 +72,7 @@ function toFr(iso: string): string {
 export default function PlannerScreen() {
   const { session } = useAuth();
   const { isWide, contentWidth } = useResponsive();
+  const confirm = useConfirm();
   // Contenu plafonné et centré dans contentMax dès la tablette — pas de
   // grille : les onglets (chronologie, tableau de bord, checklist) ne se
   // découpent pas naturellement en cartes, contrairement à Réservations.
@@ -204,15 +206,17 @@ export default function PlannerScreen() {
     fetchAll();
   }
 
-  function confirmDeleteTrip() {
+  async function confirmDeleteTrip() {
     if (!plan) return;
-    Alert.alert('Supprimer ce voyage', 'Tout son contenu sera supprimé définitivement.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await supabase.from('trip_plans').delete().eq('id', plan.id);
-        setPlan(null); setItems([]); setPackingItems([]); setBookings([]);
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Supprimer ce voyage',
+      message: 'Tout son contenu sera supprimé définitivement.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    await supabase.from('trip_plans').delete().eq('id', plan.id);
+    setPlan(null); setItems([]); setPackingItems([]); setBookings([]);
   }
 
   async function handleAddItem() {

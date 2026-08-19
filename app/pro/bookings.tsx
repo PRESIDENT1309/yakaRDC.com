@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, RefreshControl, ActivityIndicator, } from 'react-native';
 import { Alert } from '../../lib/alert';
+import { useConfirm } from '../../lib/confirm-context';
 import { Building2, Home, UtensilsCrossed, Mountain, Phone } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -40,6 +41,7 @@ function TypeIcon({ type }: { type: EstablishmentType }) {
 
 export default function PartnerBookingsScreen() {
   const { profile } = useAuth();
+  const confirm = useConfirm();
   const [bookings, setBookings] = useState<BookingWithEstablishment[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [loading, setLoading] = useState(true);
@@ -74,13 +76,15 @@ export default function PartnerBookingsScreen() {
   }
 
   async function handleReject(id: string) {
-    Alert.alert('Refuser', 'Confirmer le refus de cette demande ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Refuser', style: 'destructive', onPress: async () => {
-        await supabase.from('bookings').update({ status: 'rejected' }).eq('id', id);
-        fetchBookings();
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Refuser cette demande',
+      message: 'Le voyageur sera informé du refus. Cette décision est définitive.',
+      confirmLabel: 'Refuser',
+      destructive: true,
+    });
+    if (!ok) return;
+    await supabase.from('bookings').update({ status: 'rejected' }).eq('id', id);
+    fetchBookings();
   }
 
   const filtered = bookings.filter(b => {

@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useConfirm } from '../../lib/confirm-context';
 import { getOpeningStatus } from '../../lib/opening-hours';
 import Calendar, { formatFrench } from '../../components/Calendar';
 import FormField from '../../components/FormField';
@@ -366,6 +367,7 @@ export default function ListingDetailScreen() {
   const { session, profile } = useAuth();
   const { width: heroWidth } = useWindowDimensions();
   const { isWide, isDesktop, contentWidth } = useResponsive();
+  const confirm = useConfirm();
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
   const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
@@ -572,16 +574,18 @@ export default function ListingDetailScreen() {
     fetchReviews();
   }
 
-  function confirmDeleteReview() {
+  async function confirmDeleteReview() {
     if (!myReview) return;
-    Alert.alert('Supprimer mon avis', 'Cette action est irréversible.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await supabase.from('reviews').delete().eq('id', myReview.id);
-        setShowReviewForm(false);
-        fetchReviews();
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Supprimer mon avis',
+      message: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    await supabase.from('reviews').delete().eq('id', myReview.id);
+    setShowReviewForm(false);
+    fetchReviews();
   }
 
   useEffect(() => {

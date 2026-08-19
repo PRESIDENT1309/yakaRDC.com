@@ -30,6 +30,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { useConfirm } from '../../lib/confirm-context';
 import { colors } from '../../lib/theme';
 
 function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -73,45 +74,9 @@ function MenuItem({
   );
 }
 
-function LogoutModal({
-  visible,
-  onCancel,
-  onConfirm,
-}: {
-  visible: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalBox}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Se déconnecter ?</Text>
-            <Pressable onPress={onCancel} hitSlop={8}>
-              <X size={18} color={colors.muted} />
-            </Pressable>
-          </View>
-          <Text style={styles.modalText}>
-            Vous devrez vous reconnecter pour accéder à vos réservations et favoris.
-          </Text>
-          <View style={styles.modalActions}>
-            <Pressable style={styles.cancelBtn} onPress={onCancel}>
-              <Text style={styles.cancelBtnText}>Annuler</Text>
-            </Pressable>
-            <Pressable style={styles.confirmBtn} onPress={onConfirm}>
-              <Text style={styles.confirmBtnText}>Se déconnecter</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 export default function ProfileScreen() {
   const { profile, session, refreshProfile } = useAuth();
-  const [showLogout, setShowLogout] = useState(false);
+  const confirm = useConfirm();
   const [bookingCount, setBookingCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -183,8 +148,14 @@ export default function ProfileScreen() {
   }
 
   async function handleLogout() {
+    const ok = await confirm({
+      title: 'Se déconnecter ?',
+      message: 'Vous devrez vous reconnecter pour accéder à vos réservations et favoris.',
+      confirmLabel: 'Se déconnecter',
+      destructive: true,
+    });
+    if (!ok) return;
     await supabase.auth.signOut();
-    setShowLogout(false);
     router.replace('/(auth)/login');
   }
 
@@ -318,18 +289,12 @@ export default function ProfileScreen() {
           </MenuSection>
 
           {/* ── Déconnexion ── */}
-          <Pressable style={styles.logoutButton} onPress={() => setShowLogout(true)}>
+          <Pressable style={styles.logoutButton} onPress={handleLogout}>
             <LogOut color="#C0392B" size={15} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
         </View>
       </ScrollView>
-
-      <LogoutModal
-        visible={showLogout}
-        onCancel={() => setShowLogout(false)}
-        onConfirm={handleLogout}
-      />
     </View>
   );
 }
