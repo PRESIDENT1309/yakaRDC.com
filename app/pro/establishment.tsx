@@ -8,27 +8,41 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   Save, Camera, Check, Building2, X,
   ChevronLeft, ChevronRight, Trash2,
+  Images, Info, Contact, MapPin, Sparkles, Tag, DollarSign,
+  UtensilsCrossed, Ticket, Clock,
 } from 'lucide-react-native';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography, spacing } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
-import {
-  PhotoIcon, InfoIcon, ContactIcon, LocationIcon,
-  AmenityIcon, PromoIcon, PriceIcon, MenuIcon, TicketIcon, IconBadge,
-} from '../../components/SectionIcons';
 import type { Establishment, ListingPhoto } from '../../lib/types';
+import type { DayKey, DayHours, OpeningHours } from '../../lib/opening-hours';
 
-// Titre de section : pastille + libellé, en remplacement des emoji
+// Titre de section : icône lucide nue + libellé. La pastille colorée qui
+// entourait l'icône a été retirée (anti-pattern « icône dans un cercle
+// coloré »), en même temps que components/SectionIcons.tsx — une seconde
+// bibliothèque d'icônes maison dans un projet qui impose lucide.
 function CardTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <View style={styles.cardTitleRow}>
-      <IconBadge>{icon}</IconBadge>
+      {icon}
       <Text style={styles.cardTitleText}>{label}</Text>
     </View>
   );
 }
+
+const SECTION_ICON = { size: 15, color: colors.lave, strokeWidth: 1.75 } as const;
+
+const DAYS: { key: DayKey; label: string }[] = [
+  { key: 'mon', label: 'Lundi' },
+  { key: 'tue', label: 'Mardi' },
+  { key: 'wed', label: 'Mercredi' },
+  { key: 'thu', label: 'Jeudi' },
+  { key: 'fri', label: 'Vendredi' },
+  { key: 'sat', label: 'Samedi' },
+  { key: 'sun', label: 'Dimanche' },
+];
 
 const ALL_AMENITIES = [
   'Wifi', 'Parking', 'Climatisation', 'Petit-déjeuner',
@@ -92,6 +106,10 @@ export default function EstablishmentScreen() {
   // Index de la photo affichée en plein écran dans la visionneuse (null = fermée)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
+  // Horaires d'ouverture
+  const [alwaysOpen, setAlwaysOpen] = useState(false);
+  const [hours, setHours] = useState<Partial<Record<DayKey, DayHours | null>>>({});
+
   const fetchEstablishment = useCallback(async () => {
     if (!profile?.id) return;
     const { data } = await supabase
@@ -117,6 +135,9 @@ export default function EstablishmentScreen() {
       setDiscountLabel(e.discount_label ?? '');
       setCapacity(e.capacity != null ? String(e.capacity) : '');
       setLogoUrl(e.logo_url ?? null);
+      const oh = (e as any).opening_hours as OpeningHours | null | undefined;
+      setAlwaysOpen(oh?.always_open ?? false);
+      setHours(oh?.days ?? {});
 
       const { data: photoRows } = await supabase.from('listing_photos')
         .select('*').eq('establishment_id', e.id).order('position', { ascending: true });
@@ -280,14 +301,31 @@ export default function EstablishmentScreen() {
   async function handleSave() {
     if (!establishment) return;
     setSaving(true);
-    await supabase.from('establishments').update({
+
+    const openingHours: OpeningHours = { always_open: alwaysOpen, days: hours };
+    const { error } = await supabase.from('establishments').update({
       name, description, phone,
       email, instagram, tiktok,
       commune, neighborhood, avenue, numero, reference, amenities,
       discount_percent: discountPercent ? parseInt(discountPercent, 10) : null,
       discount_label: discountLabel.trim() || null,
       capacity: capacity ? parseInt(capacity, 10) : null,
+      opening_hours: openingHours,
     }).eq('id', establishment.id);
+
+    // 42703 = colonne inexistante : la migration opening_hours n'a pas encore
+    // été appliquée en base. On le dit clairement plutôt que d'échouer en
+    // silence sur l'ensemble de l'enregistrement.
+    if (error) {
+      setSaving(false);
+      Alert.alert(
+        'Enregistrement incomplet',
+        (error as any).code === '42703'
+          ? "Les horaires n'ont pas pu être enregistrés : la colonne opening_hours n'existe pas encore en base. Les autres informations non plus — contactez le support."
+          : error.message,
+      );
+      return;
+    }
 
     if (price) {
       const unit = establishment.type === 'hotel' || establishment.type === 'furnished_house'
@@ -307,6 +345,41 @@ export default function EstablishmentScreen() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  // Un jour absent/null = fermé. Basculer vers « ouvert » propose un créneau
+  // par défaut plutôt que deux champs vides.
+  function toggleDay(key: DayKey) {
+    setHours(prev => ({
+      ...prev,
+      [key]: prev[key] ? null : { from: '08:00', to: '18:00' },
+    }));
+  }
+
+  function setDayTime(key: DayKey, field: 'from' | 'to', value: string) {
+    setHours(prev => {
+      const cur = prev[key];
+      if (!cur) return prev;
+      return { ...prev, [key]: { ...cur, [field]: value } };
+    });
+  }
+
+  // Saisir sept fois le même créneau est pénible : on recopie lundi partout.
+  // Les jours explicitement fermés le restent.
+  function applyMondayToAll() {
+    const monday = hours.mon;
+    if (!monday) {
+      Alert.alert('Lundi fermé', "Renseignez d'abord les horaires du lundi.");
+      return;
+    }
+    setHours(prev => {
+      const next: Partial<Record<DayKey, DayHours | null>> = { ...prev };
+      for (const d of DAYS) {
+        if (prev[d.key]) next[d.key] = { ...monday };
+      }
+      next.mon = { ...monday };
+      return next;
+    });
   }
 
   function toggleAmenity(a: string) {
@@ -379,7 +452,7 @@ export default function EstablishmentScreen() {
 
           {/* Logo + Photos */}
           <View style={styles.card}>
-            <CardTitle icon={<PhotoIcon />} label="Logo & Photos" />
+            <CardTitle icon={<Images {...SECTION_ICON} />} label="Logo & Photos" />
             <View style={{ flexDirection: 'row', gap: 14, alignItems: 'flex-start' }}>
               <View style={{ alignItems: 'center', gap: 5 }}>
                 <Text style={styles.subLabel}>Logo</Text>
@@ -435,7 +508,7 @@ export default function EstablishmentScreen() {
           {/* Menu (restaurant) ou Tarifs (site) — uniquement pour ces deux types */}
           {menuCategory && (
             <View style={styles.card}>
-              <CardTitle icon={menuCategory === 'menu' ? <MenuIcon /> : <TicketIcon />} label={menuSectionTitle} />
+              <CardTitle icon={menuCategory === 'menu' ? <UtensilsCrossed {...SECTION_ICON} /> : <Ticket {...SECTION_ICON} />} label={menuSectionTitle} />
               <Text style={styles.promoHint}>{menuSectionHint}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {menuPhotos.map((photo, index) => (
@@ -469,7 +542,7 @@ export default function EstablishmentScreen() {
 
           {/* Infos générales */}
           <View style={styles.card}>
-            <CardTitle icon={<InfoIcon />} label="Informations générales" />
+            <CardTitle icon={<Info {...SECTION_ICON} />} label="Informations générales" />
             <Field label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
             <Field label="Description" value={description} onChange={setDescription}
               placeholder="Décrivez votre établissement en quelques phrases..." multiline />
@@ -477,20 +550,20 @@ export default function EstablishmentScreen() {
 
           {/* Contact */}
           <View style={styles.card}>
-            <CardTitle icon={<ContactIcon />} label="Contact & Réseaux sociaux" />
+            <CardTitle icon={<Contact {...SECTION_ICON} />} label="Contact & Réseaux sociaux" />
             <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="📱 Téléphone" value={phone} onChange={setPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
-              <View style={{ flex: 1 }}><Field label="✉️ Email" value={email} onChange={setEmail} placeholder="contact@exemple.cd" keyboardType="email-address" /></View>
+              <View style={{ flex: 1 }}><Field label="Téléphone" value={phone} onChange={setPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
+              <View style={{ flex: 1 }}><Field label="Email" value={email} onChange={setEmail} placeholder="contact@exemple.cd" keyboardType="email-address" /></View>
             </View>
             <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="📸 Instagram" value={instagram} onChange={setInstagram} placeholder="@votre_compte" /></View>
-              <View style={{ flex: 1 }}><Field label="🎵 TikTok" value={tiktok} onChange={setTiktok} placeholder="@votre_compte" /></View>
+              <View style={{ flex: 1 }}><Field label="Instagram" value={instagram} onChange={setInstagram} placeholder="@votre_compte" /></View>
+              <View style={{ flex: 1 }}><Field label="TikTok" value={tiktok} onChange={setTiktok} placeholder="@votre_compte" /></View>
             </View>
           </View>
 
           {/* Adresse */}
           <View style={styles.card}>
-            <CardTitle icon={<LocationIcon />} label="Adresse complète" />
+            <CardTitle icon={<MapPin {...SECTION_ICON} />} label="Adresse complète" />
             {subdivisions && (
               <View style={styles.fieldWrap}>
                 <Text style={styles.fieldLabel}>Commune</Text>
@@ -528,7 +601,7 @@ export default function EstablishmentScreen() {
 
           {/* Équipements */}
           <View style={styles.card}>
-            <CardTitle icon={<AmenityIcon />} label="Équipements & services" />
+            <CardTitle icon={<Sparkles {...SECTION_ICON} />} label="Équipements & services" />
             <View style={styles.amenitiesGrid}>
               {ALL_AMENITIES.map(a => {
                 const active = amenities.includes(a);
@@ -546,7 +619,7 @@ export default function EstablishmentScreen() {
 
           {/* Promotion du jour */}
           <View style={styles.card}>
-            <CardTitle icon={<PromoIcon />} label="Promotion du jour" />
+            <CardTitle icon={<Tag {...SECTION_ICON} />} label="Promotion du jour" />
             <Text style={styles.promoHint}>
               Affichez une réduction dans le planificateur de voyage des utilisateurs. Laissez vide pour ne pas afficher de promotion.
             </Text>
@@ -560,9 +633,71 @@ export default function EstablishmentScreen() {
             </View>
           </View>
 
+          {/* Horaires d'ouverture */}
+          <View style={styles.card}>
+            <CardTitle icon={<Clock {...SECTION_ICON} />} label="Horaires d'ouverture" />
+
+            <Pressable style={styles.hoursToggleRow} onPress={() => setAlwaysOpen(v => !v)}>
+              <View style={[styles.checkbox, alwaysOpen && styles.checkboxOn]}>
+                {alwaysOpen && <Check size={12} color={colors.cream} strokeWidth={2.5} />}
+              </View>
+              <Text style={styles.hoursToggleLabel}>Ouvert 24h/24</Text>
+            </Pressable>
+
+            {!alwaysOpen && (
+              <>
+                <Pressable style={styles.applyAllBtn} onPress={applyMondayToAll}>
+                  <Text style={styles.applyAllText}>Appliquer lundi à tous les jours</Text>
+                </Pressable>
+
+                {DAYS.map(d => {
+                  const dh = hours[d.key];
+                  const isOpen = !!dh;
+                  return (
+                    <View key={d.key} style={styles.dayRow}>
+                      <Pressable style={styles.dayToggle} onPress={() => toggleDay(d.key)}>
+                        <View style={[styles.checkbox, isOpen && styles.checkboxOn]}>
+                          {isOpen && <Check size={12} color={colors.cream} strokeWidth={2.5} />}
+                        </View>
+                        <Text style={styles.dayLabel}>{d.label}</Text>
+                      </Pressable>
+
+                      {isOpen ? (
+                        <View style={styles.dayTimes}>
+                          <TextInput
+                            style={styles.timeInput}
+                            value={dh!.from}
+                            onChangeText={v => setDayTime(d.key, 'from', v)}
+                            placeholder="08:00"
+                            placeholderTextColor={colors.faint}
+                            maxLength={5}
+                          />
+                          <Text style={styles.timeSeparator}>→</Text>
+                          <TextInput
+                            style={styles.timeInput}
+                            value={dh!.to}
+                            onChangeText={v => setDayTime(d.key, 'to', v)}
+                            placeholder="22:00"
+                            placeholderTextColor={colors.faint}
+                            maxLength={5}
+                          />
+                        </View>
+                      ) : (
+                        <Text style={styles.dayClosed}>Fermé</Text>
+                      )}
+                    </View>
+                  );
+                })}
+                <Text style={styles.hoursHint}>
+                  Format 24h (ex. 08:00). Une fermeture après minuit s'écrit 19:00 → 02:00.
+                </Text>
+              </>
+            )}
+          </View>
+
           {/* Tarif */}
           <View style={styles.card}>
-            <CardTitle icon={<PriceIcon />} label="Tarif" />
+            <CardTitle icon={<DollarSign {...SECTION_ICON} />} label="Tarif" />
             <View style={styles.row}>
               <View style={{ flex: 2 }}><Field label={`Prix (par ${unitLabel})`} value={price} onChange={setPrice} placeholder="Ex : 45" keyboardType="decimal-pad" /></View>
               <View style={{ flex: 1 }}><Field label="Devise" value={currency} onChange={setCurrency} placeholder="USD" /></View>
@@ -733,6 +868,31 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
   cardTitleText: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  // ── Horaires d'ouverture ──
+  hoursToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  hoursToggleLabel: { ...typography.body, color: colors.ink },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,
+    borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: colors.lave, borderColor: colors.lave },
+  applyAllBtn: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
+  applyAllText: { ...typography.caption, color: colors.lave, textDecorationLine: 'underline' },
+  dayRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  dayToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+  dayLabel: { ...typography.body, color: colors.ink },
+  dayTimes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  timeInput: {
+    ...typography.caption, color: colors.ink, textAlign: 'center',
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, width: 66,
+  },
+  timeSeparator: { ...typography.caption, color: colors.faint },
+  dayClosed: { ...typography.caption, color: colors.faint },
+  hoursHint: { ...typography.caption, color: colors.faint, marginTop: spacing.sm, lineHeight: 17 },
   subLabel: { fontSize: 10, color: colors.faint },
   logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: 12 },

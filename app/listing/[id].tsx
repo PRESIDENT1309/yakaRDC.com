@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { getOpeningStatus } from '../../lib/opening-hours';
 import Calendar, { formatFrench } from '../../components/Calendar';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
@@ -50,11 +51,6 @@ function sameValue(a?: string | null, b?: string | null): boolean {
   if (!a || !b) return false;
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
-
-// Horaires : le calcul se fait sur l'heure de Kinshasa (UTC+1, sans
-// changement saisonnier), jamais sur le fuseau du téléphone — sinon un
-// utilisateur de la diaspora verrait « Fermé » sur un établissement ouvert.
-const KINSHASA_UTC_OFFSET_MIN = 60;
 
 function unitLabel(unit: string | null): string {
   if (unit === 'night') return '/ nuit';
@@ -123,7 +119,7 @@ function Counter({ label, value, onDec, onInc, accent }:
         </Pressable>
         <Text style={styles.counterValue}>{value}</Text>
         <Pressable style={[styles.counterBtn, { backgroundColor: accent }]} onPress={onInc} hitSlop={8}>
-          <Plus size={14} color="#FAF8F4" />
+          <Plus size={14} color={colors.cream} />
         </Pressable>
       </View>
     </View>
@@ -153,7 +149,7 @@ function SlotPicker({ slots, selected, onSelect, accent, slotLoads, capacity, pa
           >
             <Text style={[
               styles.chipText,
-              isSelected && { color: '#FAF8F4', fontWeight: '500' },
+              isSelected && { color: colors.cream, fontWeight: '500' },
               isFull && styles.chipTextFull,
             ]}>
               {s}{isFull ? ' · complet' : ''}
@@ -195,7 +191,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
       <Text style={styles.fieldLabel}>Dates du séjour</Text>
       <View style={styles.dateTabs}>
         <Pressable
-          style={[styles.dateTab, dateMode === 'in' && { borderColor: accent, backgroundColor: '#FFFFFF' }]}
+          style={[styles.dateTab, dateMode === 'in' && { borderColor: accent, backgroundColor: colors.white }]}
           onPress={() => setDateMode('in')}
         >
           <Text style={styles.dateTabLabel}>Arrivée</Text>
@@ -204,7 +200,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.dateTab, dateMode === 'out' && { borderColor: accent, backgroundColor: '#FFFFFF' }]}
+          style={[styles.dateTab, dateMode === 'out' && { borderColor: accent, backgroundColor: colors.white }]}
           onPress={() => setDateMode('out')}
         >
           <Text style={styles.dateTabLabel}>Départ</Text>
@@ -232,7 +228,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {PAYMENTS.map(p => (
           <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
-            <Text style={[styles.chipText, form.paymentMethod === p.key && { color: '#FAF8F4', fontWeight: '500' }]}>{p.label}</Text>
+            <Text style={[styles.chipText, form.paymentMethod === p.key && { color: colors.cream, fontWeight: '500' }]}>{p.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -289,7 +285,7 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
       <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
         {OCCASIONS.map(o => (
           <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
-            <Text style={[styles.chipText, form.occasion === o.key && { color: '#FAF8F4', fontWeight: '500' }]}>{o.label}</Text>
+            <Text style={[styles.chipText, form.occasion === o.key && { color: colors.cream, fontWeight: '500' }]}>{o.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -346,7 +342,7 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
       <View style={styles.formRow}>
         {[{ key: 'guided', label: 'Guidée' }, { key: 'free', label: 'Libre' }].map(v => (
           <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: '#FAF8F4', fontWeight: '500' }]}>{v.label}</Text>
+            <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: colors.cream, fontWeight: '500' }]}>{v.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -354,7 +350,7 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
       <View style={styles.formRow}>
         {[{ key: 'congolaise', label: 'Congolaise' }, { key: 'etrangere', label: 'Étrangère' }].map(n => (
           <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: '#FAF8F4', fontWeight: '500' }]}>{n.label}</Text>
+            <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: colors.cream, fontWeight: '500' }]}>{n.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -797,6 +793,16 @@ export default function ListingDetailScreen() {
   const viewerPhotos = viewer?.source === 'menu' ? menuPhotos : photos;
   const viewerPhoto = viewer ? viewerPhotos[viewer.index] : null;
 
+  // Ligne d'état des horaires. `null` quand la colonne est vide : on n'affiche
+  // alors rien, plutôt qu'un « Fermé » par défaut qui serait faux.
+  const opening = getOpeningStatus(establishment.opening_hours);
+  const openingStatus = opening && {
+    label: opening.label,
+    tone: opening.state === 'open' ? colors.success
+      : opening.state === 'closing_soon' ? colors.warning
+      : colors.muted,
+  };
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -963,7 +969,7 @@ export default function ListingDetailScreen() {
 
           {establishment.description && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>À propos</Text>
+              <Text style={styles.sectionKicker}>À propos</Text>
               <Text style={styles.description}>{establishment.description}</Text>
             </View>
           )}
@@ -1034,7 +1040,7 @@ export default function ListingDetailScreen() {
                       </View>
                       {r.is_verified_stay && (
                         <View style={styles.verifiedBadge}>
-                          <BadgeCheck size={10} color="#0F6E56" />
+                          <BadgeCheck size={10} color={colors.fleuve} />
                           <Text style={styles.verifiedText}>Client vérifié</Text>
                         </View>
                       )}

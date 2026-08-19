@@ -1,3 +1,5 @@
+import type { OpeningHours } from './opening-hours';
+
 // ═══════════════════════════════════════════
 // Utilisateurs
 // ═══════════════════════════════════════════
@@ -50,6 +52,9 @@ export interface Establishment {
   discount_label: string | null;
   capacity: number | null;
   view_count: number;
+  // Horaires d'ouverture — voir lib/opening-hours.ts pour la forme et le
+  // calcul d'état. null tant que le partenaire ne les a pas saisis.
+  opening_hours: OpeningHours | null;
   created_at: string;
 }
 
