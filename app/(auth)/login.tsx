@@ -4,13 +4,25 @@ import {
   Platform, ImageBackground, StatusBar, KeyboardAvoidingView,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 import LandscapeIllustration from '../../components/LandscapeIllustration';
+
+// Destination d'après connexion. N'accepte qu'un chemin interne : doit commencer
+// par un seul '/' — ce qui écarte les URL absolues ('https://…') et les URL
+// protocol-relative ('//evil.tld'), qui sortiraient de l'app. Tout le reste
+// retombe sur l'accueil, comportement historique de cet écran.
+function safeRedirect(target?: string): string {
+  if (typeof target !== 'string') return '/';
+  if (!target.startsWith('/') || target.startsWith('//')) return '/';
+  return target;
+}
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
+  const params = useLocalSearchParams<{ redirect?: string; reason?: string }>();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +47,7 @@ export default function LoginScreen() {
     });
     setLoading(false);
     if (authError) { setError('Email ou mot de passe incorrect.'); return; }
-    router.replace('/');
+    router.replace(safeRedirect(params.redirect) as never);
   }
 
   async function handleGoogleLogin() {
@@ -55,6 +67,14 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
+        {/* Motif de la redirection, quand l'utilisateur arrive depuis une
+            action nécessitant un compte (favori, réservation, avis…). */}
+        {!!params.reason && (
+          <View style={styles.reasonNote}>
+            <Text style={styles.reasonText}>{params.reason}</Text>
+          </View>
+        )}
+
         <View style={[styles.pill, !!error && styles.pillError]}>
           <TextInput
             style={styles.input}
@@ -148,6 +168,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic', fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: 4, ...shadow,
   },
   form: { paddingHorizontal: 32, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: 12 },
+  // Bloc ajouté pour le motif de redirection — en jetons, contrairement au
+  // reste de cet écran (non encore repris par le design system).
+  reasonNote: {
+    backgroundColor: colors.nuit + 'B3', borderRadius: radii.md,
+    paddingHorizontal: spacing.md, paddingVertical: 12,
+  },
+  reasonText: { ...typography.caption, color: colors.cream, textAlign: 'center' },
   pill: {
     backgroundColor: '#FFFFFF', borderRadius: 999,
     paddingHorizontal: 20, paddingVertical: 14,

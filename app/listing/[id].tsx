@@ -2,24 +2,66 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput,
-  ActivityIndicator, Alert, Image, useWindowDimensions, Linking,
+  ActivityIndicator, Alert, Image, useWindowDimensions, Linking, Share,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
 import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
-  Phone, Mail, AtSign, Music2, CalendarPlus,
+  Phone, Mail, CalendarPlus, AlertCircle, Share2, Navigation, Flag,
   ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, spacing } from '../../lib/theme';
+import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import Calendar, { formatFrench } from '../../components/Calendar';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
+import Button from '../../components/Button';
+import EmptyState from '../../components/EmptyState';
+import ListingCard from '../../components/ListingCard';
+import RiverMotif from '../../components/RiverMotif';
+import PhotoScrim from '../../components/PhotoScrim';
 import type { Establishment, Rate, EstablishmentType, ListingPhoto, Review } from '../../lib/types';
+
+// Établissement suggéré en fin de fiche, enrichi de sa photo et de son tarif
+type SimilarEstablishment = Establishment & {
+  coverPhoto: string | null;
+  priceLabel?: string;
+};
+
+// Contact du support YakaRDC pour les signalements de fiche (point « Signaler
+// une information incorrecte »). Aucune table de signalement dans ce lot :
+// le lien ouvre une conversation pré-remplie.
+const SUPPORT_WHATSAPP = '243999000000';
+
+// ── Affichage de l'adresse ──
+// Les données partenaires arrivent telles que saisies (« gombe », « gombe  »).
+// On corrige à l'affichage uniquement, jamais en base.
+function titleCase(v: string): string {
+  return v.trim().split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function sameValue(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+// Horaires : le calcul se fait sur l'heure de Kinshasa (UTC+1, sans
+// changement saisonnier), jamais sur le fuseau du téléphone — sinon un
+// utilisateur de la diaspora verrait « Fermé » sur un établissement ouvert.
+const KINSHASA_UTC_OFFSET_MIN = 60;
+
+function unitLabel(unit: string | null): string {
+  if (unit === 'night') return '/ nuit';
+  if (unit === 'person') return '/ pers.';
+  if (unit === 'visit') return '/ visite';
+  return '';
+}
 
 // Disponibilités transmises aux formulaires de réservation
 interface Availability {
@@ -53,9 +95,9 @@ const RESTAURANT_SLOTS: TimeSlot[] = ['12h00','12h30','13h00','19h00','19h30','2
 const SITE_SLOTS: TimeSlot[] = ['09h00','11h00','14h00','16h00'];
 const OCCASIONS = [
   { key: 'none', label: 'Aucune' },
-  { key: 'birthday', label: 'Anniversaire 🎂' },
-  { key: 'business', label: 'Business 💼' },
-  { key: 'romantic', label: 'Romantique 💑' },
+  { key: 'birthday', label: 'Anniversaire' },
+  { key: 'business', label: 'Business' },
+  { key: 'romantic', label: 'Romantique' },
   { key: 'other', label: 'Autre' },
 ];
 const PAYMENTS = [
@@ -69,36 +111,6 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   'Climatisation': <Wind size={13} color={colors.fleuveDark} />,
   'Petit-déjeuner': <Coffee size={13} color={colors.fleuveDark} />,
 };
-
-function HeroIllustration({ type, accent, soft }: { type: EstablishmentType; accent: string; soft: string }) {
-  return (
-    <Svg width="100%" height="220" viewBox="0 0 390 220" preserveAspectRatio="xMidYMid slice">
-      <Circle cx="320" cy="70" r="60" fill={soft} opacity={0.8} />
-      <Circle cx="320" cy="70" r="44" fill={accent} opacity={0.3} />
-      <Circle cx="320" cy="70" r="30" fill={accent} opacity={0.5} />
-      {type === 'hotel' || type === 'furnished_house' ? (
-        <>
-          <Polygon points="80,220 130,120 180,220" fill={accent} opacity={0.25} />
-          <Polygon points="140,220 200,90 260,220" fill={accent} opacity={0.35} />
-          <Polygon points="230,220 280,140 330,220" fill={accent} opacity={0.2} />
-        </>
-      ) : type === 'restaurant' ? (
-        <>
-          <Circle cx="80" cy="160" r="50" fill={accent} opacity={0.15} />
-          <Circle cx="180" cy="180" r="65" fill={accent} opacity={0.1} />
-          <Circle cx="290" cy="155" r="45" fill={accent} opacity={0.15} />
-        </>
-      ) : (
-        <>
-          <Polygon points="30,220 90,100 150,220" fill={accent} opacity={0.2} />
-          <Polygon points="120,220 200,60 280,220" fill={accent} opacity={0.3} />
-          <Path d="M200,60 C198,45 208,38 203,22" stroke={soft} strokeWidth="3" fill="none" opacity={0.6} strokeLinecap="round" />
-          <Polygon points="260,220 310,140 360,220" fill={accent} opacity={0.2} />
-        </>
-      )}
-    </Svg>
-  );
-}
 
 function Counter({ label, value, onDec, onInc, accent }:
   { label: string; value: number; onDec: () => void; onInc: () => void; accent: string }) {
@@ -225,9 +237,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
         ))}
       </View>
       <FormField label="Demandes spéciales (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Chambre calme, lit king size..." multiline />
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Envoyer la demande</Text></>}
-      </Pressable>
+      <Button label="Envoyer la demande" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
     </ScrollView>
   );
 }
@@ -284,9 +294,7 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
         ))}
       </View>
       <FormField label="Allergies / régimes (optionnel)" value={form.allergies} onChange={v => setForm({ ...form, allergies: v })} placeholder="Sans gluten, végétarien..." multiline />
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la table</Text></>}
-      </Pressable>
+      <Button label="Réserver la table" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
     </ScrollView>
   );
 }
@@ -336,7 +344,7 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
       </View>
       <Text style={styles.fieldLabel}>Type de visite</Text>
       <View style={styles.formRow}>
-        {[{ key: 'guided', label: 'Guidée 🎒' }, { key: 'free', label: 'Libre 🗺️' }].map(v => (
+        {[{ key: 'guided', label: 'Guidée' }, { key: 'free', label: 'Libre' }].map(v => (
           <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
             <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: '#FAF8F4', fontWeight: '500' }]}>{v.label}</Text>
           </Pressable>
@@ -344,16 +352,14 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
       </View>
       <Text style={styles.fieldLabel}>Nationalité</Text>
       <View style={styles.formRow}>
-        {[{ key: 'congolaise', label: '🇨🇩 Congolaise' }, { key: 'etrangere', label: '🌍 Étrangère' }].map(n => (
+        {[{ key: 'congolaise', label: 'Congolaise' }, { key: 'etrangere', label: 'Étrangère' }].map(n => (
           <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
             <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: '#FAF8F4', fontWeight: '500' }]}>{n.label}</Text>
           </Pressable>
         ))}
       </View>
       <FormField label="Remarques (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Accessibilité PMR, équipement spécial..." multiline />
-      <Pressable style={[styles.submitBtn, { backgroundColor: accent }]} onPress={onSubmit} disabled={loading}>
-        {loading ? <ActivityIndicator color="#FAF8F4" /> : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>Réserver la visite</Text></>}
-      </Pressable>
+      <Button label="Réserver la visite" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
     </ScrollView>
   );
 }
@@ -366,10 +372,15 @@ export default function ListingDetailScreen() {
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
   const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [rate, setRate] = useState<Rate | null>(null);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [menuPhotos, setMenuPhotos] = useState<ListingPhoto[]>([]);
-  const [menuViewerIndex, setMenuViewerIndex] = useState<number | null>(null);
+  // Visionneuse plein écran, partagée entre la galerie principale et le menu.
+  // `source` indique quelle collection est ouverte — une seule visionneuse,
+  // paramétrée, plutôt qu'une seconde implémentation.
+  const [viewer, setViewer] = useState<{ source: 'photos' | 'menu'; index: number } | null>(null);
+  const [similar, setSimilar] = useState<SimilarEstablishment[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [myReview, setMyReview] = useState<Review | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -401,20 +412,29 @@ export default function ListingDetailScreen() {
     adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise', notes: '',
   });
 
-  useEffect(() => {
-    supabase.from('establishments').select('*').eq('id', id).single()
-      .then(({ data }) => setEstablishment(data as Establishment));
+  const loadEstablishment = useCallback(async () => {
+    setLoadError(false);
+    const { data, error } = await supabase
+      .from('establishments').select('*').eq('id', id).single();
+
+    // Un id inexistant renvoie une erreur PostgREST, pas une donnée nulle
+    // silencieuse : sans cette branche, l'écran restait en spinner indéfiniment.
+    if (error || !data) { setLoadError(true); return; }
+    setEstablishment(data as Establishment);
+
     supabase.from('rates').select('*').eq('establishment_id', id).limit(1).maybeSingle()
-      .then(({ data }) => setRate(data as Rate | null));
+      .then(({ data: r }) => setRate(r as Rate | null));
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
-      .then(({ data }) => {
-        const all = (data as ListingPhoto[]) ?? [];
-        setPhotos(all.filter(p => !p.category || p.category === 'general'));
-        setMenuPhotos(all.filter(p => p.category === 'menu' || p.category === 'pricing'));
+      .then(({ data: p }) => {
+        const all = (p as ListingPhoto[]) ?? [];
+        setPhotos(all.filter(x => !x.category || x.category === 'general'));
+        setMenuPhotos(all.filter(x => x.category === 'menu' || x.category === 'pricing'));
       });
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
     supabase.rpc('increment_establishment_views', { p_establishment_id: id });
   }, [id]);
+
+  useEffect(() => { loadEstablishment(); }, [loadEstablishment]);
 
   // Charge les journées complètes sur 4 mois, à l'ouverture du formulaire
   useEffect(() => {
@@ -456,6 +476,40 @@ export default function ListingDetailScreen() {
     });
   }, [selectedVisitDate, id]);
 
+  // Établissements similaires — même type, même commune, hors fiche courante.
+  // Chargés après l'établissement, car ils dépendent de son type/commune.
+  useEffect(() => {
+    if (!establishment) return;
+    let cancelled = false;
+
+    (async () => {
+      let q = supabase.from('establishments')
+        .select('*, listing_photos(url, category, position), rates(price, currency, unit)')
+        .eq('type', establishment.type)
+        .eq('status', 'approved')
+        .neq('id', establishment.id)
+        .limit(3);
+      q = establishment.commune ? q.eq('commune', establishment.commune) : q.eq('city', establishment.city);
+
+      const { data } = await q;
+      if (cancelled) return;
+
+      setSimilar(((data as any[]) ?? []).map(e => {
+        const photo = (e.listing_photos ?? [])
+          .filter((p: any) => !p.category || p.category === 'general')
+          .sort((a: any, b: any) => a.position - b.position)[0];
+        const r = (e.rates ?? [])[0];
+        return {
+          ...e,
+          coverPhoto: photo?.url ?? null,
+          priceLabel: r ? `${r.price} ${r.currency} ${unitLabel(r.unit)}`.trim() : 'Tarif sur demande',
+        } as SimilarEstablishment;
+      }));
+    })();
+
+    return () => { cancelled = true; };
+  }, [establishment]);
+
   const fetchReviews = useCallback(async () => {
     const { data } = await supabase.from('reviews').select('*')
       .eq('establishment_id', id)
@@ -468,13 +522,38 @@ export default function ListingDetailScreen() {
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
+  // Garde d'authentification commune aux actions réservées aux comptes.
+  // Cette fiche est atteignable sans session (lien partagé), donc le cas est
+  // fréquent : on redirige vers la connexion en expliquant pourquoi, et on
+  // revient ici une fois connecté. Volontairement pas d'Alert.alert : cet
+  // écran tourne aussi sur le web, où Alert est dégradé — une alerte muette
+  // recréerait l'échec silencieux qu'on corrige.
+  function requireAuth(reason: string): boolean {
+    if (session?.user) return true;
+    router.push({
+      pathname: '/(auth)/login',
+      params: { redirect: `/listing/${id}`, reason },
+    });
+    return false;
+  }
+
+  // Gardée à l'ouverture, pas seulement à l'envoi : sans cela, un visiteur non
+  // connecté remplit tout le formulaire avant de découvrir qu'il lui faut un
+  // compte, et perd sa saisie.
+  function openBookingForm() {
+    if (!requireAuth('Connectez-vous pour réserver dans cet établissement.')) return;
+    setShowForm(true);
+  }
+
   function openReviewForm() {
+    if (!requireAuth('Connectez-vous pour partager votre avis sur cet établissement.')) return;
     setReviewRating(myReview?.rating ?? 0);
     setReviewComment(myReview?.comment ?? '');
     setShowReviewForm(true);
   }
 
   async function handleSaveReview() {
+    if (!requireAuth('Connectez-vous pour publier votre avis.')) return;
     if (!session?.user || reviewRating === 0) return;
     setSavingReview(true);
 
@@ -517,6 +596,7 @@ export default function ListingDetailScreen() {
   }, [id, session?.user?.id]);
 
   async function toggleFavorite() {
+    if (!requireAuth('Connectez-vous pour enregistrer cet établissement dans vos favoris.')) return;
     if (!session?.user || favoriteLoading) return;
     setFavoriteLoading(true);
     if (isFavorited) {
@@ -534,6 +614,7 @@ export default function ListingDetailScreen() {
   }
 
   async function handleAddToPlanning() {
+    if (!requireAuth('Connectez-vous pour ajouter cet établissement à votre planning.')) return;
     if (!session?.user || !establishment) return;
     setAddingToPlan(true);
 
@@ -572,6 +653,23 @@ export default function ListingDetailScreen() {
     Alert.alert('Ajouté !', `${establishment.name} a été ajouté à votre planning, dans "Lieux à visiter".`);
   }
 
+  if (loadError) {
+    return (
+      <View style={styles.loading}>
+        <EmptyState
+          icon={<AlertCircle size={40} color={colors.borderStrong} strokeWidth={1.75} />}
+          title="Établissement introuvable"
+          description="Cette fiche n'existe plus, ou la connexion a échoué. Vérifiez votre réseau et réessayez."
+          actionLabel="Réessayer"
+          onAction={loadEstablishment}
+        />
+        <Pressable style={styles.errorBackLink} onPress={() => router.back()}>
+          <Text style={styles.errorBackText}>Retour</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!establishment) {
     return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
   }
@@ -583,7 +681,6 @@ export default function ListingDetailScreen() {
   const isRestaurant = establishment.type === 'restaurant';
   const isSite = establishment.type === 'site';
   const menuSectionTitle = isRestaurant ? 'Menu' : 'Tarifs des attractions';
-  const currentMenuPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
 
   const availability: Availability = {
     fullDays,
@@ -596,7 +693,11 @@ export default function ListingDetailScreen() {
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : null;
 
+  // Filet de sécurité : l'ouverture du formulaire est déjà gardée (openBookingForm),
+  // donc ce cas ne devrait pas se produire — mais on ne se repose pas sur le
+  // masquage d'un bouton, qui est fragile.
   async function handleSubmit() {
+    if (!requireAuth('Connectez-vous pour envoyer votre demande de réservation.')) return;
     if (!session?.user) return;
     setSubmitting(true);
     let payload: any = { establishment_id: id, traveler_id: session.user.id };
@@ -644,6 +745,58 @@ export default function ListingDetailScreen() {
     ? `${rate.price} ${rate.currency} / ${rate.unit === 'night' ? 'nuit' : rate.unit === 'person' ? 'pers.' : 'visite'}`
     : 'Tarif sur demande';
 
+  // URL publique de la fiche — sert au partage et au signalement.
+  const listingUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/listing/${id}`
+    : `https://yakardc.com/listing/${id}`;
+
+  async function handleShare() {
+    try {
+      await Share.share({
+        title: establishment!.name,
+        message: `${establishment!.name} — ${listingUrl}`,
+        url: listingUrl,
+      });
+    } catch {
+      // Partage annulé ou indisponible : rien à signaler à l'utilisateur.
+    }
+  }
+
+  // Adresse en texte libre, pour la recherche Google Maps. On ne s'appuie pas
+  // sur lat/lng : le formulaire partenaire ne les collecte pas, donc tout
+  // nouvel établissement naîtrait sans coordonnées.
+  const addressQuery = [
+    establishment.name,
+    establishment.avenue ? `Avenue ${establishment.avenue}` : null,
+    establishment.numero,
+    establishment.commune ? titleCase(establishment.commune) : null,
+    establishment.city,
+  ].filter(Boolean).join(', ');
+
+  function openDirections() {
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressQuery)}`);
+  }
+
+  function reportListing() {
+    const msg = `Bonjour, je signale une information incorrecte sur cette fiche YakaRDC :\n\n${establishment!.name}\n${listingUrl}\n\nProblème constaté : `;
+    Linking.openURL(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(msg)}`);
+  }
+
+  // Ligne d'adresse : la commune n'est pas répétée si le quartier porte déjà
+  // la même valeur (« Commune de Gombe, Gombe » dans les données actuelles).
+  const communeLabel = establishment.commune ? titleCase(establishment.commune) : null;
+  const neighborhoodLabel = establishment.neighborhood ? titleCase(establishment.neighborhood) : null;
+  const showNeighborhood = neighborhoodLabel && !sameValue(establishment.commune, establishment.neighborhood);
+
+  const streetLine = establishment.avenue
+    ? `Avenue ${titleCase(establishment.avenue)}${establishment.numero ? `, n°${establishment.numero}` : ''}`
+    : null;
+  const areaLine = [communeLabel, showNeighborhood ? neighborhoodLabel : null, establishment.city]
+    .filter(Boolean).join(' · ');
+
+  const viewerPhotos = viewer?.source === 'menu' ? menuPhotos : photos;
+  const viewerPhoto = viewer ? viewerPhotos[viewer.index] : null;
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -660,108 +813,139 @@ export default function ListingDetailScreen() {
                   setActivePhotoIndex(index);
                 }}
               >
-                {photos.map((photo) => (
-                  <Image
-                    key={photo.id}
-                    source={{ uri: photo.url }}
-                    style={{ width: heroWidth, height: '100%' }}
-                    resizeMode="cover"
-                  />
+                {photos.map((photo, i) => (
+                  <Pressable key={photo.id} onPress={() => setViewer({ source: 'photos', index: i })}>
+                    <Image
+                      source={{ uri: photo.url }}
+                      style={{ width: heroWidth, height: '100%' }}
+                      resizeMode="cover"
+                    />
+                  </Pressable>
                 ))}
               </ScrollView>
-              <View
-                pointerEvents="none"
-                style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.2)' }]}
-              />
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                <PhotoScrim from="bottom" intensity={0.5} />
+              </View>
               {photos.length > 1 && (
-                <View style={styles.photoDots}>
-                  {photos.map((_, i) => (
-                    <Pressable
-                      key={i}
-                      onPress={() => {
-                        setActivePhotoIndex(i);
-                        photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
-                      }}
-                      hitSlop={6}
-                    >
-                      <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
-                    </Pressable>
-                  ))}
-                </View>
+                <>
+                  <View style={styles.photoDots}>
+                    {photos.map((_, i) => (
+                      <Pressable
+                        key={i}
+                        onPress={() => {
+                          setActivePhotoIndex(i);
+                          photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
+                        }}
+                        hitSlop={6}
+                      >
+                        <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
+                      </Pressable>
+                    ))}
+                  </View>
+                  <View style={styles.photoCounter}>
+                    <Text style={styles.photoCounterText}>{activePhotoIndex + 1} / {photos.length}</Text>
+                  </View>
+                </>
               )}
             </>
           ) : (
+            // Repli de marque (§06) : plus d'illustration décorative maison,
+            // c'est RiverMotif + PhotoScrim, déjà éprouvés sur la Homepage.
             <>
-              <HeroIllustration type={establishment.type} accent={accent} soft={soft} />
-              <View style={StyleSheet.absoluteFill}>
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.15)' }]} />
+              <RiverMotif width={heroWidth} height={220} variant="hero" />
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                <PhotoScrim from="bottom" intensity={0.45} />
               </View>
             </>
           )}
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <ArrowLeft size={16} color={colors.ink} />
+            <ArrowLeft size={16} color={colors.ink} strokeWidth={1.75} />
           </Pressable>
-          <Pressable style={styles.heartBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
-            <Heart size={16} color={isFavorited ? '#C0392B' : colors.ink} fill={isFavorited ? '#C0392B' : 'transparent'} />
-          </Pressable>
+          <View style={styles.heroActions}>
+            <Pressable style={styles.heroActionBtn} onPress={handleShare}>
+              <Share2 size={16} color={colors.ink} strokeWidth={1.75} />
+            </Pressable>
+            <Pressable style={styles.heroActionBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
+              <Heart
+                size={16}
+                strokeWidth={1.75}
+                color={isFavorited ? colors.danger : colors.ink}
+                fill={isFavorited ? colors.danger : 'transparent'}
+              />
+            </Pressable>
+          </View>
           <View style={styles.heroFooter}>
-            <View style={[styles.typeBadge, { backgroundColor: accent }]}>
-              <Text style={styles.typeBadgeText}>{cat?.label}</Text>
-            </View>
+            <Text style={styles.heroCategory}>{cat?.label}</Text>
             <Text style={styles.heroName}>{establishment.name}</Text>
           </View>
         </View>
 
         <View style={[styles.body, isWide && wide, isDesktop && styles.bodyDesktopRow]}>
           <View style={isDesktop ? styles.desktopMain : undefined}>
+          {/* Ligne méta — du texte avec séparateurs, pas des pastilles :
+              une pastille a un rôle de sélection, ici rien n'est cliquable. */}
           <View style={styles.metaRow}>
-            <View style={styles.locationRow}>
-              <MapPin size={13} color={colors.faint} />
-              <Text style={styles.locationText}>
-                {establishment.neighborhood ? `${establishment.neighborhood}, ` : ''}{establishment.city}
-              </Text>
-            </View>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {showNeighborhood ? `${neighborhoodLabel}, ` : ''}{establishment.city}
+            </Text>
+            <Text style={styles.metaSeparator}>·</Text>
             {avgRating != null ? (
-              <View style={styles.ratingRow}>
-                <Star size={12} color={colors.or} fill={colors.or} />
-                <Text style={styles.ratingText}>{avgRating.toFixed(1)}</Text>
-                <Text style={styles.ratingCount}>({reviews.length})</Text>
-              </View>
+              <>
+                <Star size={12} color={colors.or} fill={colors.or} strokeWidth={1.75} />
+                <Text style={styles.metaStrong}>{avgRating.toFixed(1)}</Text>
+                <Text style={styles.metaText}>({reviews.length})</Text>
+              </>
             ) : (
-              <View style={styles.newRow}>
-                <Text style={styles.newRowText}>Nouveau</Text>
-              </View>
+              <Text style={styles.metaText}>Nouveau</Text>
+            )}
+            {openingStatus && (
+              <>
+                <Text style={styles.metaSeparator}>·</Text>
+                <Text style={[styles.metaStrong, { color: openingStatus.tone }]}>{openingStatus.label}</Text>
+              </>
             )}
           </View>
 
-          {/* Contact — rangée compacte d'icônes rondes */}
-          {(establishment.phone || establishment.email || establishment.instagram || establishment.tiktok) && (
-            <View style={styles.contactIconsRow}>
+          {/* Contact — rangée segmentée, sans cercles colorés. Le libellé porte
+              le sens : « @ » pour Instagram et une note de musique pour TikTok
+              étaient indevinables. */}
+          {(establishment.phone || establishment.email) && (
+            <View style={styles.contactRow}>
               {establishment.phone && (
-                <Pressable style={[styles.contactIconBtn, { backgroundColor: soft }]} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
-                  <Phone size={17} color={accent} />
+                <Pressable style={styles.contactCell} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
+                  <Phone size={15} color={accent} strokeWidth={1.75} />
+                  <Text style={styles.contactLabel}>Appeler</Text>
                 </Pressable>
               )}
+              {establishment.phone && establishment.email && <View style={styles.contactDivider} />}
               {establishment.email && (
-                <Pressable style={[styles.contactIconBtn, { backgroundColor: soft }]} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
-                  <Mail size={17} color={accent} />
+                <Pressable style={styles.contactCell} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
+                  <Mail size={15} color={accent} strokeWidth={1.75} />
+                  <Text style={styles.contactLabel}>Écrire</Text>
                 </Pressable>
               )}
+            </View>
+          )}
+
+          {(establishment.instagram || establishment.tiktok) && (
+            <View style={styles.followRow}>
+              <Text style={styles.followLabel}>Suivre :</Text>
               {establishment.instagram && (
-                <Pressable
-                  style={[styles.contactIconBtn, { backgroundColor: soft }]}
+                <Text
+                  style={[styles.followLink, { color: accent }]}
                   onPress={() => Linking.openURL(`https://instagram.com/${establishment.instagram!.replace('@', '')}`)}
                 >
-                  <AtSign size={17} color={accent} />
-                </Pressable>
+                  Instagram
+                </Text>
               )}
+              {establishment.instagram && establishment.tiktok && <Text style={styles.followLabel}>·</Text>}
               {establishment.tiktok && (
-                <Pressable
-                  style={[styles.contactIconBtn, { backgroundColor: soft }]}
+                <Text
+                  style={[styles.followLink, { color: accent }]}
                   onPress={() => Linking.openURL(`https://tiktok.com/@${establishment.tiktok!.replace('@', '')}`)}
                 >
-                  <Music2 size={17} color={accent} />
-                </Pressable>
+                  TikTok
+                </Text>
               )}
             </View>
           )}
@@ -787,10 +971,10 @@ export default function ListingDetailScreen() {
           {/* Menu (restaurant) ou Tarifs (site) */}
           {menuPhotos.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{menuSectionTitle}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              <Text style={styles.sectionKicker}>{menuSectionTitle}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
                 {menuPhotos.map((photo, i) => (
-                  <Pressable key={photo.id} onPress={() => setMenuViewerIndex(i)}>
+                  <Pressable key={photo.id} onPress={() => setViewer({ source: 'menu', index: i })}>
                     <Image source={{ uri: photo.url }} style={styles.menuThumb} resizeMode="cover" />
                   </Pressable>
                 ))}
@@ -798,28 +982,21 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
-          {/* Adresse complète */}
-          {(establishment.commune || establishment.avenue || establishment.reference) && (
+          {/* Adresse — hiérarchie typographique et filet fin, pas de carte
+              blanche bordée. Rue en Playfair, zone en Manrope. */}
+          {(communeLabel || streetLine || establishment.reference) && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Adresse</Text>
-              <View style={styles.addressBox}>
-                {establishment.commune && (
-                  <View style={styles.addressRow}>
-                    <MapPin size={13} color={colors.faint} />
-                    <Text style={styles.addressText}>
-                      Commune de {establishment.commune}
-                      {establishment.neighborhood ? `, ${establishment.neighborhood}` : ''}
-                    </Text>
-                  </View>
-                )}
-                {establishment.avenue && (
-                  <Text style={styles.addressSubText}>
-                    Avenue {establishment.avenue}{establishment.numero ? `, n°${establishment.numero}` : ''}
-                  </Text>
-                )}
+              <Text style={styles.sectionKicker}>Adresse</Text>
+              <View style={styles.addressBlock}>
+                {streetLine && <Text style={styles.addressStreet}>{streetLine}</Text>}
+                {!!areaLine && <Text style={styles.addressArea}>{areaLine}</Text>}
                 {establishment.reference && (
-                  <Text style={styles.addressSubText}>📍 {establishment.reference}</Text>
+                  <Text style={styles.addressReference}>Repère : {establishment.reference}</Text>
                 )}
+                <Pressable style={styles.directionsLink} onPress={openDirections}>
+                  <Navigation size={13} color={accent} strokeWidth={1.75} />
+                  <Text style={[styles.directionsText, { color: accent }]}>Ouvrir l'itinéraire</Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -827,23 +1004,24 @@ export default function ListingDetailScreen() {
           {/* Avis */}
           <View style={styles.section}>
             <View style={styles.reviewsHeader}>
-              <Text style={styles.sectionTitle}>
+              <Text style={styles.sectionKicker}>
                 Avis {reviews.length > 0 ? `(${reviews.length})` : ''}
               </Text>
-              {session?.user && (
-                <Pressable style={styles.writeReviewBtn} onPress={openReviewForm}>
-                  {myReview ? <Pencil size={12} color={accent} /> : <Star size={12} color={accent} />}
-                  <Text style={[styles.writeReviewText, { color: accent }]}>
-                    {myReview ? 'Modifier mon avis' : 'Donner mon avis'}
-                  </Text>
-                </Pressable>
-              )}
+              {/* Plus conditionné à la session : la garde est dans openReviewForm,
+                  masquer le bouton cachait le problème au lieu de le traiter. */}
+              <Pressable style={styles.writeReviewBtn} onPress={openReviewForm}>
+                {myReview ? <Pencil size={12} color={accent} strokeWidth={1.75} /> : <Star size={12} color={accent} strokeWidth={1.75} />}
+                <Text style={[styles.writeReviewText, { color: accent }]}>
+                  {myReview ? 'Modifier mon avis' : 'Donner mon avis'}
+                </Text>
+              </Pressable>
             </View>
 
             {reviews.length === 0 ? (
-              <Text style={styles.noReviewsText}>
-                Aucun avis pour le moment. Soyez le premier à partager votre expérience.
-              </Text>
+              <EmptyState
+                title="Aucun avis pour le moment"
+                description="Soyez le premier à partager votre expérience."
+              />
             ) : (
               <View style={{ gap: 10 }}>
                 {reviews.slice(0, 3).map(r => (
@@ -888,35 +1066,71 @@ export default function ListingDetailScreen() {
           </View>
 
           {/* Ajouter au planning */}
-          <Pressable style={styles.planBtn} onPress={handleAddToPlanning} disabled={addingToPlan}>
-            {addingToPlan ? (
-              <ActivityIndicator color={colors.lave} size="small" />
-            ) : (
-              <>
-                <CalendarPlus size={15} color={colors.lave} />
-                <Text style={styles.planBtnText}>Ajouter à mon planning</Text>
-              </>
-            )}
+          <Button
+            label="Ajouter à mon planning"
+            variant="secondary"
+            onPress={handleAddToPlanning}
+            loading={addingToPlan}
+            icon={<CalendarPlus size={15} color={colors.lave} strokeWidth={1.75} />}
+          />
+
+          {/* Établissements similaires — évite que la fiche soit un cul-de-sac */}
+          {similar.length > 0 && (
+            <View style={styles.similarSection}>
+              <Text style={styles.sectionKicker}>Dans la même commune</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
+                {similar.map(s => (
+                  <ListingCard
+                    key={s.id}
+                    type={s.type}
+                    name={s.name}
+                    location={s.commune ? titleCase(s.commune) : s.city}
+                    coverPhotoUrl={s.coverPhoto}
+                    priceLabel={s.priceLabel}
+                    width={200}
+                    onPress={() => router.replace(`/listing/${s.id}`)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <Pressable style={styles.reportLink} onPress={reportListing}>
+            <Flag size={12} color={colors.faint} strokeWidth={1.75} />
+            <Text style={styles.reportText}>Signaler une information incorrecte</Text>
           </Pressable>
           </View>
 
-          <View style={isDesktop ? styles.desktopSidebar : undefined}>
-          <View style={[styles.priceCard, isDesktop && styles.priceCardSticky]}>
-            <View>
-              <Text style={styles.priceFrom}>À partir de</Text>
-              <Text style={styles.priceValue}>{priceLabel}</Text>
+          {/* Desktop : la colonne prix reste dans le flux et colle au scroll.
+              Sur mobile/tablette, elle est remplacée par la barre fixe. */}
+          {isDesktop && (
+            <View style={styles.desktopSidebar}>
+              <View style={[styles.priceCard, styles.priceCardSticky]}>
+                <View>
+                  <Text style={styles.priceFrom}>À partir de</Text>
+                  <Text style={styles.priceValue}>{priceLabel}</Text>
+                </View>
+                <Button label="Réserver" onPress={openBookingForm} color={accent} />
+              </View>
             </View>
-            <Pressable style={[styles.bookBtn, { backgroundColor: accent }]} onPress={() => setShowForm(true)}>
-              <Text style={styles.bookBtnText}>Réserver</Text>
-            </Pressable>
-          </View>
-          </View>
+          )}
         </View>
       </ScrollView>
 
+      {/* Barre de réservation fixe — mobile et tablette uniquement */}
+      {!isDesktop && (
+        <View style={styles.bookingBar}>
+          <View style={styles.bookingBarPrice}>
+            <Text style={styles.priceFrom}>À partir de</Text>
+            <Text style={styles.priceValue} numberOfLines={1}>{priceLabel}</Text>
+          </View>
+          <Button label="Réserver" onPress={openBookingForm} color={accent} />
+        </View>
+      )}
+
       {success && (
         <View style={styles.successBanner}>
-          <Text style={styles.successText}>✅ Demande envoyée ! L'établissement vous confirmera sous 24h.</Text>
+          <Text style={styles.successText}>Demande envoyée. L'établissement vous confirmera sous 24h.</Text>
           <Pressable onPress={() => { setSuccess(false); router.push('/(tabs)/bookings'); }}>
             <Text style={styles.successLink}>Voir mes réservations →</Text>
           </Pressable>
@@ -964,15 +1178,14 @@ export default function ListingDetailScreen() {
           multiline
         />
 
-        <Pressable
-          style={[styles.submitBtn, { backgroundColor: accent }, (reviewRating === 0 || savingReview) && { opacity: 0.5 }]}
+        <Button
+          label={myReview ? 'Enregistrer' : 'Publier mon avis'}
           onPress={handleSaveReview}
-          disabled={reviewRating === 0 || savingReview}
-        >
-          {savingReview
-            ? <ActivityIndicator color="#FAF8F4" />
-            : <><Send size={15} color="#FAF8F4" /><Text style={styles.submitBtnText}>{myReview ? 'Enregistrer' : 'Publier mon avis'}</Text></>}
-        </Pressable>
+          loading={savingReview}
+          disabled={reviewRating === 0}
+          color={accent}
+          icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />}
+        />
 
         {myReview && (
           <Pressable style={styles.deleteReviewBtn} onPress={confirmDeleteReview}>
@@ -981,22 +1194,23 @@ export default function ListingDetailScreen() {
         )}
       </Sheet>
 
-      {/* Visionneuse plein écran : Menu / Tarifs */}
-      <Modal visible={menuViewerIndex !== null} transparent animationType="fade" onRequestClose={() => setMenuViewerIndex(null)}>
+      {/* Visionneuse plein écran — une seule implémentation, paramétrée :
+          galerie principale et photos de menu/tarifs. */}
+      <Modal visible={viewer !== null} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
         <View style={styles.viewerOverlay}>
           <View style={styles.viewerHeader}>
             <Text style={styles.viewerCounter}>
-              {menuViewerIndex !== null ? `${menuViewerIndex + 1} / ${menuPhotos.length}` : ''}
+              {viewer ? `${viewer.index + 1} / ${viewerPhotos.length}` : ''}
             </Text>
-            <Pressable onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
-              <X size={22} color="#FFFFFF" />
+            <Pressable onPress={() => setViewer(null)} hitSlop={12}>
+              <X size={22} color={colors.white} strokeWidth={1.75} />
             </Pressable>
           </View>
 
           <View style={styles.viewerImageWrap}>
-            {currentMenuPhoto && (
+            {viewerPhoto && (
               <Image
-                source={{ uri: currentMenuPhoto.url }}
+                source={{ uri: viewerPhoto.url }}
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="contain"
               />
@@ -1005,21 +1219,21 @@ export default function ListingDetailScreen() {
 
           <View style={styles.viewerFooter}>
             <Pressable
-              style={[styles.viewerNavBtn, menuViewerIndex === 0 && styles.viewerNavBtnDisabled]}
-              onPress={() => setMenuViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
-              disabled={menuViewerIndex === 0}
+              style={[styles.viewerNavBtn, viewer?.index === 0 && styles.viewerNavBtnDisabled]}
+              onPress={() => setViewer(v => (v && v.index > 0 ? { ...v, index: v.index - 1 } : v))}
+              disabled={viewer?.index === 0}
               hitSlop={10}
             >
-              <ChevronLeft size={22} color="#FFFFFF" />
+              <ChevronLeft size={22} color={colors.white} strokeWidth={1.75} />
             </Pressable>
             <View style={{ width: 44 }} />
             <Pressable
-              style={[styles.viewerNavBtn, menuViewerIndex === menuPhotos.length - 1 && styles.viewerNavBtnDisabled]}
-              onPress={() => setMenuViewerIndex(i => (i !== null && i < menuPhotos.length - 1 ? i + 1 : i))}
-              disabled={menuViewerIndex === menuPhotos.length - 1}
+              style={[styles.viewerNavBtn, viewer !== null && viewer.index === viewerPhotos.length - 1 && styles.viewerNavBtnDisabled]}
+              onPress={() => setViewer(v => (v && v.index < viewerPhotos.length - 1 ? { ...v, index: v.index + 1 } : v))}
+              disabled={viewer !== null && viewer.index === viewerPhotos.length - 1}
               hitSlop={10}
             >
-              <ChevronRight size={22} color="#FFFFFF" />
+              <ChevronRight size={22} color={colors.white} strokeWidth={1.75} />
             </Pressable>
           </View>
         </View>
@@ -1031,25 +1245,42 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
+  errorBackLink: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.sm },
+  errorBackText: { ...typography.caption, color: colors.muted, textDecorationLine: 'underline' },
   hero: { height: 220, position: 'relative', overflow: 'hidden' },
   photoDots: {
     position: 'absolute', bottom: 14, alignSelf: 'center',
     flexDirection: 'row', gap: 6, zIndex: 2,
   },
-  photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)' },
-  photoDotActive: { backgroundColor: '#FFFFFF', width: 18 },
-  backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: 16,
+  // borderRadius 3 sur 6px, 16 sur 32px : géométrie de cercle, pas un choix
+  // esthétique — hors échelle à dessein (§04).
+  photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.white + '80' },
+  photoDotActive: { backgroundColor: colors.white, width: 18 },
+  photoCounter: {
+    position: 'absolute', bottom: 12, right: spacing.md, zIndex: 2,
+    backgroundColor: colors.nuit + 'A6', borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm, paddingVertical: 4,
+  },
+  photoCounterText: { ...typography.badgeSm, color: colors.cream },
+  backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: spacing.md,
     width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center', zIndex: 3 },
-  heartBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, right: 16,
+  heroActions: {
+    position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, right: spacing.md,
+    flexDirection: 'row', gap: spacing.sm, zIndex: 3,
+  },
+  heroActionBtn: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
-    alignItems: 'center', justifyContent: 'center', zIndex: 3 },
-  heroFooter: { position: 'absolute', bottom: 14, left: 16 },
-  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, marginBottom: 4 },
-  typeBadgeText: { fontSize: 10, fontWeight: '500', color: '#FAF8F4' },
-  heroName: { fontSize: 20, fontWeight: '500', color: '#FAF8F4',
-    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  body: { padding: 16 },
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroFooter: { position: 'absolute', bottom: 14, left: spacing.md, right: spacing.md },
+  heroCategory: { ...typography.overlineXs, color: colors.cream, textTransform: 'uppercase', marginBottom: 4, opacity: 0.9 },
+  // displayStrong (Playfair 600) — première utilisation dans l'app. Rôle
+  // attribué ici : nom d'entité sur un hero photo. displayHero reste réservé
+  // au titre de hero éditorial (un par page, déjà pris par la Homepage).
+  heroName: { ...typography.displayStrong, color: colors.cream,
+    textShadowColor: colors.nuit + '80', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  body: { padding: spacing.gutter },
   // Desktop uniquement (≥1024) : colonne éditoriale flexible + colonne prix
   // étroite et sticky. Tablette/mobile gardent la colonne unique existante
   // (voir `wide` pour le centrage tablette+desktop dans breakpoints.contentMax).
@@ -1063,94 +1294,107 @@ const styles = StyleSheet.create({
   desktopMain: { flex: 1, minWidth: 0 },
   desktopSidebar: { width: 320 },
   priceCardSticky: Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {},
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  locationText: { fontSize: 13, color: colors.muted },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.orSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  ratingText: { fontSize: 12, color: colors.or, fontWeight: '500' },
-  ratingCount: { fontSize: 11, color: colors.muted },
-  newRow: { backgroundColor: colors.fleuveSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  newRowText: { fontSize: 11, color: colors.fleuveDark, fontWeight: '600' },
-  dateTabs: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12, flexWrap: 'wrap' },
+  metaText: { ...typography.caption, color: colors.muted },
+  metaStrong: { ...typography.caption, color: colors.ink },
+  metaSeparator: { ...typography.caption, color: colors.faint },
+  dateTabs: { flexDirection: 'row', gap: spacing.sm + 2, marginBottom: spacing.sm + 2 },
   dateTab: {
-    flex: 1, backgroundColor: '#F5F4F0', borderWidth: 1.5, borderColor: 'transparent',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+    flex: 1, backgroundColor: colors.surfaceSunken, borderWidth: 1.5, borderColor: 'transparent',
+    borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 9,
   },
-  dateTabLabel: { fontSize: 10, color: colors.muted, marginBottom: 2 },
-  dateTabValue: { fontSize: 12.5, fontWeight: '500', color: colors.ink },
-  dateTabPlaceholder: { color: colors.faint, fontWeight: '400' },
-  slotHint: { fontSize: 12, color: colors.faint, marginBottom: 12 },
-  chipFull: { backgroundColor: '#FFF0F0', borderColor: '#F5D5D5' },
-  chipTextFull: { color: '#C0392B', textDecorationLine: 'line-through' },
-  contactIconsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  contactIconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  amenitiesRow: { marginBottom: 16 },
-  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginRight: 8 },
-  amenityText: { fontSize: 11, color: colors.ink },
-  section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: '500', color: colors.ink, marginBottom: 6 },
-  description: { fontSize: 13, color: colors.muted, lineHeight: 20 },
-  menuThumb: { width: 130, height: 170, borderRadius: 12, backgroundColor: '#F5F4F0', marginRight: 4 },
-  addressBox: { gap: 4 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  addressText: { fontSize: 13, color: colors.ink },
-  addressSubText: { fontSize: 12, color: colors.muted, marginLeft: 19 },
-  planBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12, paddingVertical: 13, marginBottom: 14, backgroundColor: colors.laveSoft },
-  planBtnText: { fontSize: 13.5, fontWeight: '500', color: colors.lave },
-  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  dateTabLabel: { ...typography.overlineXs, color: colors.muted, marginBottom: 2 },
+  dateTabValue: { ...typography.caption, color: colors.ink },
+  dateTabPlaceholder: { color: colors.faint },
+  slotHint: { ...typography.caption, color: colors.faint, marginBottom: 12 },
+  chipFull: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
+  chipTextFull: { color: colors.danger, textDecorationLine: 'line-through' },
+  // Contact — rangée segmentée, un seul conteneur, séparateurs fins.
+  contactRow: {
+    flexDirection: 'row', alignItems: 'stretch', marginBottom: 12,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.white,
+  },
+  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 },
+  contactDivider: { width: 1, backgroundColor: colors.border },
+  contactLabel: { ...typography.caption, color: colors.ink },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md },
+  followLabel: { ...typography.caption, color: colors.faint },
+  followLink: { ...typography.caption, textDecorationLine: 'underline' },
+  amenitiesRow: { marginBottom: spacing.md },
+  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.white,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: 10, paddingVertical: 6, marginRight: spacing.sm },
+  amenityText: { ...typography.caption, color: colors.ink },
+  section: { marginBottom: spacing.md },
+  sectionKicker: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginBottom: spacing.sm },
+  description: { ...typography.body, color: colors.muted },
+  menuThumb: { width: 130, height: 170, borderRadius: radii.md, backgroundColor: colors.surfaceSunken },
+  // Adresse — hiérarchie typographique + filet, pas de carte blanche bordée.
+  addressBlock: { gap: 3, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: 12 },
+  addressStreet: { ...typography.cardTitle, color: colors.ink },
+  addressArea: { ...typography.caption, color: colors.muted },
+  addressReference: { ...typography.caption, color: colors.faint },
+  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  directionsText: { ...typography.caption, textDecorationLine: 'underline' },
+  reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  writeReviewText: { fontSize: 11.5, fontWeight: '600' },
-  noReviewsText: { fontSize: 12, color: colors.muted, lineHeight: 18 },
-  reviewCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
-  reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#E1F5EE', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  verifiedText: { fontSize: 9, color: '#0F6E56', fontWeight: '600' },
-  reviewDate: { fontSize: 10, color: colors.faint, marginLeft: 'auto' },
-  reviewComment: { fontSize: 12.5, color: colors.ink, lineHeight: 18 },
-  partnerReplyBox: { flexDirection: 'row', gap: 7, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 9, marginTop: 9 },
-  partnerReplyLabel: { fontSize: 9.5, color: colors.lave, fontWeight: '600', marginBottom: 2 },
-  partnerReplyText: { fontSize: 11.5, color: colors.ink, lineHeight: 16 },
-  moreReviewsText: { fontSize: 11.5, color: colors.muted, textAlign: 'center', paddingTop: 2 },
-  starPicker: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 16, marginTop: 4 },
-  deleteReviewBtn: { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
-  deleteReviewText: { fontSize: 12, color: '#C0392B' },
+  writeReviewText: { ...typography.caption },
+  reviewCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: 12 },
+  reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 7 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.fleuveSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: 2 },
+  verifiedText: { ...typography.badgeSm, color: colors.fleuve },
+  reviewDate: { ...typography.badgeSm, color: colors.faint, marginLeft: 'auto' },
+  reviewComment: { ...typography.caption, color: colors.ink, lineHeight: 18 },
+  partnerReplyBox: { flexDirection: 'row', gap: 7, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: 9, marginTop: 9 },
+  partnerReplyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: 2 },
+  partnerReplyText: { ...typography.caption, color: colors.ink, lineHeight: 16 },
+  moreReviewsText: { ...typography.caption, color: colors.muted, textAlign: 'center', paddingTop: 2 },
+  similarSection: { marginTop: spacing.lg },
+  similarRow: { gap: 12, paddingBottom: spacing.xs },
+  reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: spacing.sm },
+  reportText: { ...typography.caption, color: colors.faint, textDecorationLine: 'underline' },
+  starPicker: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm + 2, marginBottom: spacing.md, marginTop: spacing.xs },
+  deleteReviewBtn: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.xs },
+  deleteReviewText: { ...typography.caption, color: colors.danger },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14 },
-  priceFrom: { fontSize: 11, color: colors.muted },
-  priceValue: { fontSize: 18, fontWeight: '500', color: colors.ink },
-  bookBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
-  bookBtnText: { fontSize: 14, fontWeight: '500', color: '#FAF8F4' },
-  successBanner: { position: 'absolute', bottom: 90, left: 16, right: 16,
-    backgroundColor: colors.success, borderRadius: 14, padding: 14, gap: 6 },
-  successText: { fontSize: 13, color: '#FAF8F4' },
-  successLink: { fontSize: 13, color: '#FAC775', fontWeight: '500' },
-  formRow: { flexDirection: 'row', gap: 10 },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
-  fieldInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink },
-  counter: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, padding: 10, gap: 4, marginBottom: 12 },
-  counterLabel: { fontSize: 10, color: colors.muted },
+    backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  priceFrom: { ...typography.overlineXs, color: colors.muted, textTransform: 'uppercase' },
+  priceValue: { ...typography.displayMd, color: colors.ink },
+  // Barre de réservation fixe (mobile/tablette) — filet supérieur, pas d'ombre.
+  bookingBar: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md,
+    backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+  },
+  bookingBarPrice: { flex: 1 },
+  successBanner: { position: 'absolute', bottom: 96, left: spacing.md, right: spacing.md,
+    backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: 6 },
+  successText: { ...typography.caption, color: colors.cream },
+  successLink: { ...typography.caption, color: colors.amber },
+  formRow: { flexDirection: 'row', gap: spacing.sm + 2 },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5 },
+  fieldInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 10, ...typography.body, color: colors.ink },
+  counter: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.sm, padding: 10, gap: spacing.xs, marginBottom: 12 },
+  counterLabel: { ...typography.overlineXs, color: colors.muted },
   counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  counterBtn: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  counterBtnMuted: { backgroundColor: '#F5F4F0', borderWidth: 1, borderColor: colors.border },
-  counterValue: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
-  chipText: { fontSize: 12, color: colors.muted },
-  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, borderRadius: 12, paddingVertical: 14, marginTop: 8 },
-  submitBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+  // 26px carré, rayon 8 (radii.sm) : pas un cercle, valeur d'échelle.
+  counterBtn: { width: 26, height: 26, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
+  counterBtnMuted: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border },
+  counterValue: { ...typography.sheetOption, color: colors.ink },
+  chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.sm,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
+  chipText: { ...typography.caption, color: colors.muted },
 
-  // Visionneuse Menu / Tarifs
-  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
+  // Visionneuse plein écran (galerie + menu)
+  viewerOverlay: { flex: 1, backgroundColor: colors.nuit + 'F0' },
   viewerHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg, paddingHorizontal: spacing.gutter, paddingBottom: 12,
   },
-  viewerCounter: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
+  viewerCounter: { ...typography.caption, color: colors.white },
   viewerImageWrap: { flex: 1, paddingHorizontal: 10 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

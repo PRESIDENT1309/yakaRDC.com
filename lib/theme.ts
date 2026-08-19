@@ -73,6 +73,13 @@ export const spacing = {
   xl: 32,
   xxl: 48,
   xxxl: 64,
+  // Gouttière d'écran — 18, officialisée d'après la Homepage (écran de
+  // référence), qui l'exprimait jusqu'ici en `spacing.md + 2`. Arithmétiquement
+  // étrangère à l'échelle par doublement ci-dessus, mais c'est la valeur
+  // réellement en place sur 15 fichiers : la nommer vaut mieux que la laisser
+  // se propager en littéral. Ne pas l'utiliser pour autre chose qu'une
+  // gouttière horizontale d'écran.
+  gutter: 18,
 } as const;
 
 // Points de rupture pour l'adaptation desktop/tablette/mobile (lib/responsive.ts).
