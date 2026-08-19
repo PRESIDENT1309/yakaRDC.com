@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput,
-  ActivityIndicator, Alert, Image, useWindowDimensions, Linking, Share,
+  ActivityIndicator, Image, useWindowDimensions, Linking, Share,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
 import {

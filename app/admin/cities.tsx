@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, Alert,
-} from 'react-native';
+  Platform, TextInput, ActivityIndicator, } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { MapPin, Plus, Check, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors } from '../../lib/theme';

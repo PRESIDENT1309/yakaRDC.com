@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, Pressable, StyleSheet, Platform,
-  Image, ActivityIndicator, Alert, ScrollView,
+  Image, ActivityIndicator, ScrollView,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, RotateCcw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';

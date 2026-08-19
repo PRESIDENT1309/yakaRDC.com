@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, RefreshControl, ActivityIndicator, Alert,
-} from 'react-native';
+  Platform, RefreshControl, ActivityIndicator, } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { Building2, Home, UtensilsCrossed, Mountain, Phone } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';

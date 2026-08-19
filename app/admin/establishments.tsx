@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, Alert, useWindowDimensions,
+  Platform, TextInput, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import {
   Search, Building2, Home, UtensilsCrossed, Mountain,
   Star, AlertTriangle, Ban, CheckCircle, Phone, Mail, User as UserIcon, ArrowLeft,

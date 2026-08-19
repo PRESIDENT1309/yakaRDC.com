@@ -8,8 +8,15 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
+import { Alert } from '../../lib/alert';
 
 type Section = 'menu' | 'reviews' | 'stats' | 'settings';
+
+// Ces réglages n'existent pas encore. Un bouton muet est pire qu'un bouton
+// qui dit qu'il n'est pas prêt : l'utilisateur croit que l'app est cassée.
+function showComingSoon(feature: string, message?: string) {
+  Alert.alert(feature, message ?? 'Cette fonctionnalité arrive bientôt sur YakaRDC.');
+}
 
 function MenuRow({ icon, label, onPress, badge }:
   { icon: React.ReactNode; label: string; onPress: () => void; badge?: string }) {
@@ -121,10 +128,27 @@ export default function MoreScreen() {
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.card}>
-            <MenuRow icon={<Bell size={16} color={colors.lave} />} label="Notifications" onPress={() => {}} />
-            <MenuRow icon={<Globe size={16} color={colors.lave} />} label="Langue" badge="Français" onPress={() => {}} />
-            <MenuRow icon={<Shield size={16} color={colors.lave} />} label="Confidentialité" onPress={() => {}} />
-            <MenuRow icon={<HelpCircle size={16} color={colors.lave} />} label="Centre d'aide" onPress={() => {}} />
+            <MenuRow
+              icon={<Bell size={16} color={colors.lave} />}
+              label="Notifications"
+              onPress={() => router.push('/notifications')}
+            />
+            <MenuRow
+              icon={<Globe size={16} color={colors.lave} />}
+              label="Langue"
+              badge="Français"
+              onPress={() => showComingSoon('Langue', "YakaRDC est disponible en français. D'autres langues arrivent prochainement.")}
+            />
+            <MenuRow
+              icon={<Shield size={16} color={colors.lave} />}
+              label="Confidentialité"
+              onPress={() => showComingSoon('Confidentialité')}
+            />
+            <MenuRow
+              icon={<HelpCircle size={16} color={colors.lave} />}
+              label="Centre d'aide"
+              onPress={() => showComingSoon("Centre d'aide")}
+            />
           </View>
           <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
             <LogOut size={16} color="#C0392B" />

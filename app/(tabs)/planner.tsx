@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, Modal, Alert,
-} from 'react-native';
+  Platform, TextInput, ActivityIndicator, Modal, } from 'react-native';
+import { Alert } from '../../lib/alert';
 import {
   CalendarRange, Plus, Trash2, X,
   Check, Edit3,

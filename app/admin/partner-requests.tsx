@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput, Alert, Modal, useWindowDimensions,
+  Platform, ActivityIndicator, TextInput, Modal, useWindowDimensions,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { ArrowLeft } from 'lucide-react-native';
 import {
   Building2, Home, UtensilsCrossed, Mountain, Store,

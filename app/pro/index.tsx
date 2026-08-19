@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput, Alert,
-} from 'react-native';
+  Platform, ActivityIndicator, TextInput, } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { router } from 'expo-router';
 import {
   CalendarCheck, Users, Wallet, Star, Bell,

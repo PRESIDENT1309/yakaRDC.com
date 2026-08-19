@@ -6,11 +6,11 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  Alert,
   Modal,
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {

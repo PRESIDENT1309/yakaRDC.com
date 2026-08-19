@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, TextInput, ActivityIndicator,
-  KeyboardAvoidingView, Image, Alert, Modal,
+  KeyboardAvoidingView, Image, Modal,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Save, Camera, Check, Building2, X,
