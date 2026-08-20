@@ -23,6 +23,8 @@ import Calendar, { formatFrench } from '../../components/Calendar';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
 import Button from '../../components/Button';
+import PhoneField from '../../components/PhoneField';
+import { DEFAULT_DIAL, findByDial } from '../../lib/countries';
 import EmptyState from '../../components/EmptyState';
 import ListingCard from '../../components/ListingCard';
 import RiverMotif from '../../components/RiverMotif';
@@ -54,6 +56,33 @@ function sameValue(a?: string | null, b?: string | null): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
+// `profiles.full_name` est un champ libre : on ne peut que deviner la coupure.
+// Premier mot = prénom, reste = nom. Les champs restent modifiables, donc une
+// mauvaise coupure se corrige — contrairement à ne rien pré-remplir du tout.
+function splitFullName(full?: string | null): { firstName: string; lastName: string } {
+  const parts = (full ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: '', lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+// Le téléphone du profil est stocké en un seul champ libre. S'il commence par
+// un indicatif connu, on le sépare pour alimenter le sélecteur ; sinon on
+// garde le numéro tel quel avec l'indicatif par défaut.
+function splitPhone(raw?: string | null): { dial: string; number: string } {
+  const v = (raw ?? '').replace(/\s+/g, ' ').trim();
+  if (!v.startsWith('+')) return { dial: DEFAULT_DIAL, number: v };
+  // Les indicatifs vont de 1 à 4 caractères après le « + » : on teste du plus
+  // long au plus court pour ne pas confondre +1 et +125.
+  for (let len = 4; len >= 1; len--) {
+    const candidate = '+' + v.slice(1).replace(/\D/g, '').slice(0, len);
+    if (findByDial(candidate)) {
+      const rest = v.slice(candidate.length).trim();
+      return { dial: candidate, number: rest };
+    }
+  }
+  return { dial: DEFAULT_DIAL, number: v };
+}
+
 function unitLabel(unit: string | null): string {
   if (unit === 'night') return '/ nuit';
   if (unit === 'person') return '/ pers.';
@@ -71,11 +100,22 @@ interface Availability {
 type TimeSlot = string;
 
 interface BaseForm {
-  firstName: string; lastName: string; phone: string;
+  firstName: string; lastName: string;
+  // Postnom — convention congolaise (prénom + nom + postnom). Facultatif :
+  // un voyageur étranger n'en a pas, bloquer l'envoi pour ça serait absurde.
+  postName: string;
+  // Indicatif séparé du numéro : beaucoup de réservations sont faites depuis
+  // la diaspora, un champ supposant le +243 les exclurait.
+  phoneDial: string; phone: string;
+  email: string;
   adults: number; children: number; notes: string;
 }
 interface HotelForm extends BaseForm {
   checkIn: string; checkOut: string;
+  // Heure d'arrivée — hôtel et maison meublée uniquement. Pour un restaurant
+  // ou un site, le créneau EST déjà l'heure d'arrivée. Pour une maison sans
+  // réception, le propriétaire doit être là pour remettre les clés.
+  arrivalTime: string;
   paymentMethod: 'cash' | 'mobile_money' | 'card';
 }
 interface RestaurantForm extends BaseForm {
@@ -188,7 +228,15 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
         <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" /></View>
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
       </View>
-      <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
+      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+      <PhoneField
+        label="Téléphone"
+        dial={form.phoneDial}
+        onDialChange={v => setForm({ ...form, phoneDial: v })}
+        value={form.phone}
+        onChange={v => setForm({ ...form, phone: v })}
+      />
+      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
 
       <Text style={styles.fieldLabel}>Dates du séjour</Text>
       <View style={styles.dateTabs}>
@@ -221,6 +269,8 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
         />
       </View>
 
+      <FormField label="Heure d'arrivée prévue (facultatif)" value={form.arrivalTime} onChange={v => setForm({ ...form, arrivalTime: v })} placeholder="Ex : 18:00" />
+
       <Text style={styles.fieldLabel}>Voyageurs</Text>
       <View style={styles.formRow}>
         <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
@@ -249,7 +299,15 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
         <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" /></View>
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
       </View>
-      <FormField label="Téléphone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
+      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+      <PhoneField
+        label="Téléphone"
+        dial={form.phoneDial}
+        onDialChange={v => setForm({ ...form, phoneDial: v })}
+        value={form.phone}
+        onChange={v => setForm({ ...form, phone: v })}
+      />
+      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" />
 
       <Text style={styles.fieldLabel}>
         Date{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
@@ -306,7 +364,15 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
         <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" /></View>
         <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
       </View>
-      <FormField label="Téléphone (responsable)" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" />
+      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+      <PhoneField
+        label="Téléphone (responsable)"
+        dial={form.phoneDial}
+        onDialChange={v => setForm({ ...form, phoneDial: v })}
+        value={form.phone}
+        onChange={v => setForm({ ...form, phone: v })}
+      />
+      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" />
 
       <Text style={styles.fieldLabel}>
         Date de visite{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
@@ -398,17 +464,30 @@ export default function ListingDetailScreen() {
   const [fullDays, setFullDays] = useState<Set<string>>(new Set());
   const [slotLoads, setSlotLoads] = useState<Record<string, number>>({});
 
+  // Pré-remplissage depuis le profil connecté. `profiles.full_name` existait
+  // déjà mais n'était pas utilisé : l'utilisateur retapait son nom à chaque
+  // réservation. Le premier mot est traité comme prénom, le reste comme nom —
+  // approximation assumée, les champs restent modifiables.
+  const prefill = splitFullName(profile?.full_name);
+  const prefillPhone = splitPhone(profile?.phone);
+  const base = {
+    firstName: prefill.firstName, lastName: prefill.lastName, postName: '',
+    phoneDial: prefillPhone.dial, phone: prefillPhone.number,
+    email: profile?.email ?? '',
+    notes: '',
+  };
+
   const [hotelForm, setHotelForm] = useState<HotelForm>({
-    firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 1, children: 0, checkIn: '', checkOut: '', paymentMethod: 'cash', notes: '',
+    ...base,
+    adults: 1, children: 0, checkIn: '', checkOut: '', arrivalTime: '', paymentMethod: 'cash',
   });
   const [restaurantForm, setRestaurantForm] = useState<RestaurantForm>({
-    firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 2, children: 0, visitDate: '', timeSlot: '', occasion: 'none', allergies: '', notes: '',
+    ...base,
+    adults: 2, children: 0, visitDate: '', timeSlot: '', occasion: 'none', allergies: '',
   });
   const [siteForm, setSiteForm] = useState<SiteForm>({
-    firstName: '', lastName: '', phone: profile?.phone ?? '',
-    adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise', notes: '',
+    ...base,
+    adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise',
   });
 
   const loadEstablishment = useCallback(async () => {
@@ -703,15 +782,29 @@ export default function ListingDetailScreen() {
     setSubmitting(true);
     let payload: any = { establishment_id: id, traveler_id: session.user.id };
 
+    // Champs communs aux trois formulaires. `time_slot` ne figure plus dans
+    // metadata : il dupliquait à l'identique la colonne visit_time.
+    const common = (f: BaseForm) => ({
+      first_name: f.firstName,
+      last_name: f.lastName,
+      post_name: f.postName.trim() || null,
+      contact_phone: f.phone.trim() ? `${f.phoneDial} ${f.phone.trim()}` : null,
+      phone_country_code: f.phoneDial,
+      contact_email: f.email.trim() || null,
+      guests: f.adults,
+      children: f.children,
+      notes: f.notes || null,
+    });
+
     if (isHotel) {
       const f = hotelForm;
       if (!f.firstName || !f.lastName || !f.checkIn || !f.checkOut) {
         Alert.alert('Champs requis', 'Veuillez remplir prénom, nom et les dates.');
         setSubmitting(false); return;
       }
-      payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
-        contact_phone: f.phone, guests: f.adults, children: f.children,
-        check_in: f.checkIn, check_out: f.checkOut, notes: f.notes || null,
+      payload = { ...payload, ...common(f),
+        check_in: f.checkIn, check_out: f.checkOut,
+        arrival_time: f.arrivalTime.trim() || null,
         metadata: { payment_method: f.paymentMethod } };
     } else if (isRestaurant) {
       const f = restaurantForm;
@@ -719,23 +812,39 @@ export default function ListingDetailScreen() {
         Alert.alert('Champs requis', 'Veuillez remplir prénom, nom, date et créneau.');
         setSubmitting(false); return;
       }
-      payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
-        contact_phone: f.phone, guests: f.adults, children: f.children,
-        visit_date: f.visitDate, visit_time: f.timeSlot, notes: f.notes || null,
-        metadata: { time_slot: f.timeSlot, occasion: f.occasion, allergies: f.allergies } };
+      payload = { ...payload, ...common(f),
+        visit_date: f.visitDate, visit_time: f.timeSlot,
+        metadata: { occasion: f.occasion, allergies: f.allergies } };
     } else if (isSite) {
       const f = siteForm;
       if (!f.firstName || !f.lastName || !f.visitDate || !f.timeSlot) {
         Alert.alert('Champs requis', 'Veuillez remplir prénom, nom, date et créneau.');
         setSubmitting(false); return;
       }
-      payload = { ...payload, first_name: f.firstName, last_name: f.lastName,
-        contact_phone: f.phone, guests: f.adults, children: f.children,
-        visit_date: f.visitDate, visit_time: f.timeSlot, notes: f.notes || null,
-        metadata: { time_slot: f.timeSlot, visit_type: f.visitType, nationality: f.nationality } };
+      payload = { ...payload, ...common(f),
+        visit_date: f.visitDate, visit_time: f.timeSlot,
+        metadata: { visit_type: f.visitType, nationality: f.nationality } };
     }
 
-    const { error } = await supabase.from('bookings').insert(payload);
+    let { error } = await supabase.from('bookings').insert(payload);
+
+    // Repli temporaire : si la migration 0003 n'a pas encore été appliquée,
+    // Postgres renvoie 42703 (colonne inexistante). Plutôt que de bloquer
+    // TOUTE réservation — le parcours le plus critique de l'app — on réessaie
+    // sans les nouveaux champs et on prévient. À SUPPRIMER une fois la
+    // migration passée : voir supabase/migrations/0003_booking_contact.sql.
+    if (error && (error as any).code === '42703') {
+      const { post_name, phone_country_code, contact_email, arrival_time, ...legacy } = payload;
+      const retry = await supabase.from('bookings').insert(legacy);
+      error = retry.error;
+      if (!error) {
+        Alert.alert(
+          'Réservation enregistrée',
+          "Votre demande est bien partie. Certaines informations (postnom, email, heure d'arrivée) n'ont pas pu être conservées : la base n'est pas encore à jour.",
+        );
+      }
+    }
+
     setSubmitting(false);
     if (error) { Alert.alert('Erreur', error.message); return; }
     setShowForm(false);

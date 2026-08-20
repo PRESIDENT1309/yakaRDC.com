@@ -66,7 +66,7 @@ export interface ListingPhoto {
   url: string;
   category: PhotoCategory;
   position: number;
-  created_at: string;
+  // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
 }
 
 export interface Rate {
@@ -75,7 +75,7 @@ export interface Rate {
   price: number;
   currency: string;
   unit: 'night' | 'person' | 'visit';
-  created_at: string;
+  // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
 }
 
 export interface EstablishmentWarning {
@@ -138,7 +138,7 @@ export interface City {
   id: string;
   name: string;
   is_active: boolean;
-  created_at: string;
+  // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
 }
 
 // ═══════════════════════════════════════════

@@ -142,7 +142,12 @@ export default function SearchScreen() {
     const priceRange = PRIX.find(p => p.label === prix);
     if (priceRange && (priceRange.min != null || priceRange.max != null)) {
       enriched = enriched.filter(e => {
-        if (e.price == null) return false; // sans tarif, ne peut pas correspondre
+        // Sans tarif enregistré, on ne peut ni inclure ni exclure honnêtement.
+        // On garde l'établissement (il s'affiche « Tarif sur demande ») plutôt
+        // que de le faire disparaître : plus de la moitié du catalogue n'a
+        // aucun tarif, les masquer en silence donnerait à l'utilisateur
+        // l'impression d'un catalogue vide plutôt que d'un tarif manquant.
+        if (e.price == null) return true;
         if (priceRange.min != null && e.price < priceRange.min) return false;
         if (priceRange.max != null && e.price > priceRange.max) return false;
         return true;
