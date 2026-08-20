@@ -30,6 +30,10 @@ interface CalendarProps {
   accent?: string;
   // Empêche de choisir une date avant aujourd'hui
   minToday?: boolean;
+  // Borne inférieure explicite, au format ISO — les dates antérieures ou
+  // égales sont non sélectionnables. Sert au départ d'un séjour, qui doit
+  // tomber strictement après l'arrivée.
+  minDate?: string;
 }
 
 export default function Calendar({
@@ -38,6 +42,7 @@ export default function Calendar({
   fullDays,
   accent = colors.lave,
   minToday = true,
+  minDate,
 }: CalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -95,7 +100,7 @@ export default function Calendar({
 
           const cellDate = new Date(viewYear, viewMonth, dayNum);
           const iso = toIsoDate(cellDate);
-          const isPast = minToday && cellDate < today;
+          const isPast = (minToday && cellDate < today) || (!!minDate && iso <= minDate);
           const isFull = fullDays?.has(iso) ?? false;
           const isSelected = value === iso;
           const disabled = isPast || isFull;

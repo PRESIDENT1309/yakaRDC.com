@@ -19,11 +19,12 @@ import { colors, categoryColors, spacing, typography, radii } from '../../lib/th
 import { useResponsive } from '../../lib/responsive';
 import { useConfirm } from '../../lib/confirm-context';
 import { getOpeningStatus } from '../../lib/opening-hours';
-import Calendar, { formatFrench } from '../../components/Calendar';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
 import Button from '../../components/Button';
 import PhoneField from '../../components/PhoneField';
+import DateField from '../../components/DateField';
+import TimeField from '../../components/TimeField';
 import { DEFAULT_DIAL, findByDial } from '../../lib/countries';
 import EmptyState from '../../components/EmptyState';
 import ListingCard from '../../components/ListingCard';
@@ -206,20 +207,11 @@ function SlotPicker({ slots, selected, onSelect, accent, slotLoads, capacity, pa
 function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
   { accent: string; form: HotelForm; setForm: (f: HotelForm) => void; onSubmit: () => void;
     loading: boolean; availability: Availability }) {
-  const [dateMode, setDateMode] = useState<'in' | 'out'>('in');
-
-  function handleSelectDate(iso: string) {
-    if (dateMode === 'in') {
-      const nextOut = form.checkOut && form.checkOut <= iso ? '' : form.checkOut;
-      setForm({ ...form, checkIn: iso, checkOut: nextOut });
-      setDateMode('out');
-    } else {
-      if (form.checkIn && iso <= form.checkIn) {
-        Alert.alert('Date invalide', "Le départ doit être après l'arrivée.");
-        return;
-      }
-      setForm({ ...form, checkOut: iso });
-    }
+  // Changer l'arrivée peut rendre le départ incohérent : on l'efface alors,
+  // plutôt que de laisser un séjour qui se termine avant d'avoir commencé.
+  function handleSelectCheckIn(iso: string) {
+    const nextOut = form.checkOut && form.checkOut <= iso ? '' : form.checkOut;
+    setForm({ ...form, checkIn: iso, checkOut: nextOut });
   }
 
   return (
@@ -239,37 +231,38 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availabili
       <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
 
       <Text style={styles.fieldLabel}>Dates du séjour</Text>
-      <View style={styles.dateTabs}>
-        <Pressable
-          style={[styles.dateTab, dateMode === 'in' && { borderColor: accent, backgroundColor: colors.white }]}
-          onPress={() => setDateMode('in')}
-        >
-          <Text style={styles.dateTabLabel}>Arrivée</Text>
-          <Text style={[styles.dateTabValue, !form.checkIn && styles.dateTabPlaceholder]}>
-            {form.checkIn ? formatFrench(form.checkIn) : 'Choisir'}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.dateTab, dateMode === 'out' && { borderColor: accent, backgroundColor: colors.white }]}
-          onPress={() => setDateMode('out')}
-        >
-          <Text style={styles.dateTabLabel}>Départ</Text>
-          <Text style={[styles.dateTabValue, !form.checkOut && styles.dateTabPlaceholder]}>
-            {form.checkOut ? formatFrench(form.checkOut) : 'Choisir'}
-          </Text>
-        </Pressable>
+      <View style={styles.formRow}>
+        <View style={{ flex: 1 }}>
+          <DateField
+            label="Arrivée"
+            sheetTitle="Date d'arrivée"
+            value={form.checkIn}
+            onChange={handleSelectCheckIn}
+            fullDays={availability.fullDays}
+            accent={accent}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <DateField
+            label="Départ"
+            sheetTitle="Date de départ"
+            value={form.checkOut}
+            onChange={iso => setForm({ ...form, checkOut: iso })}
+            fullDays={availability.fullDays}
+            // Le départ doit tomber strictement après l'arrivée : le calendrier
+            // grise les dates antérieures au lieu de refuser après coup.
+            minDate={form.checkIn || undefined}
+            accent={accent}
+          />
+        </View>
       </View>
 
-      <View style={{ marginBottom: 12 }}>
-        <Calendar
-          value={dateMode === 'in' ? form.checkIn || null : form.checkOut || null}
-          onSelect={handleSelectDate}
-          fullDays={availability.fullDays}
-          accent={accent}
-        />
-      </View>
-
-      <FormField label="Heure d'arrivée prévue (facultatif)" value={form.arrivalTime} onChange={v => setForm({ ...form, arrivalTime: v })} placeholder="Ex : 18:00" />
+      <TimeField
+        label="Heure d'arrivée prévue (facultatif)"
+        value={form.arrivalTime}
+        onChange={v => setForm({ ...form, arrivalTime: v })}
+        accent={accent}
+      />
 
       <Text style={styles.fieldLabel}>Voyageurs</Text>
       <View style={styles.formRow}>
@@ -309,17 +302,15 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
       />
       <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" />
 
-      <Text style={styles.fieldLabel}>
-        Date{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
-      </Text>
-      <View style={{ marginBottom: 12 }}>
-        <Calendar
-          value={form.visitDate || null}
-          onSelect={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
-          fullDays={availability.fullDays}
-          accent={accent}
-        />
-      </View>
+      <DateField
+        label="Date"
+        sheetTitle="Date de la réservation"
+        value={form.visitDate}
+        // Changer de date invalide le créneau : sa disponibilité dépend du jour.
+        onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+        fullDays={availability.fullDays}
+        accent={accent}
+      />
 
       <Text style={styles.fieldLabel}>Créneau horaire</Text>
       {!form.visitDate ? (
@@ -374,17 +365,14 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
       />
       <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" />
 
-      <Text style={styles.fieldLabel}>
-        Date de visite{form.visitDate ? ` — ${formatFrench(form.visitDate)}` : ''}
-      </Text>
-      <View style={{ marginBottom: 12 }}>
-        <Calendar
-          value={form.visitDate || null}
-          onSelect={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
-          fullDays={availability.fullDays}
-          accent={accent}
-        />
-      </View>
+      <DateField
+        label="Date de visite"
+        sheetTitle="Date de la visite"
+        value={form.visitDate}
+        onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+        fullDays={availability.fullDays}
+        accent={accent}
+      />
 
       <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
       {!form.visitDate ? (
@@ -1452,14 +1440,6 @@ const styles = StyleSheet.create({
   metaText: { ...typography.caption, color: colors.muted },
   metaStrong: { ...typography.caption, color: colors.ink },
   metaSeparator: { ...typography.caption, color: colors.faint },
-  dateTabs: { flexDirection: 'row', gap: spacing.sm + 2, marginBottom: spacing.sm + 2 },
-  dateTab: {
-    flex: 1, backgroundColor: colors.surfaceSunken, borderWidth: 1.5, borderColor: 'transparent',
-    borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 9,
-  },
-  dateTabLabel: { ...typography.overlineXs, color: colors.muted, marginBottom: 2 },
-  dateTabValue: { ...typography.caption, color: colors.ink },
-  dateTabPlaceholder: { color: colors.faint },
   slotHint: { ...typography.caption, color: colors.faint, marginBottom: 12 },
   chipFull: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
   chipTextFull: { color: colors.danger, textDecorationLine: 'line-through' },
