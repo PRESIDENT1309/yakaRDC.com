@@ -490,6 +490,40 @@ export default function ListingDetailScreen() {
     adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise',
   });
 
+  // Le profil arrive DEUX tours asynchrones après le montage (getSession puis
+  // loadProfile). L'initialiseur de useState ci-dessus n'est lu qu'au premier
+  // rendu, quand `profile` vaut encore null : sans cet effet, les champs
+  // restent vides pour toujours. C'était déjà le cas du téléphone avant
+  // l'ajout des autres champs — le pré-remplissage n'a jamais fonctionné.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || !profile) return;
+    prefilled.current = true;
+
+    const { firstName, lastName } = splitFullName(profile.full_name);
+    const { dial, number } = splitPhone(profile.phone);
+    const email = profile.email ?? '';
+
+    // On ne remplit que les champs encore vides : si l'utilisateur a déjà
+    // commencé à saisir pendant le chargement, sa frappe n'est pas écrasée.
+    function patch<T extends BaseForm>(f: T): T {
+      return {
+        ...f,
+        firstName: f.firstName || firstName,
+        lastName: f.lastName || lastName,
+        email: f.email || email,
+        // L'indicatif ne change que si aucun numéro n'a été saisi, sinon on
+        // écraserait un choix délibéré de l'utilisateur.
+        phoneDial: f.phone ? f.phoneDial : dial,
+        phone: f.phone || number,
+      };
+    }
+
+    setHotelForm(patch);
+    setRestaurantForm(patch);
+    setSiteForm(patch);
+  }, [profile]);
+
   const loadEstablishment = useCallback(async () => {
     setLoadError(false);
     const { data, error } = await supabase
