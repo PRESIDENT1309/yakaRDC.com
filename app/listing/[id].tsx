@@ -527,7 +527,9 @@ export default function ListingDetailScreen() {
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
       .then(({ data: p }) => {
         const all = (p as ListingPhoto[]) ?? [];
-        setPhotos(all.filter(x => !x.category || x.category === 'general'));
+        // offer_id renseigné = photo d'une offre précise, pas du lieu : exclue
+        // de la galerie du hero (elle s'affichera au choix de l'offre, lot B2).
+        setPhotos(all.filter(x => !x.offer_id && (!x.category || x.category === 'general')));
         setMenuPhotos(all.filter(x => x.category === 'menu' || x.category === 'pricing'));
       });
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
@@ -584,7 +586,7 @@ export default function ListingDetailScreen() {
 
     (async () => {
       let q = supabase.from('establishments')
-        .select('*, listing_photos(url, category, position), rates(price, currency, unit)')
+        .select('*, listing_photos(*), rates(price, currency, unit)')
         .eq('type', establishment.type)
         .eq('status', 'approved')
         .neq('id', establishment.id)
@@ -596,7 +598,7 @@ export default function ListingDetailScreen() {
 
       setSimilar(((data as any[]) ?? []).map(e => {
         const photo = (e.listing_photos ?? [])
-          .filter((p: any) => !p.category || p.category === 'general')
+          .filter((p: any) => !p.offer_id && (!p.category || p.category === 'general'))
           .sort((a: any, b: any) => a.position - b.position)[0];
         const r = (e.rates ?? [])[0];
         return {

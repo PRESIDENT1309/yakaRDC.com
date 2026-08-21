@@ -11,14 +11,15 @@ import {
   Save, Camera, Check, Building2, X,
   ChevronLeft, ChevronRight, Trash2,
   Images, Info, Contact, MapPin, Sparkles, Tag, DollarSign,
-  UtensilsCrossed, Ticket, Clock,
+  UtensilsCrossed, Ticket, Clock, Users,
 } from 'lucide-react-native';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, typography, spacing } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
-import type { Establishment, ListingPhoto } from '../../lib/types';
+import OfferManager from '../../components/OfferManager';
+import type { Establishment, ListingPhoto, EstablishmentType } from '../../lib/types';
 import type { DayKey, DayHours, OpeningHours } from '../../lib/opening-hours';
 
 // Titre de section : icône lucide nue + libellé. La pastille colorée qui
@@ -35,6 +36,14 @@ function CardTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 const SECTION_ICON = { size: 15, color: colors.lave, strokeWidth: 1.75 } as const;
+
+// Un hôtelier ne parle pas d'« offres » : le titre suit son métier.
+const OFFER_SECTION_TITLE: Record<EstablishmentType, string> = {
+  hotel: 'Mes chambres',
+  furnished_house: 'Mon logement',
+  restaurant: 'Mes formules',
+  site: 'Mes billets',
+};
 
 const DAYS: { key: DayKey; label: string }[] = [
   { key: 'mon', label: 'Lundi' },
@@ -145,7 +154,9 @@ export default function EstablishmentScreen() {
       const { data: photoRows } = await supabase.from('listing_photos')
         .select('*').eq('establishment_id', e.id).order('position', { ascending: true });
       const allPhotos = (photoRows as ListingPhoto[]) ?? [];
-      setPhotos(allPhotos.filter(p => !p.category || p.category === 'general'));
+      // Les photos rattachées à une offre (offer_id) sont gérées dans « Mes
+      // offres » et ne doivent pas apparaître dans la galerie générale.
+      setPhotos(allPhotos.filter(p => !p.offer_id && (!p.category || p.category === 'general')));
       setMenuPhotos(allPhotos.filter(p => p.category === 'menu' || p.category === 'pricing'));
 
       const { data: rate } = await supabase.from('rates').select('*')
@@ -334,21 +345,10 @@ export default function EstablishmentScreen() {
       return;
     }
 
-    if (price) {
-      const unit = establishment.type === 'hotel' || establishment.type === 'furnished_house'
-        ? 'night' : 'person';
-      const { data: existing } = await supabase.from('rates').select('id')
-        .eq('establishment_id', establishment.id).maybeSingle();
-      if (existing) {
-        await supabase.from('rates').update({ price: parseFloat(price), currency, unit })
-          .eq('establishment_id', establishment.id);
-      } else {
-        await supabase.from('rates').insert({
-          establishment_id: establishment.id,
-          price: parseFloat(price), currency, unit,
-        });
-      }
-    }
+    // `rates` n'est plus écrite ici : elle est désormais alimentée par le
+    // trigger sur establishment_offers, qui y répercute le prix le plus bas
+    // parmi les offres actives. Réécrire depuis cet écran écraserait la valeur
+    // calculée par une valeur d'état devenue périmée dès la première offre.
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -704,11 +704,24 @@ export default function EstablishmentScreen() {
 
           {/* Tarif */}
           <View style={styles.card}>
-            <CardTitle icon={<DollarSign {...SECTION_ICON} />} label="Tarif" />
-            <View style={styles.row}>
-              <View style={{ flex: 2 }}><Field label={`Prix (par ${unitLabel})`} value={price} onChange={setPrice} placeholder="Ex : 45" keyboardType="decimal-pad" /></View>
-              <View style={{ flex: 1 }}><Field label="Devise" value={currency} onChange={setCurrency} placeholder="USD" /></View>
-            </View>
+            <CardTitle icon={<DollarSign {...SECTION_ICON} />} label={OFFER_SECTION_TITLE[establishment.type]} />
+            {/* Le prix n'est plus saisi ici : il découle de l'offre la moins
+                chère, répercutée dans `rates` par un trigger. Le voyageur voit
+                donc le bon « à partir de » sans qu'aucun code de lecture ne
+                change (lot B1 — le branchement de la réservation vient en B2). */}
+            <OfferManager
+              establishmentId={establishment.id}
+              establishmentType={establishment.type}
+              amenityOptions={ALL_AMENITIES}
+              onChanged={fetchEstablishment}
+            />
+          </View>
+
+          {/* Capacité — reste au niveau de l'établissement pour l'instant.
+              Elle descendra au niveau de l'offre au lot B2, quand le calcul de
+              disponibilité basculera dessus. */}
+          <View style={styles.card}>
+            <CardTitle icon={<Users {...SECTION_ICON} />} label="Capacité d'accueil" />
             <Field
               label={
                 establishment.type === 'restaurant' ? 'Capacité (couverts par créneau)'

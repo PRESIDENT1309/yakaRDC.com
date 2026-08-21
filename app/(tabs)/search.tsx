@@ -101,7 +101,7 @@ export default function SearchScreen() {
     // plutôt qu'un appel supplémentaire par établissement
     let q = supabase
       .from('establishments')
-      .select('*, rates(price, currency, unit), listing_photos(url, position, category)')
+      .select('*, rates(price, currency, unit), listing_photos(*)')
       .eq('status', 'approved')
       .eq('city', selectedCity.name);
 
@@ -124,7 +124,7 @@ export default function SearchScreen() {
       const rating = ratingMap.get(e.id);
       const rate = Array.isArray(e.rates) ? e.rates[0] : e.rates;
       const generalPhotos = (e.listing_photos ?? [])
-        .filter((p: any) => !p.category || p.category === 'general')
+        .filter((p: any) => !p.offer_id && (!p.category || p.category === 'general'))
         .sort((a: any, b: any) => a.position - b.position);
 
       return {

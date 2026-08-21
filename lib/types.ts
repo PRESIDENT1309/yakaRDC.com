@@ -58,6 +58,9 @@ export interface Establishment {
   created_at: string;
 }
 
+// Photo rattachée à une offre plutôt qu'à l'établissement entier.
+// Ajouté par la migration 0007 ; null = photo générale, comportement d'avant.
+
 export type PhotoCategory = 'general' | 'menu' | 'pricing';
 
 export interface ListingPhoto {
@@ -66,6 +69,8 @@ export interface ListingPhoto {
   url: string;
   category: PhotoCategory;
   position: number;
+  /** Rattachement à une offre (migration 0007). null = photo générale. */
+  offer_id: string | null;
   // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
 }
 
@@ -76,6 +81,49 @@ export interface Rate {
   currency: string;
   unit: 'night' | 'person' | 'visit';
   // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
+}
+
+// ═══════════════════════════════════════════
+// Catalogue d'offres
+// ═══════════════════════════════════════════
+
+export type OfferUnit = 'night' | 'person' | 'visit';
+
+// Référentiel partagé : le partenaire pioche dedans, il n'invente pas ses
+// catégories. C'est ce qui rend les offres comparables entre établissements.
+export interface OfferCategory {
+  id: string;
+  establishment_type: EstablishmentType;
+  key: string;
+  label: string;
+  description_hint: string | null;
+  position: number;
+  is_active: boolean;
+}
+
+export interface EstablishmentOffer {
+  id: string;
+  establishment_id: string;
+  category_id: string;
+  /** Nom propre à l'établissement (« Suite Fleuve ») ; sinon le label de la catégorie */
+  custom_label: string | null;
+  description: string | null;
+  price: number;
+  currency: string;
+  unit: OfferUnit;
+  /** Nombre d'unités de ce type (8 chambres), ou places par créneau. null = illimité */
+  quantity: number | null;
+  /** Capacité d'UNE unité (2 personnes par chambre). À ne pas confondre avec quantity */
+  max_guests: number | null;
+  amenities: string[];
+  is_active: boolean;
+  position: number;
+  created_at: string;
+}
+
+/** Nom affiché d'une offre : le libellé propre du partenaire prime. */
+export function offerLabel(offer: EstablishmentOffer, category?: OfferCategory): string {
+  return offer.custom_label?.trim() || category?.label || 'Offre';
 }
 
 export interface EstablishmentWarning {

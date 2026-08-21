@@ -34,7 +34,7 @@ import BottomSheet from '../../components/BottomSheet';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type EstablishmentWithPhoto = Establishment & {
-  listing_photos?: { url: string; position: number }[];
+  listing_photos?: { url: string; position: number; offer_id: string | null }[];
   avgRating?: number | null;
   reviewCount?: number;
 };
@@ -139,7 +139,11 @@ function CategoryTile({
 // photos non triées (listing_photos brut), donc le tri/choix de la couverture
 // reste ici plutôt que dans le composant.
 function coverPhotoOf(item: EstablishmentWithPhoto): string | null {
-  const sorted = [...(item.listing_photos ?? [])].sort((a, b) => a.position - b.position);
+  // Une photo rattachée à une offre décrit une chambre précise, pas le lieu :
+  // elle ne peut pas servir de couverture à l'établissement.
+  const sorted = [...(item.listing_photos ?? [])]
+    .filter(p => !p.offer_id)
+    .sort((a, b) => a.position - b.position);
   return sorted[0]?.url ?? null;
 }
 
@@ -183,7 +187,7 @@ export default function HomeScreen() {
     Promise.all([
       supabase
         .from('establishments')
-        .select('*, listing_photos(url, position)')
+        .select('*, listing_photos(*)')
         .eq('status', 'approved')
         .eq('type', activeCategory)
         .eq('city', selectedCity.name)
