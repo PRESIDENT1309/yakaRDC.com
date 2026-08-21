@@ -12,13 +12,25 @@ import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
 import { colors } from '../../lib/theme';
 
+type ScanFailure = 'not_found' | 'wrong_establishment' | 'unknown';
+
 type ScanResult = {
   success: boolean;
   alreadyUsed?: boolean;
   usedAt?: string;
+  failure?: ScanFailure;
 } | null;
 
 type Mode = 'camera' | 'manual';
+
+// validate_ticket distingue deux refus par un raise exception ; tout le reste
+// (réseau, RLS, panne) reste 'unknown' pour ne pas accuser le ticket à tort.
+function failureFromError(message?: string): ScanFailure {
+  const m = (message ?? '').toLowerCase();
+  if (m.includes('introuvable')) return 'not_found';
+  if (m.includes('appartient')) return 'wrong_establishment';
+  return 'unknown';
+}
 
 export default function ScanScreen() {
   const { profile } = useAuth();
@@ -29,27 +41,32 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = useRef(false);
 
-  async function runValidation(rawCode: string) {
+  // Le QR encode qr_token, un uuid que Postgres rend en minuscules : le passer
+  // en majuscules le rendrait introuvable. Seule la saisie manuelle est
+  // normalisée, car unique_code est stocké en majuscules ('YK-' || upper(...)).
+  async function runValidation(rawCode: string, options?: { normalize?: boolean }) {
     if (!rawCode.trim() || !profile?.id) return;
     setLoading(true);
     setResult(null);
 
+    const trimmed = rawCode.trim();
+
     try {
       const { data, error } = await supabase.rpc('validate_ticket', {
-        p_code: rawCode.trim().toUpperCase(),
+        p_code: options?.normalize ? trimmed.toUpperCase() : trimmed,
         p_validator: profile.id,
       });
 
       if (error) {
-        setResult({ success: false });
+        setResult({ success: false, failure: failureFromError(error.message) });
       } else if (data && data.length > 0) {
         const row = data[0];
         setResult({ success: true, alreadyUsed: row.already_used, usedAt: row.used_at });
       } else {
-        setResult({ success: false });
+        setResult({ success: false, failure: 'not_found' });
       }
     } catch {
-      setResult({ success: false });
+      setResult({ success: false, failure: 'unknown' });
     }
 
     setLoading(false);
@@ -149,7 +166,7 @@ export default function ScanScreen() {
             </Text>
             <Pressable
               style={[styles.validateBtn, (!code.trim() || loading) && styles.validateBtnDisabled]}
-              onPress={() => runValidation(code)}
+              onPress={() => runValidation(code, { normalize: true })}
               disabled={!code.trim() || loading}
             >
               {loading
@@ -186,8 +203,20 @@ export default function ScanScreen() {
             ) : (
               <>
                 <XCircle size={40} color="#C0392B" />
-                <Text style={[styles.resultTitle, { color: '#C0392B' }]}>❌ Code invalide</Text>
-                <Text style={styles.resultText}>Ce code n'existe pas ou n'appartient pas à votre établissement.</Text>
+                <Text style={[styles.resultTitle, { color: '#C0392B' }]}>
+                  {result.failure === 'wrong_establishment'
+                    ? '⛔ Autre établissement'
+                    : result.failure === 'unknown'
+                    ? '⚠️ Validation impossible'
+                    : '❌ Code inconnu'}
+                </Text>
+                <Text style={styles.resultText}>
+                  {result.failure === 'wrong_establishment'
+                    ? "Ce ticket est valide mais concerne un autre établissement. Il ne peut pas être validé ici."
+                    : result.failure === 'unknown'
+                    ? "La validation n'a pas pu aboutir. Vérifiez votre connexion, puis réessayez."
+                    : "Ce code ne correspond à aucun ticket. Vérifiez la saisie ou demandez au client d'afficher à nouveau son QR code."}
+                </Text>
               </>
             )}
             <Pressable style={styles.resetBtn} onPress={handleReset}>
