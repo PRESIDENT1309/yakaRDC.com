@@ -11,7 +11,7 @@ import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
   Phone, Mail, CalendarPlus, AlertCircle, Share2, Navigation, Flag,
-  ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil,
+  ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil, Images,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -955,40 +955,47 @@ export default function ListingDetailScreen() {
                   setActivePhotoIndex(index);
                 }}
               >
-                {photos.map((photo, i) => (
-                  <Pressable key={photo.id} onPress={() => setViewer({ source: 'photos', index: i })}>
-                    <Image
-                      source={{ uri: photo.url }}
-                      style={{ width: heroWidth, height: '100%' }}
-                      resizeMode="cover"
-                    />
-                  </Pressable>
+                {/* Images nues, sans Pressable : à l'intérieur d'un ScrollView
+                    pagingEnabled, le geste de défilement capte le toucher et
+                    onPress ne se déclenche pas (confirmé sur appareil). La
+                    galerie s'ouvre par le bouton explicite ci-dessous, qui est
+                    de toute façon plus découvrable qu'un appui invisible. */}
+                {photos.map((photo) => (
+                  <Image
+                    key={photo.id}
+                    source={{ uri: photo.url }}
+                    style={{ width: heroWidth, height: '100%' }}
+                    resizeMode="cover"
+                  />
                 ))}
               </ScrollView>
               <View pointerEvents="none" style={StyleSheet.absoluteFill}>
                 <PhotoScrim from="bottom" intensity={0.5} />
               </View>
               {photos.length > 1 && (
-                <>
-                  <View style={styles.photoDots}>
-                    {photos.map((_, i) => (
-                      <Pressable
-                        key={i}
-                        onPress={() => {
-                          setActivePhotoIndex(i);
-                          photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
-                        }}
-                        hitSlop={6}
-                      >
-                        <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
-                      </Pressable>
-                    ))}
-                  </View>
-                  <View style={styles.photoCounter}>
-                    <Text style={styles.photoCounterText}>{activePhotoIndex + 1} / {photos.length}</Text>
-                  </View>
-                </>
+                <View style={styles.photoDots}>
+                  {photos.map((_, i) => (
+                    <Pressable
+                      key={i}
+                      onPress={() => {
+                        setActivePhotoIndex(i);
+                        photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
+                      }}
+                      hitSlop={6}
+                    >
+                      <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
+                    </Pressable>
+                  ))}
+                </View>
               )}
+              {/* Entrée explicite vers la galerie. Hors du ScrollView paginé,
+                  donc son toucher n'entre en concurrence avec aucun geste. */}
+              <Pressable style={styles.galleryBtn} onPress={() => setViewer({ source: 'photos', index: activePhotoIndex })}>
+                <Images size={13} color={colors.cream} strokeWidth={1.75} />
+                <Text style={styles.galleryBtnText}>
+                  {photos.length > 1 ? `Voir les ${photos.length} photos` : 'Voir la photo'}
+                </Text>
+              </Pressable>
             </>
           ) : (
             // Repli de marque (§06) : plus d'illustration décorative maison,
@@ -1398,12 +1405,16 @@ const styles = StyleSheet.create({
   // esthétique — hors échelle à dessein (§04).
   photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.white + '80' },
   photoDotActive: { backgroundColor: colors.white, width: 18 },
-  photoCounter: {
-    position: 'absolute', bottom: 12, right: spacing.md, zIndex: 2,
-    backgroundColor: colors.nuit + 'A6', borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm, paddingVertical: 4,
+  // Reprend l'emplacement et le repère semi-transparent de l'ancien compteur,
+  // mais devient une vraie commande : le nombre de photos y est annoncé, et
+  // la position courante reste portée par les points de pagination.
+  galleryBtn: {
+    position: 'absolute', bottom: 12, right: spacing.md, zIndex: 3,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2,
+    backgroundColor: colors.nuit + 'A6', borderRadius: radii.pill,
+    paddingHorizontal: 11, paddingVertical: 6,
   },
-  photoCounterText: { ...typography.badgeSm, color: colors.cream },
+  galleryBtnText: { ...typography.badgeSm, color: colors.cream },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: spacing.md,
     width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center', zIndex: 3 },
