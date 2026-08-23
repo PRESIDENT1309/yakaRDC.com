@@ -14,6 +14,7 @@ import {
   ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil, Images,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { cheapestActiveOffer } from '../../lib/offers';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
@@ -21,6 +22,8 @@ import { useConfirm } from '../../lib/confirm-context';
 import { getOpeningStatus } from '../../lib/opening-hours';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
+import OfferCard from '../../components/OfferCard';
+import StepProgress from '../../components/StepProgress';
 import Button from '../../components/Button';
 import PhoneField from '../../components/PhoneField';
 import DateField from '../../components/DateField';
@@ -30,7 +33,8 @@ import EmptyState from '../../components/EmptyState';
 import ListingCard from '../../components/ListingCard';
 import RiverMotif from '../../components/RiverMotif';
 import PhotoScrim from '../../components/PhotoScrim';
-import type { Establishment, Rate, EstablishmentType, ListingPhoto, Review } from '../../lib/types';
+import type { Establishment, EstablishmentType, ListingPhoto, Review, EstablishmentOffer, OfferCategory } from '../../lib/types';
+import { unitsNeeded, offerLabel } from '../../lib/types';
 
 // Établissement suggéré en fin de fiche, enrichi de sa photo et de son tarif
 type SimilarEstablishment = Establishment & {
@@ -100,7 +104,27 @@ interface Availability {
 
 type TimeSlot = string;
 
+// Contexte des offres, passé aux formulaires : ils ont besoin de la liste, des
+// photos, et du calcul de disponibilité, tous détenus par l'écran parent.
+interface OfferContext {
+  offers: EstablishmentOffer[];
+  categoryOf: (o: EstablishmentOffer) => OfferCategory | undefined;
+  photoOf: (offerId: string) => string | null;
+  remainingFor: (o: EstablishmentOffer, days: string[]) => number | null;
+  /**
+   * Restant sur un créneau précis. Pour un restaurant ou un site, `quantity`
+   * compte des places PAR CRÉNEAU : la comparer à la charge de toute la
+   * journée afficherait « complet » bien avant que ce soit vrai.
+   * `null` = inconnu (offre sans limite, ou créneau pas encore choisi).
+   */
+  remainingForSlot: (o: EstablishmentOffer, date: string, slot: string) => number | null;
+  fullDaysFor: (o: EstablishmentOffer | null) => Set<string>;
+  nightsBetween: (checkIn: string, checkOut: string) => string[];
+}
+
 interface BaseForm {
+  /** Offre choisie. Vide tant que l'étape de choix n'est pas franchie. */
+  offerId: string;
   firstName: string; lastName: string;
   // Postnom — convention congolaise (prénom + nom + postnom). Facultatif :
   // un voyageur étranger n'en a pas, bloquer l'envoi pour ça serait absurde.
@@ -126,6 +150,9 @@ interface RestaurantForm extends BaseForm {
 }
 interface SiteForm extends BaseForm {
   visitDate: string; timeSlot: TimeSlot;
+  // Panier : quantité par offre de billet. offerId de BaseForm n'est pas
+  // utilisé ici — une visite peut mêler plusieurs types d'entrée.
+  cart: Record<string, number>;
   visitType: 'guided' | 'free';
   nationality: 'congolaise' | 'etrangere';
 }
@@ -204,214 +231,487 @@ function SlotPicker({ slots, selected, onSelect, accent, slotLoads, capacity, pa
   );
 }
 
-function HotelBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+function HotelBookingForm({ accent, form, setForm, onSubmit, loading, offerCtx, isHouse }:
   { accent: string; form: HotelForm; setForm: (f: HotelForm) => void; onSubmit: () => void;
-    loading: boolean; availability: Availability }) {
-  // Changer l'arrivée peut rendre le départ incohérent : on l'efface alors,
-  // plutôt que de laisser un séjour qui se termine avant d'avoir commencé.
+    loading: boolean; offerCtx: OfferContext; isHouse: boolean }) {
+  // Un seul type de logement : l'étape de choix n'apporte rien, on la saute.
+  const skipChoice = offerCtx.offers.length <= 1;
+  const [step, setStep] = useState(skipChoice ? 1 : 0);
+
+  const selected = offerCtx.offers.find(o => o.id === form.offerId) ?? null;
+  const nights = offerCtx.nightsBetween(form.checkIn, form.checkOut);
+  const guests = form.adults + form.children;
+  const units = selected ? unitsNeeded(selected, guests) : 1;
+
+  // Avec une offre unique, elle est retenue d'office.
+  useEffect(() => {
+    if (skipChoice && offerCtx.offers[0] && form.offerId !== offerCtx.offers[0].id) {
+      setForm({ ...form, offerId: offerCtx.offers[0].id });
+    }
+  }, [skipChoice, offerCtx.offers.length]);
+
   function handleSelectCheckIn(iso: string) {
     const nextOut = form.checkOut && form.checkOut <= iso ? '' : form.checkOut;
     setForm({ ...form, checkIn: iso, checkOut: nextOut });
   }
 
+  const labels = skipChoice
+    ? ['Séjour', 'Vos informations']
+    : [isHouse ? 'Logement' : 'Chambre', 'Séjour', 'Vos informations'];
+  const shown = skipChoice ? step - 1 : step;
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={styles.formRow}>
-        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" /></View>
-        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
-      </View>
-      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
-      <PhoneField
-        label="Téléphone"
-        dial={form.phoneDial}
-        onDialChange={v => setForm({ ...form, phoneDial: v })}
-        value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-      />
-      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
+      <StepProgress labels={labels} current={shown} accent={accent} onGoBack={i => setStep(skipChoice ? i + 1 : i)} />
 
-      <Text style={styles.fieldLabel}>Dates du séjour</Text>
-      <View style={styles.formRow}>
-        <View style={{ flex: 1 }}>
-          <DateField
-            label="Arrivée"
-            sheetTitle="Date d'arrivée"
-            value={form.checkIn}
-            onChange={handleSelectCheckIn}
-            fullDays={availability.fullDays}
+      {step === 0 && (
+        <View style={{ gap: spacing.sm }}>
+          {offerCtx.offers.map(o => {
+            const rest = offerCtx.remainingFor(o, nights);
+            return (
+              <OfferCard
+                key={o.id}
+                offer={o}
+                category={offerCtx.categoryOf(o)}
+                photoUrl={offerCtx.photoOf(o.id)}
+                remaining={nights.length && rest !== null ? rest : undefined}
+                selected={form.offerId === o.id}
+                accent={accent}
+                onPress={() => { setForm({ ...form, offerId: o.id }); setStep(1); }}
+              />
+            );
+          })}
+        </View>
+      )}
+
+      {step === 1 && (
+        <>
+          <Text style={styles.fieldLabel}>Dates du séjour</Text>
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}>
+              <DateField
+                label="Arrivée" sheetTitle="Date d'arrivée"
+                value={form.checkIn} onChange={handleSelectCheckIn}
+                fullDays={offerCtx.fullDaysFor(selected)} accent={accent}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <DateField
+                label="Départ" sheetTitle="Date de départ"
+                value={form.checkOut} onChange={iso => setForm({ ...form, checkOut: iso })}
+                fullDays={offerCtx.fullDaysFor(selected)}
+                minDate={form.checkIn || undefined} accent={accent}
+              />
+            </View>
+          </View>
+
+          <TimeField
+            label="Heure d'arrivée prévue (facultatif)"
+            value={form.arrivalTime}
+            onChange={v => setForm({ ...form, arrivalTime: v })}
             accent={accent}
           />
-        </View>
-        <View style={{ flex: 1 }}>
-          <DateField
-            label="Départ"
-            sheetTitle="Date de départ"
-            value={form.checkOut}
-            onChange={iso => setForm({ ...form, checkOut: iso })}
-            fullDays={availability.fullDays}
-            // Le départ doit tomber strictement après l'arrivée : le calendrier
-            // grise les dates antérieures au lieu de refuser après coup.
-            minDate={form.checkIn || undefined}
-            accent={accent}
+
+          <Text style={styles.fieldLabel}>Voyageurs</Text>
+          <View style={styles.formRow}>
+            <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+            <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+          </View>
+
+          {/* Un groupe plus grand que la capacité d'une unité en occupe
+              plusieurs — on le dit avant l'envoi plutôt que de refuser. */}
+          {selected?.max_guests != null && units > 1 && (
+            <Text style={styles.slotHint}>
+              {guests} personnes pour {selected.max_guests} par {isHouse ? 'logement' : 'chambre'} :
+              {' '}{units} {isHouse ? 'logements' : 'chambres'} seront réservés.
+            </Text>
+          )}
+
+          <Button
+            label="Continuer"
+            onPress={() => setStep(2)}
+            color={accent}
+            disabled={!form.checkIn || !form.checkOut}
           />
-        </View>
-      </View>
+        </>
+      )}
 
-      <TimeField
-        label="Heure d'arrivée prévue (facultatif)"
-        value={form.arrivalTime}
-        onChange={v => setForm({ ...form, arrivalTime: v })}
-        accent={accent}
-      />
+      {step === 2 && (
+        <>
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
+          </View>
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <PhoneField
+            label="Téléphone" dial={form.phoneDial}
+            onDialChange={v => setForm({ ...form, phoneDial: v })}
+            value={form.phone} onChange={v => setForm({ ...form, phone: v })}
+          />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
 
-      <Text style={styles.fieldLabel}>Voyageurs</Text>
-      <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
-      </View>
-      <Text style={styles.fieldLabel}>Mode de paiement</Text>
-      <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
-        {PAYMENTS.map(p => (
-          <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
-            <Text style={[styles.chipText, form.paymentMethod === p.key && { color: colors.cream, fontWeight: '500' }]}>{p.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <FormField label="Demandes spéciales (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Chambre calme, lit king size..." multiline />
-      <Button label="Envoyer la demande" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+          <Text style={styles.fieldLabel}>Mode de paiement</Text>
+          <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
+            {PAYMENTS.map(p => (
+              <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
+                <Text style={[styles.chipText, form.paymentMethod === p.key && { color: colors.cream, fontWeight: '500' }]}>{p.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <FormField label="Demandes spéciales (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Chambre calme, lit king size..." multiline />
+
+          <BookingRecap
+            lines={selected ? [{
+              label: offerLabel(selected, offerCtx.categoryOf(selected)),
+              detail: `${selected.price} ${selected.currency} × ${nights.length} nuit${nights.length > 1 ? 's' : ''}${units > 1 ? ` × ${units}` : ''}`,
+              amount: selected.price * nights.length * units,
+            }] : []}
+            currency={selected?.currency ?? 'USD'}
+          />
+
+          <Button label="Envoyer la demande" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+        </>
+      )}
     </ScrollView>
   );
 }
 
-function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+// Récapitulatif chiffré. « Estimé » est délibéré : rien n'est payé en ligne et
+// le partenaire doit encore confirmer la demande.
+function BookingRecap({ lines, currency }: { lines: { label: string; detail: string; amount: number }[]; currency: string }) {
+  if (lines.length === 0) return null;
+  const total = lines.reduce((s, l) => s + l.amount, 0);
+  return (
+    <View style={styles.recap}>
+      {lines.map(l => (
+        <View key={l.label} style={styles.recapRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.recapLabel}>{l.label}</Text>
+            <Text style={styles.recapDetail}>{l.detail}</Text>
+          </View>
+          <Text style={styles.recapAmount}>{l.amount} {currency}</Text>
+        </View>
+      ))}
+      <View style={styles.recapTotalRow}>
+        <Text style={styles.recapTotalLabel}>Total estimé</Text>
+        <Text style={styles.recapTotal}>{total} {currency}</Text>
+      </View>
+    </View>
+  );
+}
+
+function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx }:
   { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void; onSubmit: () => void;
-    loading: boolean; availability: Availability }) {
+    loading: boolean; availability: Availability; offerCtx: OfferContext }) {
+  const [step, setStep] = useState(0);
+  const selected = offerCtx.offers.find(o => o.id === form.offerId) ?? null;
+  const covers = form.adults + form.children;
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={styles.formRow}>
-        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" /></View>
-        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
-      </View>
-      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
-      <PhoneField
-        label="Téléphone"
-        dial={form.phoneDial}
-        onDialChange={v => setForm({ ...form, phoneDial: v })}
-        value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-      />
-      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" />
-
-      <DateField
-        label="Date"
-        sheetTitle="Date de la réservation"
-        value={form.visitDate}
-        // Changer de date invalide le créneau : sa disponibilité dépend du jour.
-        onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
-        fullDays={availability.fullDays}
-        accent={accent}
+      <StepProgress
+        labels={['Votre table', 'Vos informations']}
+        current={step} accent={accent} onGoBack={setStep}
       />
 
-      <Text style={styles.fieldLabel}>Créneau horaire</Text>
-      {!form.visitDate ? (
-        <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
-      ) : (
-        <SlotPicker
-          slots={RESTAURANT_SLOTS}
-          selected={form.timeSlot}
-          onSelect={s => setForm({ ...form, timeSlot: s })}
-          accent={accent}
-          slotLoads={availability.slotLoads}
-          capacity={availability.capacity}
-          partySize={form.adults + form.children}
-        />
+      {step === 0 && (
+        <>
+          <DateField
+            label="Date"
+            sheetTitle="Date de la réservation"
+            value={form.visitDate}
+            // Changer de date invalide le créneau : sa disponibilité dépend du jour.
+            onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+            fullDays={availability.fullDays}
+            accent={accent}
+          />
+
+          <Text style={styles.fieldLabel}>Créneau horaire</Text>
+          {!form.visitDate ? (
+            <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+          ) : (
+            <SlotPicker
+              slots={RESTAURANT_SLOTS}
+              selected={form.timeSlot}
+              onSelect={s => setForm({ ...form, timeSlot: s })}
+              accent={accent}
+              slotLoads={availability.slotLoads}
+              capacity={availability.capacity}
+              partySize={covers}
+            />
+          )}
+
+          <Text style={styles.fieldLabel}>Couverts</Text>
+          <View style={styles.formRow}>
+            <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+            <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+          </View>
+
+          {/* Formule facultative : on réserve une table, pas un menu. « À la
+              carte » n'est pas une offre du catalogue, c'est son absence. */}
+          {offerCtx.offers.length > 0 && (
+            <>
+              <Text style={styles.fieldLabel}>Formule (facultatif)</Text>
+              <View style={{ gap: spacing.sm }}>
+                <Pressable
+                  style={[styles.chip, !form.offerId && { backgroundColor: accent, borderColor: accent }]}
+                  onPress={() => setForm({ ...form, offerId: '' })}
+                >
+                  <Text style={[styles.chipText, !form.offerId && { color: colors.cream, fontWeight: '500' }]}>
+                    À la carte
+                  </Text>
+                </Pressable>
+                {offerCtx.offers.map(o => (
+                  <OfferCard
+                    key={o.id}
+                    offer={o}
+                    category={offerCtx.categoryOf(o)}
+                    photoUrl={offerCtx.photoOf(o.id)}
+                    selected={form.offerId === o.id}
+                    accent={accent}
+                    onPress={() => setForm({ ...form, offerId: o.id })}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+
+          <Text style={styles.fieldLabel}>Occasion</Text>
+          <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
+            {OCCASIONS.map(o => (
+              <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
+                <Text style={[styles.chipText, form.occasion === o.key && { color: colors.cream, fontWeight: '500' }]}>{o.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Button
+            label="Continuer" onPress={() => setStep(1)} color={accent}
+            disabled={!form.visitDate || !form.timeSlot}
+          />
+        </>
       )}
 
-      <Text style={styles.fieldLabel}>Couverts</Text>
-      <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
-      </View>
-      <Text style={styles.fieldLabel}>Occasion</Text>
-      <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
-        {OCCASIONS.map(o => (
-          <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
-            <Text style={[styles.chipText, form.occasion === o.key && { color: colors.cream, fontWeight: '500' }]}>{o.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <FormField label="Allergies / régimes (optionnel)" value={form.allergies} onChange={v => setForm({ ...form, allergies: v })} placeholder="Sans gluten, végétarien..." multiline />
-      <Button label="Réserver la table" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+      {step === 1 && (
+        <>
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
+          </View>
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <PhoneField
+            label="Téléphone"
+            dial={form.phoneDial}
+            onDialChange={v => setForm({ ...form, phoneDial: v })}
+            value={form.phone}
+            onChange={v => setForm({ ...form, phone: v })}
+          />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" />
+          <FormField label="Allergies / régimes (optionnel)" value={form.allergies} onChange={v => setForm({ ...form, allergies: v })} placeholder="Sans gluten, végétarien..." multiline />
+
+          {/* Une formule se compte par personne : le total suit les couverts. */}
+          <BookingRecap
+            lines={selected ? [{
+              label: offerLabel(selected, offerCtx.categoryOf(selected)),
+              detail: `${selected.price} ${selected.currency} × ${covers} couvert${covers > 1 ? 's' : ''}`,
+              amount: selected.price * covers,
+            }] : []}
+            currency={selected?.currency ?? 'USD'}
+          />
+
+          <Button label="Réserver la table" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+        </>
+      )}
     </ScrollView>
   );
 }
 
-function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availability }:
+// Ligne de billet : un type d'entrée, son prix, son compteur.
+function TicketRow({ offer, category, accent, quantity, onChange, remaining }:
+  { offer: EstablishmentOffer; category?: OfferCategory; accent: string;
+    quantity: number; onChange: (n: number) => void; remaining: number | null }) {
+  const full = remaining !== null && remaining <= 0;
+  const atMax = remaining !== null && quantity >= remaining;
+  return (
+    <View style={styles.ticketRow}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.ticketLabel}>{offerLabel(offer, category)}</Text>
+        {!!offer.description && <Text style={styles.ticketDesc} numberOfLines={2}>{offer.description}</Text>}
+        <Text style={[styles.ticketPrice, { color: accent }]}>{offer.price} {offer.currency}</Text>
+        {full && <Text style={styles.ticketFull}>Complet à cette date</Text>}
+      </View>
+      <View style={styles.counterRow}>
+        <Pressable style={[styles.counterBtn, styles.counterBtnMuted]} onPress={() => onChange(Math.max(0, quantity - 1))} hitSlop={8}>
+          <Minus size={14} color={colors.muted} />
+        </Pressable>
+        <Text style={styles.counterValue}>{quantity}</Text>
+        <Pressable
+          style={[styles.counterBtn, { backgroundColor: atMax ? colors.border : accent }]}
+          onPress={() => { if (!atMax) onChange(quantity + 1); }}
+          hitSlop={8}
+        >
+          <Plus size={14} color={atMax ? colors.faint : colors.cream} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx }:
   { accent: string; form: SiteForm; setForm: (f: SiteForm) => void; onSubmit: () => void;
-    loading: boolean; availability: Availability }) {
+    loading: boolean; availability: Availability; offerCtx: OfferContext }) {
+  const hasTickets = offerCtx.offers.length > 0;
+  // Sans catalogue de billets, l'étape panier n'a rien à montrer : on l'ignore.
+  const [step, setStep] = useState(hasTickets ? 0 : 1);
+
+  // Les places d'un site se comptent par créneau. Tant qu'aucun créneau n'est
+  // choisi, on ne sait rien de la disponibilité — et on ne prétend rien.
+  const ticketsLeft = (o: EstablishmentOffer) =>
+    offerCtx.remainingForSlot(o, form.visitDate, form.timeSlot);
+  const cartCount = Object.values(form.cart).reduce((s, n) => s + n, 0);
+  const cartLines = offerCtx.offers
+    .filter(o => (form.cart[o.id] ?? 0) > 0)
+    .map(o => ({
+      label: offerLabel(o, offerCtx.categoryOf(o)),
+      detail: `${o.price} ${o.currency} × ${form.cart[o.id]}`,
+      amount: o.price * form.cart[o.id],
+    }));
+
+  const labels = hasTickets ? ['Billets', 'Date', 'Vos informations'] : ['Date', 'Vos informations'];
+  const shown = hasTickets ? step : step - 1;
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={styles.formRow}>
-        <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" /></View>
-        <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
-      </View>
-      <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
-      <PhoneField
-        label="Téléphone (responsable)"
-        dial={form.phoneDial}
-        onDialChange={v => setForm({ ...form, phoneDial: v })}
-        value={form.phone}
-        onChange={v => setForm({ ...form, phone: v })}
-      />
-      <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" />
-
-      <DateField
-        label="Date de visite"
-        sheetTitle="Date de la visite"
-        value={form.visitDate}
-        onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
-        fullDays={availability.fullDays}
-        accent={accent}
+      <StepProgress
+        labels={labels} current={shown} accent={accent}
+        onGoBack={i => setStep(hasTickets ? i : i + 1)}
       />
 
-      <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
-      {!form.visitDate ? (
-        <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
-      ) : (
-        <SlotPicker
-          slots={SITE_SLOTS}
-          selected={form.timeSlot}
-          onSelect={s => setForm({ ...form, timeSlot: s })}
-          accent={accent}
-          slotLoads={availability.slotLoads}
-          capacity={availability.capacity}
-          partySize={form.adults + form.children}
-        />
+      {step === 0 && (
+        <>
+          <Text style={styles.fieldLabel}>Vos billets</Text>
+          {/* Le panier se compose avant la date : le voyageur sait d'abord ce
+              qu'il veut voir. La disponibilité par billet n'est donc annoncée
+              qu'une fois la date choisie, à l'étape suivante. */}
+          <View style={{ gap: spacing.sm }}>
+            {offerCtx.offers.map(o => (
+              <TicketRow
+                key={o.id}
+                offer={o}
+                category={offerCtx.categoryOf(o)}
+                accent={accent}
+                quantity={form.cart[o.id] ?? 0}
+                remaining={ticketsLeft(o)}
+                onChange={n => setForm({ ...form, cart: { ...form.cart, [o.id]: n } })}
+              />
+            ))}
+          </View>
+
+          <BookingRecap lines={cartLines} currency={offerCtx.offers[0]?.currency ?? 'USD'} />
+
+          <Button
+            label="Continuer" onPress={() => setStep(1)} color={accent}
+            disabled={cartCount === 0}
+          />
+        </>
       )}
 
-      <Text style={styles.fieldLabel}>Composition du groupe</Text>
-      <View style={styles.formRow}>
-        <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-        <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
-      </View>
-      <Text style={styles.fieldLabel}>Type de visite</Text>
-      <View style={styles.formRow}>
-        {[{ key: 'guided', label: 'Guidée' }, { key: 'free', label: 'Libre' }].map(v => (
-          <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: colors.cream, fontWeight: '500' }]}>{v.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.fieldLabel}>Nationalité</Text>
-      <View style={styles.formRow}>
-        {[{ key: 'congolaise', label: 'Congolaise' }, { key: 'etrangere', label: 'Étrangère' }].map(n => (
-          <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
-            <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: colors.cream, fontWeight: '500' }]}>{n.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <FormField label="Remarques (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Accessibilité PMR, équipement spécial..." multiline />
-      <Button label="Réserver la visite" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+      {step === 1 && (
+        <>
+          <DateField
+            label="Date de visite"
+            sheetTitle="Date de la visite"
+            value={form.visitDate}
+            onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
+            fullDays={availability.fullDays}
+            accent={accent}
+          />
+
+          <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
+          {!form.visitDate ? (
+            <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+          ) : (
+            <SlotPicker
+              slots={SITE_SLOTS}
+              selected={form.timeSlot}
+              onSelect={s => setForm({ ...form, timeSlot: s })}
+              accent={accent}
+              slotLoads={availability.slotLoads}
+              capacity={availability.capacity}
+              partySize={hasTickets ? cartCount : form.adults + form.children}
+            />
+          )}
+
+          {/* Sans billetterie, la composition du groupe reste saisie ici. */}
+          {!hasTickets && (
+            <>
+              <Text style={styles.fieldLabel}>Composition du groupe</Text>
+              <View style={styles.formRow}>
+                <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+                <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+              </View>
+            </>
+          )}
+
+          {/* Un billet devenu indisponible à la date retenue doit se voir avant
+              l'envoi, pas au retour du serveur. */}
+          {form.timeSlot && offerCtx.offers.some(o => {
+            const want = form.cart[o.id] ?? 0;
+            const rest = ticketsLeft(o);
+            return want > 0 && rest !== null && rest < want;
+          }) && (
+            <Text style={styles.slotHint}>
+              Certains billets ne sont plus disponibles en quantité suffisante sur ce créneau.
+              Revenez à l'étape « Billets » pour ajuster.
+            </Text>
+          )}
+
+          <Text style={styles.fieldLabel}>Type de visite</Text>
+          <View style={styles.formRow}>
+            {[{ key: 'guided', label: 'Guidée' }, { key: 'free', label: 'Libre' }].map(v => (
+              <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
+                <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: colors.cream, fontWeight: '500' }]}>{v.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.fieldLabel}>Nationalité</Text>
+          <View style={styles.formRow}>
+            {[{ key: 'congolaise', label: 'Congolaise' }, { key: 'etrangere', label: 'Étrangère' }].map(n => (
+              <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
+                <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: colors.cream, fontWeight: '500' }]}>{n.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Button
+            label="Continuer" onPress={() => setStep(2)} color={accent}
+            disabled={!form.visitDate || !form.timeSlot}
+          />
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
+          </View>
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <PhoneField
+            label="Téléphone (responsable)"
+            dial={form.phoneDial}
+            onDialChange={v => setForm({ ...form, phoneDial: v })}
+            value={form.phone}
+            onChange={v => setForm({ ...form, phone: v })}
+          />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" />
+          <FormField label="Remarques (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Accessibilité PMR, équipement spécial..." multiline />
+
+          <BookingRecap lines={cartLines} currency={offerCtx.offers[0]?.currency ?? 'USD'} />
+
+          <Button label="Réserver la visite" onPress={onSubmit} loading={loading} color={accent} icon={<Send size={15} color={colors.cream} strokeWidth={1.75} />} />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -426,7 +726,11 @@ export default function ListingDetailScreen() {
   const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [rate, setRate] = useState<Rate | null>(null);
+  const [offers, setOffers] = useState<EstablishmentOffer[]>([]);
+  const [offerCategories, setOfferCategories] = useState<OfferCategory[]>([]);
+  // Unités encore libres par offre, aux dates choisies. Vide tant qu'aucune
+  // date n'est sélectionnée : on n'annonce pas une disponibilité non calculée.
+  const [offerPhotos, setOfferPhotos] = useState<ListingPhoto[]>([]);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [menuPhotos, setMenuPhotos] = useState<ListingPhoto[]>([]);
   // Visionneuse plein écran, partagée entre la galerie principale et le menu.
@@ -451,6 +755,8 @@ export default function ListingDetailScreen() {
   // Disponibilités
   const [fullDays, setFullDays] = useState<Set<string>>(new Set());
   const [slotLoads, setSlotLoads] = useState<Record<string, number>>({});
+  // Charge par offre et par créneau : { offerId: { '12h00': 4 } }
+  const [offerSlotLoad, setOfferSlotLoad] = useState<Record<string, Record<string, number>>>({});
 
   // Pré-remplissage depuis le profil connecté. `profiles.full_name` existait
   // déjà mais n'était pas utilisé : l'utilisateur retapait son nom à chaque
@@ -459,6 +765,7 @@ export default function ListingDetailScreen() {
   const prefill = splitFullName(profile?.full_name);
   const prefillPhone = splitPhone(profile?.phone);
   const base = {
+    offerId: '',
     firstName: prefill.firstName, lastName: prefill.lastName, postName: '',
     phoneDial: prefillPhone.dial, phone: prefillPhone.number,
     email: profile?.email ?? '',
@@ -476,6 +783,7 @@ export default function ListingDetailScreen() {
   const [siteForm, setSiteForm] = useState<SiteForm>({
     ...base,
     adults: 1, children: 0, visitDate: '', timeSlot: '', visitType: 'guided', nationality: 'congolaise',
+    cart: {},
   });
 
   // Le profil arrive DEUX tours asynchrones après le montage (getSession puis
@@ -522,8 +830,17 @@ export default function ListingDetailScreen() {
     if (error || !data) { setLoadError(true); return; }
     setEstablishment(data as Establishment);
 
-    supabase.from('rates').select('*').eq('establishment_id', id).limit(1).maybeSingle()
-      .then(({ data: r }) => setRate(r as Rate | null));
+    // Offres actives + leur catégorie. Remplace la lecture de `rates` : le
+    // prix affiché est désormais le minimum des offres, calculé ici.
+    supabase.from('establishment_offers')
+      .select('*, offer_categories(*)')
+      .eq('establishment_id', id).eq('is_active', true)
+      .order('price', { ascending: true })
+      .then(({ data: o }) => {
+        const rows = (o as any[]) ?? [];
+        setOffers(rows.map(r => r as EstablishmentOffer));
+        setOfferCategories(rows.map(r => r.offer_categories).filter(Boolean) as OfferCategory[]);
+      });
     supabase.from('listing_photos').select('*').eq('establishment_id', id).order('position', { ascending: true })
       .then(({ data: p }) => {
         const all = (p as ListingPhoto[]) ?? [];
@@ -531,6 +848,7 @@ export default function ListingDetailScreen() {
         // de la galerie du hero (elle s'affichera au choix de l'offre, lot B2).
         setPhotos(all.filter(x => !x.offer_id && (!x.category || x.category === 'general')));
         setMenuPhotos(all.filter(x => x.category === 'menu' || x.category === 'pricing'));
+        setOfferPhotos(all.filter(x => !!x.offer_id));
       });
     // Compte cette visite pour les statistiques du partenaire (une fois par ouverture)
     supabase.rpc('increment_establishment_views', { p_establishment_id: id });
@@ -539,27 +857,37 @@ export default function ListingDetailScreen() {
   useEffect(() => { loadEstablishment(); }, [loadEstablishment]);
 
   // Charge les journées complètes sur 4 mois, à l'ouverture du formulaire
-  useEffect(() => {
-    if (!showForm || !establishment?.capacity) { setFullDays(new Set()); return; }
+  // Occupation par offre sur quatre mois. Sert à deux choses : griser les
+  // journées complètes du calendrier (pour l'offre choisie), et annoncer le
+  // restant sur chaque carte de la fiche.
+  //
+  // Le calcul est par offre, plus par établissement : « Suite complète » ne
+  // doit plus empêcher de réserver une Standard. Une offre sans `quantity`
+  // déclarée n'est jamais complète.
+  const [offerLoad, setOfferLoad] = useState<Record<string, Record<string, number>>>({});
 
+  useEffect(() => {
+    if (offers.length === 0) { setOfferLoad({}); return; }
     const from = new Date();
     const to = new Date();
     to.setMonth(to.getMonth() + 4);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-    supabase.rpc('establishment_daily_load', {
+    supabase.rpc('establishment_offer_load', {
       p_establishment_id: id,
       p_from: iso(from),
       p_to: iso(to),
-    }).then(({ data }) => {
-      const capacity = establishment.capacity!;
-      const full = new Set<string>();
+    }).then(({ data, error }) => {
+      // La migration 0009 peut ne pas être appliquée : on dégrade en
+      // « aucune occupation connue » plutôt que de bloquer la réservation.
+      if (error) { setOfferLoad({}); return; }
+      const map: Record<string, Record<string, number>> = {};
       ((data as any[]) ?? []).forEach(row => {
-        if (row.guests >= capacity) full.add(row.day);
+        (map[row.offer_id] ??= {})[row.day] = row.units;
       });
-      setFullDays(full);
+      setOfferLoad(map);
     });
-  }, [showForm, id, establishment?.capacity]);
+  }, [id, offers.length]);
 
   // Charge la fréquentation par créneau quand la date choisie change
   const selectedVisitDate =
@@ -576,6 +904,22 @@ export default function ListingDetailScreen() {
       ((data as any[]) ?? []).forEach(row => { loads[row.slot] = row.guests; });
       setSlotLoads(loads);
     });
+
+    // Même charge, mais ventilée par offre : c'est elle qui vaut pour les
+    // billets et les formules, dont la capacité est déclarée par créneau.
+    supabase.rpc('establishment_offer_slot_load', {
+      p_establishment_id: id,
+      p_date: selectedVisitDate,
+    }).then(({ data, error }) => {
+      // Migration 0009 pas encore appliquée : on dégrade en « occupation
+      // inconnue » plutôt que de bloquer la réservation.
+      if (error) { setOfferSlotLoad({}); return; }
+      const map: Record<string, Record<string, number>> = {};
+      ((data as any[]) ?? []).forEach(row => {
+        (map[row.offer_id] ??= {})[row.slot] = row.units;
+      });
+      setOfferSlotLoad(map);
+    });
   }, [selectedVisitDate, id]);
 
   // Établissements similaires — même type, même commune, hors fiche courante.
@@ -586,7 +930,7 @@ export default function ListingDetailScreen() {
 
     (async () => {
       let q = supabase.from('establishments')
-        .select('*, listing_photos(*), rates(price, currency, unit)')
+        .select('*, listing_photos(*), establishment_offers(price, currency, unit, is_active)')
         .eq('type', establishment.type)
         .eq('status', 'approved')
         .neq('id', establishment.id)
@@ -600,7 +944,8 @@ export default function ListingDetailScreen() {
         const photo = (e.listing_photos ?? [])
           .filter((p: any) => !p.offer_id && (!p.category || p.category === 'general'))
           .sort((a: any, b: any) => a.position - b.position)[0];
-        const r = (e.rates ?? [])[0];
+        // « À partir de » : l'offre active la moins chère, comme en recherche.
+        const r = cheapestActiveOffer(e.establishment_offers as any[]);
         return {
           ...e,
           coverPhoto: photo?.url ?? null,
@@ -749,7 +1094,7 @@ export default function ListingDetailScreen() {
       establishment_id: establishment.id,
       item_type: 'wishlist',
       title: establishment.name,
-      estimated_cost: rate?.price ?? 0,
+      estimated_cost: offers[0]?.price ?? 0,
       position: count ?? 0,
     });
 
@@ -785,6 +1130,10 @@ export default function ListingDetailScreen() {
   const isRestaurant = establishment.type === 'restaurant';
   const isSite = establishment.type === 'site';
   const menuSectionTitle = isRestaurant ? 'Menu' : 'Tarifs des attractions';
+  // Le voyageur ne parle pas d'« offres » : le titre suit le type de lieu.
+  const offerSectionTitle = isHotel
+    ? (establishment.type === 'furnished_house' ? 'Logements proposés' : 'Chambres proposées')
+    : isRestaurant ? 'Formules' : 'Billets';
 
   const availability: Availability = {
     fullDays,
@@ -845,39 +1194,168 @@ export default function ListingDetailScreen() {
         Alert.alert('Champs requis', 'Veuillez remplir prénom, nom, date et créneau.');
         setSubmitting(false); return;
       }
+      // Avec billetterie, le panier EST la composition du groupe : le nombre
+      // de voyageurs doit compter les billets, sinon le partenaire verrait
+      // « 1 personne » pour une réservation de six entrées.
+      const tickets = Object.values(f.cart).reduce((a, b) => a + b, 0);
+      if (offers.length > 0 && tickets === 0) {
+        Alert.alert('Aucun billet', 'Choisissez au moins un billet.');
+        setSubmitting(false); return;
+      }
       payload = { ...payload, ...common(f),
+        guests: offers.length > 0 ? tickets : f.adults,
+        children: offers.length > 0 ? 0 : f.children,
         visit_date: f.visitDate, visit_time: f.timeSlot,
         metadata: { visit_type: f.visitType, nationality: f.nationality } };
     }
 
-    let { error } = await supabase.from('bookings').insert(payload);
+    // L'échafaudage de repli 42703 du lot A a été retiré : la migration 0005
+    // est appliquée, les colonnes de contact existent.
+    const { data: created, error } = await supabase
+      .from('bookings').insert(payload).select('id').single();
 
-    // Repli temporaire : si la migration 0003 n'a pas encore été appliquée,
-    // Postgres renvoie 42703 (colonne inexistante). Plutôt que de bloquer
-    // TOUTE réservation — le parcours le plus critique de l'app — on réessaie
-    // sans les nouveaux champs et on prévient. À SUPPRIMER une fois la
-    // migration passée : voir supabase/migrations/0003_booking_contact.sql.
-    if (error && (error as any).code === '42703') {
-      const { post_name, phone_country_code, contact_email, arrival_time, ...legacy } = payload;
-      const retry = await supabase.from('bookings').insert(legacy);
-      error = retry.error;
-      if (!error) {
+    if (error || !created) {
+      setSubmitting(false);
+      Alert.alert('Erreur', error?.message ?? "La demande n'a pas pu être enregistrée.");
+      return;
+    }
+
+    // Lignes de réservation : ce qui est réellement réservé, avec le prix gelé.
+    // Le panier de billets d'un site en produit plusieurs ; un séjour une seule,
+    // dont la quantité est le nombre d'unités occupées.
+    const items = buildBookingItems(created.id);
+    if (items.length > 0) {
+      const { error: itemsError } = await supabase.from('booking_items').insert(items);
+      if (itemsError) {
+        // La réservation existe mais sans ligne : on l'annule plutôt que de
+        // laisser une demande sans contenu, que le partenaire ne saurait pas
+        // honorer. Le message porte la cause réelle (souvent : offre complète).
+        await supabase.from('bookings').delete().eq('id', created.id);
+        setSubmitting(false);
         Alert.alert(
-          'Réservation enregistrée',
-          "Votre demande est bien partie. Certaines informations (postnom, email, heure d'arrivée) n'ont pas pu être conservées : la base n'est pas encore à jour.",
+          'Réservation impossible',
+          itemsError.message.includes('OFFER_FULL')
+            ? itemsError.message.split('OFFER_FULL: ')[1] ?? 'Cette catégorie est complète à ces dates.'
+            : itemsError.message,
         );
+        return;
       }
     }
 
     setSubmitting(false);
-    if (error) { Alert.alert('Erreur', error.message); return; }
     setShowForm(false);
     setSuccess(true);
   }
 
-  const priceLabel = rate
-    ? `${rate.price} ${rate.currency} / ${rate.unit === 'night' ? 'nuit' : rate.unit === 'person' ? 'pers.' : 'visite'}`
+  // Prix affiché = le plus bas des offres actives. Les offres sont déjà
+  // triées par prix croissant à la requête, donc la première fait foi.
+  const cheapestOffer = offers[0] ?? null;
+  const priceLabel = cheapestOffer
+    ? `${cheapestOffer.price} ${cheapestOffer.currency} ${unitLabel(cheapestOffer.unit)}`.trim()
     : 'Tarif sur demande';
+
+  function categoryOf(offer: EstablishmentOffer) {
+    return offerCategories.find(c => c.id === offer.category_id);
+  }
+  function offerPhotoOf(offerId: string): string | null {
+    return offerPhotos.find(p => p.offer_id === offerId)?.url ?? null;
+  }
+
+  /**
+   * Unités encore libres pour une offre sur une plage de dates.
+   * `null` = aucune limite déclarée, donc jamais complet.
+   * On retient le MINIMUM sur la plage : une seule nuit saturée suffit à
+   * empêcher le séjour entier.
+   */
+  function remainingFor(offer: EstablishmentOffer, days: string[]): number | null {
+    if (offer.quantity == null) return null;
+    const load = offerLoad[offer.id] ?? {};
+    if (days.length === 0) return offer.quantity;
+    return days.reduce(
+      (min, d) => Math.min(min, offer.quantity! - (load[d] ?? 0)),
+      offer.quantity,
+    );
+  }
+
+  function remainingForSlot(offer: EstablishmentOffer, date: string, slot: string): number | null {
+    if (offer.quantity == null || !date || !slot) return null;
+    const used = offerSlotLoad[offer.id]?.[slot] ?? 0;
+    return Math.max(0, offer.quantity - used);
+  }
+
+  /** Journées complètes pour une offre — grise le calendrier. */
+  function fullDaysFor(offer: EstablishmentOffer | null): Set<string> {
+    if (!offer || offer.quantity == null) return new Set();
+    const load = offerLoad[offer.id] ?? {};
+    const full = new Set<string>();
+    Object.entries(load).forEach(([day, units]) => {
+      if (units >= offer.quantity!) full.add(day);
+    });
+    return full;
+  }
+
+  /** Nuits occupées par un séjour — départ exclu, comme en base. */
+  function nightsBetween(checkIn: string, checkOut: string): string[] {
+    if (!checkIn || !checkOut) return [];
+    const out: string[] = [];
+    const cur = new Date(checkIn);
+    const last = new Date(checkOut);
+    while (cur < last) {
+      out.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  }
+
+  /**
+   * Lignes à enregistrer pour une réservation.
+   * Hôtel/maison : une ligne, dont la quantité est le nombre d'unités occupées
+   * (un groupe plus grand que la capacité d'une chambre en occupe plusieurs).
+   * Restaurant : une ligne si une formule a été choisie, aucune sinon — on
+   * réserve une table, pas obligatoirement un menu.
+   * Site : une ligne par type de billet retenu.
+   */
+  function buildBookingItems(bookingId: string) {
+    const line = (offerId: string, quantity: number) => {
+      const o = offers.find(x => x.id === offerId);
+      if (!o || quantity <= 0) return null;
+      return {
+        booking_id: bookingId, offer_id: o.id,
+        quantity, unit_price: o.price, currency: o.currency,
+      };
+    };
+
+    if (isHotel) {
+      const o = offers.find(x => x.id === hotelForm.offerId);
+      if (!o) return [];
+      return [line(o.id, unitsNeeded(o, hotelForm.adults + hotelForm.children))].filter(Boolean) as any[];
+    }
+    if (isRestaurant) {
+      return restaurantForm.offerId ? ([line(restaurantForm.offerId, 1)].filter(Boolean) as any[]) : [];
+    }
+    // Site : panier de billets
+    return Object.entries(siteForm.cart)
+      .map(([offerId, qty]) => line(offerId, qty))
+      .filter(Boolean) as any[];
+  }
+
+  const offerCtx: OfferContext = {
+    offers,
+    categoryOf,
+    photoOf: offerPhotoOf,
+    remainingFor,
+    remainingForSlot,
+    fullDaysFor,
+    nightsBetween,
+  };
+
+  // Dates actuellement retenues, selon le type de formulaire. Vide tant que
+  // rien n'est choisi — auquel cas aucune disponibilité n'est annoncée.
+  const selectedDays: string[] = isHotel
+    ? nightsBetween(hotelForm.checkIn, hotelForm.checkOut)
+    : isRestaurant
+      ? (restaurantForm.visitDate ? [restaurantForm.visitDate] : [])
+      : (siteForm.visitDate ? [siteForm.visitDate] : []);
 
   // URL publique de la fiche — sert au partage et au signalement.
   const listingUrl = typeof window !== 'undefined'
@@ -1133,6 +1611,26 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
+          {/* Catégories proposées — seules les offres actives apparaissent.
+              Une offre retirée du catalogue n'est jamais visible ici. */}
+          {offers.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionKicker}>{offerSectionTitle}</Text>
+              <View style={{ gap: spacing.sm }}>
+                {offers.map(o => (
+                  <OfferCard
+                    key={o.id}
+                    offer={o}
+                    category={categoryOf(o)}
+                    photoUrl={offerPhotoOf(o.id)}
+                    remaining={selectedDays.length ? (remainingFor(o, selectedDays) ?? undefined) : undefined}
+                    accent={accent}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Adresse — hiérarchie typographique et filet fin, pas de carte
               blanche bordée. Rue en Playfair, zone en Manrope. */}
           {(communeLabel || streetLine || establishment.reference) && (
@@ -1294,9 +1792,15 @@ export default function ListingDetailScreen() {
         title="Demande de réservation"
         subtitle={`${establishment.name} · ${establishment.neighborhood ?? establishment.city}`}
       >
-        {isHotel && <HotelBookingForm accent={accent} form={hotelForm} setForm={setHotelForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
-        {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
-        {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} />}
+        {isHotel && (
+          <HotelBookingForm
+            accent={accent} form={hotelForm} setForm={setHotelForm}
+            onSubmit={handleSubmit} loading={submitting}
+            offerCtx={offerCtx} isHouse={establishment.type === 'furnished_house'}
+          />
+        )}
+        {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} />}
+        {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} />}
       </Sheet>
 
       {/* Formulaire d'avis */}
@@ -1454,6 +1958,22 @@ const styles = StyleSheet.create({
   metaStrong: { ...typography.caption, color: colors.ink },
   metaSeparator: { ...typography.caption, color: colors.faint },
   slotHint: { ...typography.caption, color: colors.faint, marginBottom: 12 },
+  // Récapitulatif : filet et hiérarchie typographique, pas une carte blanche
+  // bordée de plus (anti-pattern §10).
+  recap: {
+    borderTopWidth: 1, borderTopColor: colors.border,
+    paddingTop: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm, gap: 6,
+  },
+  recapRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  recapLabel: { ...typography.caption, color: colors.ink },
+  recapDetail: { ...typography.badgeSm, color: colors.faint, marginTop: 1 },
+  recapAmount: { ...typography.caption, color: colors.ink },
+  recapTotalRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: 2,
+  },
+  recapTotalLabel: { ...typography.caption, color: colors.muted },
+  recapTotal: { ...typography.cardTitle, color: colors.ink },
   chipFull: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
   chipTextFull: { color: colors.danger, textDecorationLine: 'line-through' },
   // Contact — rangée segmentée, un seul conteneur, séparateurs fins.
@@ -1527,6 +2047,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm, padding: 10, gap: spacing.xs, marginBottom: 12 },
   counterLabel: { ...typography.overlineXs, color: colors.muted },
   counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  ticketRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.md,
+    backgroundColor: colors.white, padding: spacing.sm,
+  },
+  ticketLabel: { ...typography.cardTitle, color: colors.ink },
+  ticketDesc: { ...typography.caption, color: colors.muted, marginTop: 2 },
+  ticketPrice: { ...typography.caption, fontWeight: '600', marginTop: 3 },
+  ticketFull: { ...typography.badgeSm, color: colors.danger, marginTop: 2 },
   // 26px carré, rayon 8 (radii.sm) : pas un cercle, valeur d'échelle.
   counterBtn: { width: 26, height: 26, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   counterBtnMuted: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border },

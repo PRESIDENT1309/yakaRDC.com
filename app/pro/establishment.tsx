@@ -159,9 +159,13 @@ export default function EstablishmentScreen() {
       setPhotos(allPhotos.filter(p => !p.offer_id && (!p.category || p.category === 'general')));
       setMenuPhotos(allPhotos.filter(p => p.category === 'menu' || p.category === 'pricing'));
 
-      const { data: rate } = await supabase.from('rates').select('*')
-        .eq('establishment_id', e.id).maybeSingle();
-      if (rate) { setPrice(String(rate.price)); setCurrency(rate.currency); }
+      // « À partir de » affiché sur la vignette : l'offre active la moins
+      // chère. Lu directement dans le catalogue, plus dans `rates`.
+      const { data: cheapest } = await supabase.from('establishment_offers')
+        .select('price, currency').eq('establishment_id', e.id).eq('is_active', true)
+        .order('price', { ascending: true }).limit(1).maybeSingle();
+      if (cheapest) { setPrice(String(cheapest.price)); setCurrency(cheapest.currency); }
+      else { setPrice(''); }
 
       const { data: bookings } = await supabase.from('bookings')
         .select('status').eq('establishment_id', e.id);
@@ -705,10 +709,9 @@ export default function EstablishmentScreen() {
           {/* Tarif */}
           <View style={styles.card}>
             <CardTitle icon={<DollarSign {...SECTION_ICON} />} label={OFFER_SECTION_TITLE[establishment.type]} />
-            {/* Le prix n'est plus saisi ici : il découle de l'offre la moins
-                chère, répercutée dans `rates` par un trigger. Le voyageur voit
-                donc le bon « à partir de » sans qu'aucun code de lecture ne
-                change (lot B1 — le branchement de la réservation vient en B2). */}
+            {/* Le prix n'est plus saisi ici : il découle des offres. Depuis le
+                lot B2, tous les écrans lisent `establishment_offers`
+                directement — la table `rates` n'a plus de lecteur. */}
             <OfferManager
               establishmentId={establishment.id}
               establishmentType={establishment.type}

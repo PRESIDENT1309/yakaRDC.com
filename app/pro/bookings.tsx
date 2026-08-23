@@ -6,6 +6,7 @@ import { Alert } from '../../lib/alert';
 import { useConfirm } from '../../lib/confirm-context';
 import { Building2, Home, UtensilsCrossed, Mountain, Phone } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { bookingItemsSummary } from '../../lib/offers';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
@@ -59,7 +60,9 @@ export default function PartnerBookingsScreen() {
 
     const { data } = await supabase
       .from('bookings')
-      .select('*, establishment:establishments(*)')
+      .select(`*, establishment:establishments(*),
+        booking_items(quantity, unit_price, currency,
+          establishment_offers(custom_label, offer_categories(label)))`)
       .in('establishment_id', ids)
       .order('created_at', { ascending: false });
 
@@ -151,6 +154,13 @@ export default function PartnerBookingsScreen() {
                          b.visit_date ? `${b.visit_date}${b.visit_time ? ' · ' + b.visit_time : ''}` : '—'}
                         {b.guests ? ` · ${b.guests} pers.` : ''}
                       </Text>
+                      {/* Ce qui a été réservé : sans cette ligne, le partenaire
+                          ignore quelle chambre ou quels billets préparer. */}
+                      {((b as any).booking_items ?? []).length > 0 && (
+                        <Text style={styles.cardOffer} numberOfLines={2}>
+                          {bookingItemsSummary((b as any).booking_items)}
+                        </Text>
+                      )}
                       {(b as any).contact_phone && (
                         <View style={styles.phoneRow}>
                           <Phone size={10} color={colors.faint} />
@@ -211,6 +221,7 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 13, fontWeight: '500', color: colors.ink, flex: 1, marginRight: 6 },
   cardEstab: { fontSize: 11, color: colors.lave, fontWeight: '500', marginBottom: 2 },
   cardDate: { fontSize: 11, color: colors.muted },
+  cardOffer: { fontSize: 11, color: colors.ink, fontWeight: '500', marginTop: 2 },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   phoneText: { fontSize: 11, color: colors.muted },
   statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },

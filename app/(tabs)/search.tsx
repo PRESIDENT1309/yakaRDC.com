@@ -12,6 +12,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Search, X, MapPin, DollarSign, Star } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { cheapestActiveOffer } from '../../lib/offers';
 import { colors, typography, spacing, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import { useSelectedCity } from '../../lib/city-context';
@@ -97,11 +98,12 @@ export default function SearchScreen() {
     if (!selectedCity) return;
     setLoading(true);
 
-    // On récupère les tarifs et photos liés en une seule requête,
-    // plutôt qu'un appel supplémentaire par établissement
+    // On récupère les offres et photos liées en une seule requête,
+    // plutôt qu'un appel supplémentaire par établissement. Le prix affiché
+    // est celui de l'offre active la moins chère — un « à partir de ».
     let q = supabase
       .from('establishments')
-      .select('*, rates(price, currency, unit), listing_photos(*)')
+      .select('*, establishment_offers(price, currency, unit, is_active), listing_photos(*)')
       .eq('status', 'approved')
       .eq('city', selectedCity.name);
 
@@ -122,7 +124,7 @@ export default function SearchScreen() {
 
     let enriched: EnrichedEstablishment[] = ((data as any[]) ?? []).map(e => {
       const rating = ratingMap.get(e.id);
-      const rate = Array.isArray(e.rates) ? e.rates[0] : e.rates;
+      const cheapest = cheapestActiveOffer(e.establishment_offers as any[]);
       const generalPhotos = (e.listing_photos ?? [])
         .filter((p: any) => !p.offer_id && (!p.category || p.category === 'general'))
         .sort((a: any, b: any) => a.position - b.position);
@@ -131,9 +133,9 @@ export default function SearchScreen() {
         ...e,
         avgRating: rating?.avg_rating != null ? Number(rating.avg_rating) : null,
         reviewCount: rating?.review_count ?? 0,
-        price: rate?.price != null ? Number(rate.price) : null,
-        currency: rate?.currency ?? 'USD',
-        priceUnit: rate?.unit ?? null,
+        price: cheapest?.price != null ? Number(cheapest.price) : null,
+        currency: cheapest?.currency ?? 'USD',
+        priceUnit: cheapest?.unit ?? null,
         coverPhoto: generalPhotos[0]?.url ?? null,
       };
     });

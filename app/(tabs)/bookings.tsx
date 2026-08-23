@@ -17,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../../lib/supabase';
+import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
@@ -26,7 +27,27 @@ import Chip from '../../components/Chip';
 import StatusBadge from '../../components/StatusBadge';
 import type { Booking, Establishment } from '../../lib/types';
 
-type BookingWithEstablishment = Booking & { establishment: Establishment };
+// Ligne de réservation telle que renvoyée par la requête : l'offre et sa
+// catégorie sont embarquées pour afficher un nom lisible sans second appel.
+type BookingItemRow = {
+  quantity: number;
+  unit_price: number;
+  currency: string;
+  establishment_offers: {
+    custom_label: string | null;
+    offer_categories: { label: string } | null;
+  } | null;
+};
+
+type BookingWithEstablishment = Booking & {
+  establishment: Establishment;
+  booking_items: BookingItemRow[];
+};
+
+// Le total reste « estimé » : rien n'est payé en ligne et le partenaire peut
+// encore refuser la demande.
+const itemsTotal = (b: BookingWithEstablishment) =>
+  bookingTotal(b.booking_items, b.check_in, b.check_out);
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'past';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
@@ -57,6 +78,21 @@ function TicketModal({
   }
   if (booking.guests) {
     detailLines.push({ label: 'Personnes', value: `${booking.guests}` });
+  }
+  // Ce qui a réellement été réservé — un ticket qui ne dit pas quelle chambre
+  // ni quels billets ne sert à rien au moment du check-in.
+  (booking.booking_items ?? []).forEach(i => {
+    detailLines.push({
+      label: bookingItemLabel(i),
+      value: i.quantity > 1 ? `× ${i.quantity}` : '1',
+    });
+  });
+  const ticketTotal = itemsTotal(booking);
+  if (ticketTotal) {
+    detailLines.push({
+      label: 'Total estimé',
+      value: `${ticketTotal.amount} ${ticketTotal.currency}`,
+    });
   }
 
   return (
@@ -141,6 +177,11 @@ function BookingCard({
 
   const guestLabel = item.guests ? `· ${item.guests} pers.` : '';
 
+  // Ce qui a été réservé, condensé sur une ligne : « Suite Fleuve Congo » ou
+  // « Adulte × 2 · Enfant × 1 ». Vide si la réservation n'a aucune ligne
+  // (réservations d'avant le catalogue d'offres).
+  const offerSummary = bookingItemsSummary(item.booking_items);
+
   return (
     <View style={[styles.card, isPast && styles.cardPast]}>
       <View style={styles.cardTop}>
@@ -154,8 +195,8 @@ function BookingCard({
             </Text>
             <StatusBadge status={item.status} />
           </View>
-          <Text style={styles.cardMeta}>
-            {cat?.label ?? 'Établissement'} {guestLabel}
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            {offerSummary || (cat?.label ?? 'Établissement')} {guestLabel}
           </Text>
           <Text style={styles.cardDate}>{dateLabel}</Text>
         </View>
@@ -186,7 +227,11 @@ function BookingCard({
             Demande refusée par l'établissement
           </Text>
         ) : item.status === 'cancelled' ? (
-          <Text style={styles.cardFooterNote}>Annulée par vous</Text>
+          // Une annulation peut venir du partenaire (offre retirée) : affirmer
+          // « par vous » serait faux, et le voyageur resterait sans explication.
+          <Text style={styles.cardFooterNote}>
+            {item.cancellation_reason ?? 'Annulée par vous'}
+          </Text>
         ) : null}
       </View>
     </View>
@@ -211,7 +256,9 @@ export default function BookingsScreen() {
     if (!session?.user) return;
     const { data } = await supabase
       .from('bookings')
-      .select('*, establishment:establishments(*)')
+      .select(`*, establishment:establishments(*),
+        booking_items(quantity, unit_price, currency,
+          establishment_offers(custom_label, offer_categories(label)))`)
       .eq('traveler_id', session.user.id)
       .order('created_at', { ascending: false });
     setBookings((data as BookingWithEstablishment[]) ?? []);

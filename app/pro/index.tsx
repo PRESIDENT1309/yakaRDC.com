@@ -9,6 +9,7 @@ import {
   MessageCircle, Tag,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { bookingTotal } from '../../lib/offers';
 import { useAuth } from '../../lib/auth-context';
 import { colors } from '../../lib/theme';
 import type { Establishment, Booking, Review } from '../../lib/types';
@@ -55,11 +56,13 @@ export default function PartnerDashboard() {
     weekAgo.setDate(weekAgo.getDate() - 6);
     const weekAgoIso = weekAgo.toISOString().slice(0, 10);
 
-    const [{ data: bookings }, { data: rate }, { data: reviews }] = await Promise.all([
-      supabase.from('bookings').select('*')
+    const [{ data: bookings }, { data: reviews }] = await Promise.all([
+      // Les lignes portent le prix gelé : le chiffre d'affaires se calcule
+      // dessus, jamais sur le tarif courant de l'établissement — sinon une
+      // hausse de prix réécrirait rétroactivement les recettes passées.
+      supabase.from('bookings').select('*, booking_items(quantity, unit_price)')
         .eq('establishment_id', e.id)
         .gte('created_at', weekAgoIso),
-      supabase.from('rates').select('price').eq('establishment_id', e.id).maybeSingle(),
       supabase.from('reviews').select('*').eq('establishment_id', e.id)
         .order('created_at', { ascending: false }),
     ]);
@@ -69,7 +72,12 @@ export default function PartnerDashboard() {
     setTodayCount(todays.length);
 
     const confirmedOrBetter = allBookings.filter(b => ['confirmed', 'checked_in'].includes(b.status));
-    setRevenue(confirmedOrBetter.length * (rate?.price ?? 0));
+    // Un séjour se facture à la nuit : deux chambres trois nuits, c'est six
+    // unités facturées. Une visite ou un repas n'a pas de durée.
+    setRevenue(confirmedOrBetter.reduce((sum, b: any) => {
+      const total = bookingTotal(b.booking_items, b.check_in, b.check_out);
+      return sum + (total?.amount ?? 0);
+    }, 0));
 
     // Répartition par jour de la semaine (Lun=0 ... Dim=6), sur les 7 derniers jours
     const counts = [0, 0, 0, 0, 0, 0, 0];

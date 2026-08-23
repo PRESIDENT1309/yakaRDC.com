@@ -175,24 +175,99 @@ export default function OfferManager({
     onChanged?.();
   }
 
+  /**
+   * Réservations à venir portant sur une offre : celles qu'un masquage
+   * laisserait en suspens. Le passé n'est pas concerné — on ne réécrit pas
+   * l'histoire, on ne s'occupe que de ce que le partenaire devra honorer.
+   */
+  async function upcomingBookings(offerId: string) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('booking_items')
+      .select('booking_id, bookings!inner(id, status, check_out, visit_date)')
+      .eq('offer_id', offerId)
+      .in('bookings.status', ['pending', 'confirmed']);
+    if (error) return { rows: null as any[] | null, error };
+
+    const rows = ((data as any[]) ?? []).filter(r => {
+      const b = r.bookings;
+      const end = b.check_out ?? b.visit_date;
+      return end == null || end >= today;
+    });
+    return { rows, error: null };
+  }
+
   // Masquer plutôt que supprimer : l'offre disparaît de l'app, les données
   // restent. C'est réversible, contrairement à la suppression.
   async function toggleActive(o: EstablishmentOffer) {
+    // Remettre en ligne n'engage personne : aucune vérification à faire.
+    if (!o.is_active) {
+      const { error } = await supabase.from('establishment_offers')
+        .update({ is_active: true }).eq('id', o.id);
+      if (error) { Alert.alert('Erreur', error.message); return; }
+      await load(); onChanged?.();
+      return;
+    }
+
+    // Retirer une catégorie déjà réservée laisserait des voyageurs avec une
+    // demande que le partenaire ne compte plus honorer. On l'annonce, et si le
+    // partenaire confirme, on annule ces réservations avec un motif explicite
+    // plutôt que de les laisser pourrir en attente.
+    const { rows, error: checkError } = await upcomingBookings(o.id);
+    if (checkError) {
+      Alert.alert('Masquage impossible', "Impossible de vérifier les réservations en cours sur cette offre. Réessayez plus tard.");
+      return;
+    }
+
+    const affected = rows ?? [];
+    if (affected.length > 0) {
+      const ok = await confirm({
+        title: 'Réservations en cours',
+        message: `${affected.length} réservation(s) à venir portent sur « ${offerLabel(o, categoryOf(o))} ». Les masquer signifie les annuler : les voyageurs en seront informés.`,
+        confirmLabel: 'Masquer et annuler',
+        destructive: true,
+      });
+      if (!ok) return;
+
+      const { error: cancelError } = await supabase.from('bookings')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: `L'établissement ne propose plus « ${offerLabel(o, categoryOf(o))} ».`,
+        })
+        .in('id', affected.map(r => r.booking_id));
+
+      if (cancelError) {
+        // On ne masque pas l'offre si les annulations ont échoué : mieux vaut
+        // un état inchangé qu'une offre invisible avec des demandes ouvertes.
+        Alert.alert('Annulation impossible', cancelError.message);
+        return;
+      }
+    }
+
     const { error } = await supabase.from('establishment_offers')
-      .update({ is_active: !o.is_active }).eq('id', o.id);
+      .update({ is_active: false }).eq('id', o.id);
     if (error) { Alert.alert('Erreur', error.message); return; }
     await load();
     onChanged?.();
+    if (affected.length > 0) {
+      Alert.alert('Offre masquée', `${affected.length} réservation(s) ont été annulées.`);
+    }
   }
 
   async function remove(o: EstablishmentOffer) {
-    // Vérification préparée pour le lot B2 : dès que les réservations porteront
-    // un offer_id, une offre déjà réservée ne devra plus être supprimable —
-    // sinon le partenaire perdrait son historique. Aucune réservation n'a
-    // encore d'offer_id, donc ce compte vaut toujours zéro aujourd'hui.
-    const { count } = await supabase.from('bookings')
+    // Une offre déjà réservée n'est plus supprimable : la ligne de réservation
+    // porte le prix gelé, l'effacer amputerait l'historique comptable du
+    // partenaire. Le masquage reste ouvert, lui, et suffit dans tous les cas.
+    const { count, error: countError } = await supabase.from('booking_items')
       .select('id', { count: 'exact', head: true })
       .eq('offer_id', o.id);
+
+    // Un compte illisible n'autorise pas la suppression : en cas de doute on
+    // protège l'historique plutôt que de laisser passer.
+    if (countError) {
+      Alert.alert('Suppression impossible', "Impossible de vérifier si cette offre a déjà été réservée. Réessayez plus tard.");
+      return;
+    }
 
     if ((count ?? 0) > 0) {
       Alert.alert(

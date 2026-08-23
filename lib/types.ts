@@ -126,6 +126,34 @@ export function offerLabel(offer: EstablishmentOffer, category?: OfferCategory):
   return offer.custom_label?.trim() || category?.label || 'Offre';
 }
 
+// Ligne de réservation. Une réservation d'hôtel en a une (la chambre choisie) ;
+// un site touristique peut en avoir plusieurs (adulte + enfant + guidée).
+export interface BookingItem {
+  id: string;
+  booking_id: string;
+  offer_id: string;
+  /** Nombre d'unités : des chambres pour un hôtel, des billets pour un site */
+  quantity: number;
+  /** Prix gelé à la réservation — donnée comptable, jamais recalculée */
+  unit_price: number;
+  currency: string;
+  created_at: string;
+}
+
+/**
+ * Nombre d'unités nécessaires pour loger un groupe dans une offre donnée.
+ *
+ * Choix retenu face à un groupe dépassant `max_guests` : on propose plusieurs
+ * unités plutôt que de refuser. Refuser une famille de 5 dans un hôtel qui
+ * dispose de huit chambres de 4 serait absurde — réserver deux chambres
+ * voisines est la pratique courante. `max_guests` à null = aucune limite,
+ * donc une seule unité.
+ */
+export function unitsNeeded(offer: EstablishmentOffer, guests: number): number {
+  if (!offer.max_guests || offer.max_guests <= 0) return 1;
+  return Math.max(1, Math.ceil(guests / offer.max_guests));
+}
+
 export interface EstablishmentWarning {
   id: string;
   establishment_id: string;
@@ -156,6 +184,8 @@ export interface Booking {
   visit_date: string | null;
   visit_time: string | null;
   notes: string | null;
+  /** Motif d'annulation, renseigné quand elle vient du partenaire (migration 0008) */
+  cancellation_reason: string | null;
   metadata: any;
   unique_code: string;
   qr_token: string;
