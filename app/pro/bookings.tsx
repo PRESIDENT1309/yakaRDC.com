@@ -7,6 +7,7 @@ import { useConfirm } from '../../lib/confirm-context';
 import { Building2, Home, UtensilsCrossed, Mountain, Phone } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { bookingItemsSummary } from '../../lib/offers';
+import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors } from '../../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
@@ -151,7 +152,7 @@ export default function PartnerBookingsScreen() {
                       <Text style={styles.cardEstab}>{b.establishment?.name}</Text>
                       <Text style={styles.cardDate}>
                         {b.check_in && b.check_out ? `${b.check_in} → ${b.check_out}` :
-                         b.visit_date ? `${b.visit_date}${b.visit_time ? ' · ' + b.visit_time : ''}` : '—'}
+                         b.visit_date ? `${b.visit_date}${b.visit_time ? ' · ' + timeToSlot(b.visit_time) : ''}` : '—'}
                         {b.guests ? ` · ${b.guests} pers.` : ''}
                       </Text>
                       {/* Ce qui a été réservé : sans cette ligne, le partenaire

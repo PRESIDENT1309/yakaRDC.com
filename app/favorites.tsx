@@ -4,6 +4,7 @@ import {
   Platform, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import {
   ArrowLeft, Heart, Building2, Home, UtensilsCrossed, Mountain, MapPin,
 } from 'lucide-react-native';
@@ -52,7 +53,7 @@ export default function FavoritesScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8}>
           <ArrowLeft size={18} color="#FAF8F4" />
         </Pressable>
         <Text style={styles.headerTitle}>Mes favoris</Text>

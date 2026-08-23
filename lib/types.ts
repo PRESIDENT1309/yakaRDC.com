@@ -55,6 +55,9 @@ export interface Establishment {
   // Horaires d'ouverture — voir lib/opening-hours.ts pour la forme et le
   // calcul d'état. null tant que le partenaire ne les a pas saisis.
   opening_hours: OpeningHours | null;
+  // Carte écrite : plats d'un restaurant, attractions d'un site (migration
+  // 0010). Distincte des offres réservables — voir lib/menu.ts.
+  menu: unknown | null;
   created_at: string;
 }
 

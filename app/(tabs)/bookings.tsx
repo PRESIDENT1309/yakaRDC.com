@@ -18,6 +18,7 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../../lib/supabase';
 import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
+import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
@@ -74,7 +75,7 @@ function TicketModal({
     detailLines.push({ label: 'Départ', value: booking.check_out });
   }
   if (booking.visit_date) {
-    detailLines.push({ label: 'Visite', value: `${booking.visit_date}${booking.visit_time ? ' · ' + booking.visit_time : ''}` });
+    detailLines.push({ label: 'Visite', value: `${booking.visit_date}${booking.visit_time ? ' · ' + timeToSlot(booking.visit_time) : ''}` });
   }
   if (booking.guests) {
     detailLines.push({ label: 'Personnes', value: `${booking.guests}` });
@@ -172,7 +173,7 @@ function BookingCard({
   const dateLabel = item.check_in && item.check_out
     ? `${item.check_in} – ${item.check_out}`
     : item.visit_date
-    ? `${item.visit_date}${item.visit_time ? ' · ' + item.visit_time : ''}`
+    ? `${item.visit_date}${item.visit_time ? ' · ' + timeToSlot(item.visit_time) : ''}`
     : '—';
 
   const guestLabel = item.guests ? `· ${item.guests} pers.` : '';

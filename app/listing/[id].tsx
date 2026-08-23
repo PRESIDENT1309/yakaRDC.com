@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput,
@@ -6,15 +6,21 @@ import {
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { useLocalSearchParams, router } from 'expo-router';
+import { goBack } from '../../lib/navigation';
 import Svg, { Circle, Polygon, Path } from 'react-native-svg';
 import {
   ArrowLeft, Heart, MapPin, Star, Wifi, Car,
   Wind, Coffee, Plus, Minus, X, Send,
   Phone, Mail, CalendarPlus, AlertCircle, Share2, Navigation, Flag,
-  ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil, Images,
+  ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil, Images, BookOpen, ChevronRight as ChevronRightSm,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { cheapestActiveOffer } from '../../lib/offers';
+import { slotToTime, timeToSlot } from '../../lib/slots';
+import { slotsForDay, isOpenOn } from '../../lib/opening-hours';
+import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/menu';
+import MenuSheet from '../../components/MenuSheet';
+import type { OpeningHours } from '../../lib/opening-hours';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
@@ -100,9 +106,42 @@ interface Availability {
   fullDays: Set<string>;
   slotLoads: Record<string, number>;
   capacity: number | null;
+  /** Jours où l'établissement est fermé — à ne pas confondre avec complet */
+  closedDays: Set<string>;
 }
 
 type TimeSlot = string;
+
+/**
+ * Ce qu'un formulaire doit savoir du lieu au-delà des offres : ses horaires,
+ * et de quoi consulter sa carte sans quitter la réservation.
+ */
+interface VenueContext {
+  openingHours: OpeningHours | null;
+}
+
+/**
+ * Créneaux proposés un jour donné, et pourquoi il n'y en a pas.
+ * On distingue trois situations que l'app confondait jusqu'ici : horaires non
+ * publiés, jour de fermeture, et journée ouverte. Afficher les mêmes sept
+ * créneaux partout revenait à promettre une disponibilité inconnue.
+ */
+function slotStateFor(oh: OpeningHours | null, date: string, stepMin: number):
+  { slots: TimeSlot[]; message: string | null } {
+  if (!date) return { slots: [], message: "Choisissez d'abord une date." };
+  const open = isOpenOn(oh, date);
+  if (open === null) {
+    return {
+      slots: [],
+      message: "Cet établissement n'a pas encore publié ses horaires. Contactez-le directement pour convenir d'une heure.",
+    };
+  }
+  if (open === false) {
+    return { slots: [], message: 'Fermé ce jour-là. Choisissez une autre date.' };
+  }
+  const slots = slotsForDay(oh, date, stepMin);
+  return { slots, message: slots.length ? null : 'Aucun créneau disponible ce jour-là.' };
+}
 
 // Contexte des offres, passé aux formulaires : ils ont besoin de la liste, des
 // photos, et du calcul de disponibilité, tous détenus par l'écran parent.
@@ -119,6 +158,7 @@ interface OfferContext {
    */
   remainingForSlot: (o: EstablishmentOffer, date: string, slot: string) => number | null;
   fullDaysFor: (o: EstablishmentOffer | null) => Set<string>;
+  closedDays: Set<string>;
   nightsBetween: (checkIn: string, checkOut: string) => string[];
 }
 
@@ -157,8 +197,10 @@ interface SiteForm extends BaseForm {
   nationality: 'congolaise' | 'etrangere';
 }
 
-const RESTAURANT_SLOTS: TimeSlot[] = ['12h00','12h30','13h00','19h00','19h30','20h00','20h30'];
-const SITE_SLOTS: TimeSlot[] = ['09h00','11h00','14h00','16h00'];
+// Pas de découpage des créneaux. Un restaurant se réserve à la demi-heure ;
+// un site touristique se visite par tranches, l'heure suffit.
+const RESTAURANT_SLOT_STEP_MIN = 30;
+const SITE_SLOT_STEP_MIN = 60;
 const OCCASIONS = [
   { key: 'none', label: 'Aucune' },
   { key: 'birthday', label: 'Anniversaire' },
@@ -292,7 +334,8 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, offerCtx, 
               <DateField
                 label="Arrivée" sheetTitle="Date d'arrivée"
                 value={form.checkIn} onChange={handleSelectCheckIn}
-                fullDays={offerCtx.fullDaysFor(selected)} accent={accent}
+                fullDays={offerCtx.fullDaysFor(selected)}
+                closedDays={offerCtx.closedDays} accent={accent}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -300,6 +343,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, offerCtx, 
                 label="Départ" sheetTitle="Date de départ"
                 value={form.checkOut} onChange={iso => setForm({ ...form, checkOut: iso })}
                 fullDays={offerCtx.fullDaysFor(selected)}
+                closedDays={offerCtx.closedDays}
                 minDate={form.checkIn || undefined} accent={accent}
               />
             </View>
@@ -323,7 +367,7 @@ function HotelBookingForm({ accent, form, setForm, onSubmit, loading, offerCtx, 
           {selected?.max_guests != null && units > 1 && (
             <Text style={styles.slotHint}>
               {guests} personnes pour {selected.max_guests} par {isHouse ? 'logement' : 'chambre'} :
-              {' '}{units} {isHouse ? 'logements' : 'chambres'} seront réservés.
+              {' '}{units} {isHouse ? 'logements seront réservés' : 'chambres seront réservées'}.
             </Text>
           )}
 
@@ -400,12 +444,13 @@ function BookingRecap({ lines, currency }: { lines: { label: string; detail: str
   );
 }
 
-function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx }:
+function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx, venue }:
   { accent: string; form: RestaurantForm; setForm: (f: RestaurantForm) => void; onSubmit: () => void;
-    loading: boolean; availability: Availability; offerCtx: OfferContext }) {
+    loading: boolean; availability: Availability; offerCtx: OfferContext; venue: VenueContext }) {
   const [step, setStep] = useState(0);
   const selected = offerCtx.offers.find(o => o.id === form.offerId) ?? null;
   const covers = form.adults + form.children;
+  const slotState = slotStateFor(venue.openingHours, form.visitDate, RESTAURANT_SLOT_STEP_MIN);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -423,15 +468,19 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
             // Changer de date invalide le créneau : sa disponibilité dépend du jour.
             onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
             fullDays={availability.fullDays}
+            closedDays={availability.closedDays}
             accent={accent}
           />
 
           <Text style={styles.fieldLabel}>Créneau horaire</Text>
-          {!form.visitDate ? (
-            <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+          {/* Les créneaux découlent des horaires publiés par l'établissement :
+              un restaurant ouvert 24h/24 n'a pas la même disponibilité qu'un
+              autre ouvert de midi à 15h six jours sur sept. */}
+          {slotState.message ? (
+            <Text style={styles.slotHint}>{slotState.message}</Text>
           ) : (
             <SlotPicker
-              slots={RESTAURANT_SLOTS}
+              slots={slotState.slots}
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
@@ -448,7 +497,9 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
           </View>
 
           {/* Formule facultative : on réserve une table, pas un menu. « À la
-              carte » n'est pas une offre du catalogue, c'est son absence. */}
+              carte » n'est pas une offre du catalogue, c'est son absence.
+              La carte reste consultable ici : choisir une formule sans pouvoir
+              la lire n'a pas de sens. */}
           {offerCtx.offers.length > 0 && (
             <>
               <Text style={styles.fieldLabel}>Formule (facultatif)</Text>
@@ -557,9 +608,9 @@ function TicketRow({ offer, category, accent, quantity, onChange, remaining }:
   );
 }
 
-function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx }:
+function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availability, offerCtx, venue }:
   { accent: string; form: SiteForm; setForm: (f: SiteForm) => void; onSubmit: () => void;
-    loading: boolean; availability: Availability; offerCtx: OfferContext }) {
+    loading: boolean; availability: Availability; offerCtx: OfferContext; venue: VenueContext }) {
   const hasTickets = offerCtx.offers.length > 0;
   // Sans catalogue de billets, l'étape panier n'a rien à montrer : on l'ignore.
   const [step, setStep] = useState(hasTickets ? 0 : 1);
@@ -579,6 +630,7 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
 
   const labels = hasTickets ? ['Billets', 'Date', 'Vos informations'] : ['Date', 'Vos informations'];
   const shown = hasTickets ? step : step - 1;
+  const slotState = slotStateFor(venue.openingHours, form.visitDate, SITE_SLOT_STEP_MIN);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -624,15 +676,16 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
             value={form.visitDate}
             onChange={iso => setForm({ ...form, visitDate: iso, timeSlot: '' })}
             fullDays={availability.fullDays}
+            closedDays={availability.closedDays}
             accent={accent}
           />
 
           <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
-          {!form.visitDate ? (
-            <Text style={styles.slotHint}>Choisissez d'abord une date.</Text>
+          {slotState.message ? (
+            <Text style={styles.slotHint}>{slotState.message}</Text>
           ) : (
             <SlotPicker
-              slots={SITE_SLOTS}
+              slots={slotState.slots}
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
@@ -901,7 +954,11 @@ export default function ListingDetailScreen() {
       p_date: selectedVisitDate,
     }).then(({ data }) => {
       const loads: Record<string, number> = {};
-      ((data as any[]) ?? []).forEach(row => { loads[row.slot] = row.guests; });
+      // Les fonctions SQL renvoient un `time` (« 19:30:00 ») ; les clés de
+      // ce dictionnaire sont des libellés d'affichage (« 19h30 »). Sans cette
+      // conversion, aucune correspondance n'est jamais trouvée et la charge
+      // paraît toujours nulle.
+      ((data as any[]) ?? []).forEach(row => { loads[timeToSlot(row.slot)] = row.guests; });
       setSlotLoads(loads);
     });
 
@@ -916,7 +973,7 @@ export default function ListingDetailScreen() {
       if (error) { setOfferSlotLoad({}); return; }
       const map: Record<string, Record<string, number>> = {};
       ((data as any[]) ?? []).forEach(row => {
-        (map[row.offer_id] ??= {})[row.slot] = row.units;
+        (map[row.offer_id] ??= {})[timeToSlot(row.slot)] = row.units;
       });
       setOfferSlotLoad(map);
     });
@@ -924,6 +981,35 @@ export default function ListingDetailScreen() {
 
   // Établissements similaires — même type, même commune, hors fiche courante.
   // Chargés après l'établissement, car ils dépendent de son type/commune.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // La carte écrite est du JSON libre : on la relit défensivement plutôt que
+  // de faire confiance à sa forme. Voir lib/menu.ts.
+  const menu = useMemo(
+    () => parseMenu(establishment?.menu),
+    [establishment?.menu],
+  );
+
+  /**
+   * Jours de fermeture sur la fenêtre de réservation.
+   *
+   * Bornée à 120 jours : le calendrier n'en montre jamais autant, et calculer
+   * l'infini pour griser trois cases serait absurde. Vide tant qu'aucun
+   * horaire n'est publié — on ne barre pas des jours qu'on ne connaît pas.
+   */
+  const closedDays = useMemo(() => {
+    const out = new Set<string>();
+    const oh = establishment?.opening_hours ?? null;
+    if (!oh) return out;
+    const start = new Date();
+    for (let i = 0; i < 120; i++) {
+      const d = new Date(start.getTime() + i * 86400000);
+      const iso = d.toISOString().slice(0, 10);
+      if (isOpenOn(oh, iso) === false) out.add(iso);
+    }
+    return out;
+  }, [establishment?.opening_hours]);
+
   useEffect(() => {
     if (!establishment) return;
     let cancelled = false;
@@ -1112,7 +1198,7 @@ export default function ListingDetailScreen() {
           actionLabel="Réessayer"
           onAction={loadEstablishment}
         />
-        <Pressable style={styles.errorBackLink} onPress={() => router.back()}>
+        <Pressable style={styles.errorBackLink} onPress={() => goBack('/(tabs)')}>
           <Text style={styles.errorBackText}>Retour</Text>
         </Pressable>
       </View>
@@ -1129,7 +1215,14 @@ export default function ListingDetailScreen() {
   const isHotel = establishment.type === 'hotel' || establishment.type === 'furnished_house';
   const isRestaurant = establishment.type === 'restaurant';
   const isSite = establishment.type === 'site';
-  const menuSectionTitle = isRestaurant ? 'Menu' : 'Tarifs des attractions';
+  const menuSectionTitle = menuTitleFor(establishment.type);
+
+  // Ce que la ligne annonce avant l'ouverture : le voyageur doit savoir s'il
+  // va trouver des plats détaillés ou seulement une photo de la carte.
+  const menuItemCount = countMenuItems(menu);
+  const menuRowMeta = menuItemCount > 0
+    ? `${menuItemCount} ${isRestaurant ? (menuItemCount > 1 ? 'plats' : 'plat') : (menuItemCount > 1 ? 'entrées' : 'entrée')}${menuPhotos.length > 0 ? ' · photos de la carte' : ''}`
+    : `${menuPhotos.length} photo${menuPhotos.length > 1 ? 's' : ''} de la carte`;
   // Le voyageur ne parle pas d'« offres » : le titre suit le type de lieu.
   const offerSectionTitle = isHotel
     ? (establishment.type === 'furnished_house' ? 'Logements proposés' : 'Chambres proposées')
@@ -1139,6 +1232,7 @@ export default function ListingDetailScreen() {
     fullDays,
     slotLoads,
     capacity: establishment.capacity ?? null,
+    closedDays,
   };
 
   // Note moyenne réelle, calculée depuis les avis chargés
@@ -1186,7 +1280,8 @@ export default function ListingDetailScreen() {
         setSubmitting(false); return;
       }
       payload = { ...payload, ...common(f),
-        visit_date: f.visitDate, visit_time: f.timeSlot,
+        // « 19h30 » est un libellé d'affichage ; la colonne est de type time.
+        visit_date: f.visitDate, visit_time: slotToTime(f.timeSlot),
         metadata: { occasion: f.occasion, allergies: f.allergies } };
     } else if (isSite) {
       const f = siteForm;
@@ -1205,7 +1300,7 @@ export default function ListingDetailScreen() {
       payload = { ...payload, ...common(f),
         guests: offers.length > 0 ? tickets : f.adults,
         children: offers.length > 0 ? 0 : f.children,
-        visit_date: f.visitDate, visit_time: f.timeSlot,
+        visit_date: f.visitDate, visit_time: slotToTime(f.timeSlot),
         metadata: { visit_type: f.visitType, nationality: f.nationality } };
     }
 
@@ -1307,6 +1402,12 @@ export default function ListingDetailScreen() {
     return out;
   }
 
+  // Photos de carte (restaurant) ou de grille tarifaire (site), consultables
+  // depuis le formulaire sans le fermer.
+  const venueCtx: VenueContext = {
+    openingHours: establishment?.opening_hours ?? null,
+  };
+
   /**
    * Lignes à enregistrer pour une réservation.
    * Hôtel/maison : une ligne, dont la quantité est le nombre d'unités occupées
@@ -1346,6 +1447,7 @@ export default function ListingDetailScreen() {
     remainingFor,
     remainingForSlot,
     fullDaysFor,
+    closedDays,
     nightsBetween,
   };
 
@@ -1487,7 +1589,7 @@ export default function ListingDetailScreen() {
               </View>
             </>
           )}
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)')}>
             <ArrowLeft size={16} color={colors.ink} strokeWidth={1.75} />
           </Pressable>
           <View style={styles.heroActions}>
@@ -1597,17 +1699,24 @@ export default function ListingDetailScreen() {
             </View>
           )}
 
-          {/* Menu (restaurant) ou Tarifs (site) */}
-          {menuPhotos.length > 0 && (
+          {/* Carte de l'établissement — menu d'un restaurant, grille des
+              attractions d'un site. Une ligne cliquable plutôt qu'un carrousel
+              de vignettes : c'est ce que le voyageur cherche en priorité, et
+              une rangée de miniatures se remarquait à peine.
+              Les plats écrits et les photos de carte cohabitent ; la ligne
+              n'apparaît que lorsqu'il y a au moins l'un des deux. */}
+          {(!isMenuEmpty(menu) || menuPhotos.length > 0) && (
             <View style={styles.section}>
-              <Text style={styles.sectionKicker}>{menuSectionTitle}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-                {menuPhotos.map((photo, i) => (
-                  <Pressable key={photo.id} onPress={() => setViewer({ source: 'menu', index: i })}>
-                    <Image source={{ uri: photo.url }} style={styles.menuThumb} resizeMode="cover" />
-                  </Pressable>
-                ))}
-              </ScrollView>
+              <Pressable style={styles.menuRow} onPress={() => setMenuOpen(true)}>
+                <View style={[styles.menuIcon, { backgroundColor: soft }]}>
+                  <BookOpen size={17} color={accent} strokeWidth={1.75} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.menuRowTitle}>{menuSectionTitle}</Text>
+                  <Text style={styles.menuRowMeta}>{menuRowMeta}</Text>
+                </View>
+                <ChevronRightSm size={17} color={colors.faint} strokeWidth={1.75} />
+              </Pressable>
             </View>
           )}
 
@@ -1799,8 +1908,8 @@ export default function ListingDetailScreen() {
             offerCtx={offerCtx} isHouse={establishment.type === 'furnished_house'}
           />
         )}
-        {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} />}
-        {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} />}
+        {isRestaurant && <RestaurantBookingForm accent={accent} form={restaurantForm} setForm={setRestaurantForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} venue={venueCtx} />}
+        {isSite && <SiteBookingForm accent={accent} form={siteForm} setForm={setSiteForm} onSubmit={handleSubmit} loading={submitting} availability={availability} offerCtx={offerCtx} venue={venueCtx} />}
       </Sheet>
 
       {/* Formulaire d'avis */}
@@ -1848,6 +1957,18 @@ export default function ListingDetailScreen() {
           </Pressable>
         )}
       </Sheet>
+
+      <MenuSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={menuSectionTitle}
+        menu={menu}
+        photoUrls={menuPhotos.map(ph => ph.url)}
+        // Ouvrir une photo depuis la carte ferme la feuille : deux surfaces
+        // plein écran superposées n'apporteraient rien de lisible.
+        onOpenPhoto={i => { setMenuOpen(false); setViewer({ source: 'menu', index: i }); }}
+        accent={accent}
+      />
 
       {/* Visionneuse plein écran — une seule implémentation, paramétrée :
           galerie principale et photos de menu/tarifs. */}
@@ -1994,7 +2115,17 @@ const styles = StyleSheet.create({
   section: { marginBottom: spacing.md },
   sectionKicker: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginBottom: spacing.sm },
   description: { ...typography.body, color: colors.muted },
-  menuThumb: { width: 130, height: 170, borderRadius: radii.md, backgroundColor: colors.surfaceSunken },
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.md, padding: spacing.md,
+  },
+  menuIcon: {
+    width: 38, height: 38, borderRadius: radii.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuRowTitle: { ...typography.cardTitle, color: colors.ink },
+  menuRowMeta: { ...typography.caption, color: colors.muted, marginTop: 1 },
   // Adresse — hiérarchie typographique + filet, pas de carte blanche bordée.
   addressBlock: { gap: 3, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: 12 },
   addressStreet: { ...typography.cardTitle, color: colors.ink },

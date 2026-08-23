@@ -14,6 +14,8 @@ export interface DateFieldProps {
   sheetTitle?: string;
   /** Jours complets : affichés barrés et non sélectionnables */
   fullDays?: Set<string>;
+  /** Jours de fermeture de l'établissement — distincts des jours complets */
+  closedDays?: Set<string>;
   /** Bloque toute date antérieure à celle-ci (ex. la date d'arrivée) */
   minDate?: string;
   accent?: string;
@@ -32,7 +34,7 @@ export interface DateFieldProps {
 // est un motif supporté : react-native-web gère une pile de modales, avec
 // portail et piège de focus par niveau. Même approche que PhoneField.
 export default function DateField({
-  label, value, onChange, sheetTitle, fullDays, minDate,
+  label, value, onChange, sheetTitle, fullDays, closedDays, minDate,
   accent = colors.lave, placeholder = 'Choisir',
 }: DateFieldProps) {
   const [open, setOpen] = useState(false);
@@ -66,6 +68,7 @@ export default function DateField({
           value={value || null}
           onSelect={select}
           fullDays={fullDays}
+          closedDays={closedDays}
           accent={accent}
           minDate={minDate}
         />

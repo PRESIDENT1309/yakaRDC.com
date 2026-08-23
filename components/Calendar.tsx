@@ -27,6 +27,12 @@ interface CalendarProps {
   onSelect: (iso: string) => void;
   // Jours complets, au format ISO — affichés barrés et non cliquables
   fullDays?: Set<string>;
+  /**
+   * Jours de fermeture de l'établissement. Distincts des jours complets : un
+   * jour fermé n'est pas un jour plein, et le dire correctement évite de
+   * laisser croire à une affluence là où il n'y a qu'une porte close.
+   */
+  closedDays?: Set<string>;
   accent?: string;
   // Empêche de choisir une date avant aujourd'hui
   minToday?: boolean;
@@ -40,6 +46,7 @@ export default function Calendar({
   value,
   onSelect,
   fullDays,
+  closedDays,
   accent = colors.lave,
   minToday = true,
   minDate,
@@ -102,8 +109,9 @@ export default function Calendar({
           const iso = toIsoDate(cellDate);
           const isPast = (minToday && cellDate < today) || (!!minDate && iso <= minDate);
           const isFull = fullDays?.has(iso) ?? false;
+          const isClosed = closedDays?.has(iso) ?? false;
           const isSelected = value === iso;
-          const disabled = isPast || isFull;
+          const disabled = isPast || isFull || isClosed;
 
           return (
             <Pressable
@@ -121,6 +129,7 @@ export default function Calendar({
                   styles.dayText,
                   isPast && styles.dayTextPast,
                   isFull && styles.dayTextFull,
+                  isClosed && styles.dayTextClosed,
                   isSelected && styles.dayTextSelected,
                 ]}>
                   {dayNum}
@@ -132,10 +141,17 @@ export default function Calendar({
         })}
       </View>
 
-      {fullDays && fullDays.size > 0 && (
+      {((fullDays?.size ?? 0) > 0 || (closedDays?.size ?? 0) > 0) && (
         <View style={styles.legend}>
-          <View style={styles.fullDot} />
-          <Text style={styles.legendText}>Journée complète</Text>
+          {(fullDays?.size ?? 0) > 0 && (
+            <>
+              <View style={styles.fullDot} />
+              <Text style={styles.legendText}>Journée complète</Text>
+            </>
+          )}
+          {(closedDays?.size ?? 0) > 0 && (
+            <Text style={styles.legendText}>Jour barré : fermé</Text>
+          )}
         </View>
       )}
     </View>
@@ -192,6 +208,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dayTextClosed: { color: colors.faint, textDecorationLine: 'line-through' },
   dayFull: { backgroundColor: '#FFF0F0' },
   dayText: { fontSize: 13, color: colors.ink },
   dayTextPast: { color: '#D8D6CE' },

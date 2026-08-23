@@ -4,6 +4,7 @@ import {
   TextInput, Platform, KeyboardAvoidingView, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import {
   ArrowLeft, Building2, Home, UtensilsCrossed, Mountain,
@@ -146,7 +147,7 @@ export default function BecomePartnerScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
+          <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8} style={styles.backBtn}>
             <ArrowLeft size={18} color={colors.ink} />
           </Pressable>
           <View style={styles.logoRow}>

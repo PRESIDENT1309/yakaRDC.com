@@ -4,6 +4,7 @@ import {
   Platform, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import {
   ArrowLeft, CheckCircle, XCircle, Clock, Building2, Home, UtensilsCrossed, Mountain,
 } from 'lucide-react-native';
@@ -58,7 +59,7 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBack('/(tabs)')} hitSlop={8}>
           <ArrowLeft size={18} color="#FAF8F4" />
         </Pressable>
         <Text style={styles.headerTitle}>Notifications</Text>

@@ -4,6 +4,7 @@ import {
   Platform, ActivityIndicator, KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { ArrowLeft, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
@@ -25,14 +26,14 @@ export default function EditProfileScreen() {
     await refreshProfile();
     setSaving(false);
     setSaved(true);
-    setTimeout(() => router.back(), 700);
+    setTimeout(() => goBack('/(tabs)/profile'), 700);
   }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8}>
             <ArrowLeft size={18} color="#FAF8F4" />
           </Pressable>
           <Text style={styles.headerTitle}>Modifier le profil</Text>

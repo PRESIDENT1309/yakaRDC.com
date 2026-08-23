@@ -4,6 +4,7 @@ import {
   Platform, ActivityIndicator, TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
+import { goBack } from '../../lib/navigation';
 import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -52,7 +53,7 @@ export default function PartnerReviewsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => goBack('/pro')} hitSlop={8}>
           <ArrowLeft size={18} color="#FAF8F4" />
         </Pressable>
         <View>

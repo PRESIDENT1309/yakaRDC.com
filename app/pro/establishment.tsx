@@ -11,16 +11,19 @@ import {
   Save, Camera, Check, Building2, X,
   ChevronLeft, ChevronRight, Trash2,
   Images, Info, Contact, MapPin, Sparkles, Tag, DollarSign,
-  UtensilsCrossed, Ticket, Clock, Users,
+  UtensilsCrossed, Ticket, Clock, Users, AlertTriangle,
 } from 'lucide-react-native';
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, spacing } from '../../lib/theme';
+import { colors, typography, spacing, radii } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
 import OfferManager from '../../components/OfferManager';
 import type { Establishment, ListingPhoto, EstablishmentType } from '../../lib/types';
 import type { DayKey, DayHours, OpeningHours } from '../../lib/opening-hours';
+import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/menu';
+import type { Menu } from '../../lib/menu';
+import MenuEditor from '../../components/MenuEditor';
 
 // Titre de section : icône lucide nue + libellé. La pastille colorée qui
 // entourait l'icône a été retirée (anti-pattern « icône dans un cercle
@@ -120,6 +123,8 @@ export default function EstablishmentScreen() {
 
   // Horaires d'ouverture
   const [alwaysOpen, setAlwaysOpen] = useState(false);
+  // Carte écrite — plats ou attractions. Distincte des offres réservables.
+  const [menu, setMenu] = useState<Menu>({ sections: [] });
   const [hours, setHours] = useState<Partial<Record<DayKey, DayHours | null>>>({});
 
   const fetchEstablishment = useCallback(async () => {
@@ -150,6 +155,7 @@ export default function EstablishmentScreen() {
       const oh = (e as any).opening_hours as OpeningHours | null | undefined;
       setAlwaysOpen(oh?.always_open ?? false);
       setHours(oh?.days ?? {});
+      setMenu(parseMenu((e as any).menu));
 
       const { data: photoRows } = await supabase.from('listing_photos')
         .select('*').eq('establishment_id', e.id).order('position', { ascending: true });
@@ -324,7 +330,23 @@ export default function EstablishmentScreen() {
     if (!establishment) return;
     setSaving(true);
 
-    const openingHours: OpeningHours = { always_open: alwaysOpen, days: hours };
+    const bad = incompleteDays();
+    if (bad.length > 0) {
+      setSaving(false);
+      Alert.alert(
+        'Horaires incomplets',
+        `Complétez les heures de : ${bad.join(', ')}. Format attendu : 08:00. Un horaire incomplet rendrait votre établissement non réservable ce jour-là.`,
+      );
+      return;
+    }
+
+    // « Ouvert 24h/24 » masquait les jours sans les effacer : la ligne
+    // enregistrée gardait des horaires résiduels contredisant l'indicateur.
+    // On ne conserve les jours que lorsqu'ils font foi.
+    const openingHours: OpeningHours = {
+      always_open: alwaysOpen,
+      days: alwaysOpen ? {} : hours,
+    };
     const { error } = await supabase.from('establishments').update({
       name, description, phone,
       email, instagram, tiktok,
@@ -333,6 +355,13 @@ export default function EstablishmentScreen() {
       discount_label: discountLabel.trim() || null,
       capacity: capacity ? parseInt(capacity, 10) : null,
       opening_hours: openingHours,
+      // Sections sans titre et lignes sans libellé sont écartées ici : les
+      // garder produirait des lignes vides sur la fiche du voyageur.
+      menu: {
+        sections: menu.sections
+          .map(sec => ({ ...sec, title: sec.title.trim(), items: sec.items.filter(i => i.label.trim()) }))
+          .filter(sec => sec.title && sec.items.length > 0),
+      },
     }).eq('id', establishment.id);
 
     // 42703 = colonne inexistante : la migration opening_hours n'a pas encore
@@ -371,8 +400,51 @@ export default function EstablishmentScreen() {
     setHours(prev => {
       const cur = prev[key];
       if (!cur) return prev;
-      return { ...prev, [key]: { ...cur, [field]: value } };
+      return { ...prev, [key]: { ...cur, [field]: maskTime(value, cur[field]) } };
     });
+  }
+
+  /**
+   * Guide la saisie vers « HH:MM » sans la bloquer.
+   *
+   * Le champ acceptait n'importe quoi et `parseTime` écartait ensuite en
+   * silence les valeurs mal formées : le partenaire croyait ses horaires
+   * publiés alors que l'app les ignorait. On insère le deux-points, on refuse
+   * les caractères non numériques, et on plafonne heures et minutes.
+   */
+  function maskTime(next: string, previous: string): string {
+    // Suppression : on laisse faire, sinon le deux-points serait irretirable.
+    if (next.length < previous.length) return next;
+
+    const digits = next.replace(/\D/g, '').slice(0, 4);
+    if (digits.length === 0) return '';
+    if (digits.length <= 2) {
+      // Une heure au-delà de 23 est impossible : on ignore la frappe.
+      if (digits.length === 2 && Number(digits) > 23) return previous;
+      return digits;
+    }
+    const h = digits.slice(0, 2);
+    const m = digits.slice(2);
+    if (Number(h) > 23) return previous;
+    if (m.length === 2 && Number(m) > 59) return previous;
+    return `${h}:${m}`;
+  }
+
+  /** Un horaire est publiable dès qu'il est complet et lisible. */
+  function isTimeComplete(v: string): boolean {
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim());
+  }
+
+  /**
+   * Jours dont l'horaire est incomplet. Bloquer l'enregistrement entier
+   * serait disproportionné — mais publier un horaire tronqué reviendrait à
+   * rendre l'établissement inréservable sans que personne ne le sache.
+   */
+  function incompleteDays(): string[] {
+    if (alwaysOpen) return [];
+    return DAYS
+      .filter(d => { const h = hours[d.key]; return !!h && (!isTimeComplete(h.from) || !isTimeComplete(h.to)); })
+      .map(d => d.label);
   }
 
   // Saisir sept fois le même créneau est pénible : on recopie lundi partout.
@@ -396,6 +468,11 @@ export default function EstablishmentScreen() {
   function toggleAmenity(a: string) {
     setAmenities(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
   }
+
+  // Les créneaux de réservation découlent des horaires : sans eux, un
+  // restaurant ou un site n'est tout simplement pas réservable. Un hôtel, si.
+  const needsSlots = establishment?.type === 'restaurant' || establishment?.type === 'site';
+  const hoursPublished = alwaysOpen || DAYS.some(d => !!hours[d.key]);
 
   if (loading) return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
   if (!establishment) return (
@@ -516,11 +593,29 @@ export default function EstablishmentScreen() {
             </View>
           </View>
 
-          {/* Menu (restaurant) ou Tarifs (site) — uniquement pour ces deux types */}
+          {/* Menu (restaurant) ou Tarifs (site) — uniquement pour ces deux types.
+              Deux voies de publication cohabitent : saisir ses plats un par un,
+              ou photographier sa carte. La saisie passe en premier parce qu'elle
+              est lisible, cherchable et se met à jour sans reprendre une photo. */}
           {menuCategory && (
             <View style={styles.card}>
-              <CardTitle icon={menuCategory === 'menu' ? <UtensilsCrossed {...SECTION_ICON} /> : <Ticket {...SECTION_ICON} />} label={menuSectionTitle} />
-              <Text style={styles.promoHint}>{menuSectionHint}</Text>
+              <CardTitle
+                icon={menuCategory === 'menu' ? <UtensilsCrossed {...SECTION_ICON} /> : <Ticket {...SECTION_ICON} />}
+                label={menuTitleFor(establishment.type)}
+              />
+              <Text style={styles.promoHint}>
+                {menuCategory === 'menu'
+                  ? 'Les voyageurs consultent votre carte depuis votre fiche. Saisissez vos plats, et ajoutez une photo de la carte si vous le souhaitez.'
+                  : 'Les voyageurs consultent vos tarifs depuis votre fiche. Saisissez vos attractions, et ajoutez une photo de la grille si vous le souhaitez.'}
+              </Text>
+
+              <MenuEditor
+                value={menu}
+                onChange={setMenu}
+                establishmentType={menuCategory === 'menu' ? 'restaurant' : 'site'}
+              />
+
+              <Text style={styles.menuPhotoLabel}>{menuSectionTitle}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {menuPhotos.map((photo, index) => (
                   <View key={photo.id} style={styles.photoThumbWrap}>
@@ -547,7 +642,10 @@ export default function EstablishmentScreen() {
                   </Pressable>
                 )}
               </View>
-              <Text style={styles.hint}>{menuPhotos.length}/10 photos</Text>
+              <Text style={styles.hint}>
+                {menuPhotos.length}/10 photos
+                {!isMenuEmpty(menu) && ` · ${countMenuItems(menu)} ligne${countMenuItems(menu) > 1 ? 's' : ''} saisie${countMenuItems(menu) > 1 ? 's' : ''}`}
+              </Text>
             </View>
           )}
 
@@ -647,6 +745,20 @@ export default function EstablishmentScreen() {
           {/* Horaires d'ouverture */}
           <View style={styles.card}>
             <CardTitle icon={<Clock {...SECTION_ICON} />} label="Horaires d'ouverture" />
+
+            {/* Les créneaux proposés au voyageur découlent de ces horaires.
+                Tant qu'ils sont vides, l'établissement n'est pas réservable —
+                il faut le dire ici, pas le laisser découvrir. */}
+            {!hoursPublished && (
+              <View style={styles.hoursWarning}>
+                <AlertTriangle size={14} color={colors.warning} strokeWidth={2} />
+                <Text style={styles.hoursWarningText}>
+                  {needsSlots
+                    ? "Vos horaires ne sont pas publiés : aucun créneau n'est proposé aux voyageurs et votre établissement ne peut pas être réservé. Renseignez-les ci-dessous."
+                    : "Vos horaires ne sont pas publiés. Les voyageurs ne savent pas quand vous joindre."}
+                </Text>
+              </View>
+            )}
 
             <Pressable style={styles.hoursToggleRow} onPress={() => setAlwaysOpen(v => !v)}>
               <View style={[styles.checkbox, alwaysOpen && styles.checkboxOn]}>
@@ -892,7 +1004,17 @@ const styles = StyleSheet.create({
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
   cardTitleText: { fontSize: 13, fontWeight: '600', color: colors.ink },
   // ── Horaires d'ouverture ──
+  menuPhotoLabel: {
+    ...typography.badgeSm, color: colors.faint,
+    marginTop: spacing.lg, marginBottom: 6,
+  },
   hoursToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  hoursWarning: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
+    backgroundColor: colors.warningSoft, borderRadius: radii.sm,
+    padding: spacing.sm, marginBottom: spacing.sm,
+  },
+  hoursWarningText: { flex: 1, ...typography.caption, color: colors.warning, lineHeight: 17 },
   hoursToggleLabel: { ...typography.body, color: colors.ink },
   checkbox: {
     width: 20, height: 20, borderRadius: 6, borderWidth: 1.5,

@@ -136,3 +136,84 @@ function openLabel(minutesLeft: number, closesAt: number): OpeningStatus {
   }
   return { state: 'open', label: `Ouvert · ferme à ${formatTime(closesAt)}` };
 }
+
+// ═══════════════════════════════════════════
+// Créneaux réservables
+// ═══════════════════════════════════════════
+//
+// Les créneaux étaient jusqu'ici une liste en dur, identique pour tous les
+// établissements du pays : un restaurant ouvert 24h/24 proposait exactement
+// les mêmes sept horaires qu'un autre ouvert de midi à minuit six jours sur
+// sept. Ils découlent désormais des horaires publiés par l'établissement.
+//
+// Conséquence assumée : sans horaires publiés, aucun créneau n'est proposé.
+// Inventer une plage par défaut reviendrait à promettre au voyageur une
+// disponibilité que personne n'a déclarée.
+
+/** Jour de la semaine d'une date ISO, sans passer par le fuseau local. */
+export function dayKeyOf(iso: string): DayKey | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso?.trim() ?? '');
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  if (Number.isNaN(d.getTime())) return null;
+  return DAY_KEYS[d.getUTCDay()];
+}
+
+/**
+ * L'établissement est-il ouvert ce jour-là ?
+ * `null` = on ne sait pas (aucun horaire publié) — à ne pas confondre avec
+ * `false`, qui affirme une fermeture.
+ */
+export function isOpenOn(oh: OpeningHours | null | undefined, iso: string): boolean | null {
+  if (!oh) return null;
+  if (oh.always_open) return true;
+  if (!oh.days || Object.keys(oh.days).length === 0) return null;
+  if (!DAY_KEYS.some(k => hoursFor(oh, k) !== null)) return null;
+
+  const key = dayKeyOf(iso);
+  if (!key) return null;
+  return hoursFor(oh, key) !== null;
+}
+
+/**
+ * Créneaux réservables un jour donné, au format d'affichage (« 19h30 »).
+ *
+ * `stepMin` est le pas : 30 min pour un restaurant, 60 pour un site — un
+ * site touristique se visite par tranches, pas au quart d'heure.
+ *
+ * Le dernier créneau est écarté quand il tombe sur l'heure de fermeture :
+ * réserver une table à l'instant où le restaurant ferme n'a pas de sens.
+ * Une plage qui traverse minuit (18:00 → 02:00) est déroulée jusqu'au bout.
+ *
+ * Renvoie [] si l'établissement est fermé ce jour-là OU si rien n'est publié.
+ * L'appelant distingue les deux cas avec `isOpenOn`.
+ */
+export function slotsForDay(
+  oh: OpeningHours | null | undefined,
+  iso: string,
+  stepMin: number,
+): string[] {
+  if (!oh) return [];
+
+  // Ouvert 24h/24 : on déroule la journée entière au pas demandé. Le pas
+  // horaire évite d'aligner 48 puces illisibles pour un restaurant.
+  if (oh.always_open) {
+    const step = Math.max(stepMin, 60);
+    const out: string[] = [];
+    for (let m = 0; m < MINUTES_PER_DAY; m += step) out.push(formatTime(m));
+    return out;
+  }
+
+  const key = dayKeyOf(iso);
+  if (!key) return [];
+  const range = hoursFor(oh, key);
+  if (!range) return [];
+
+  // Une fermeture après minuit est notée `to < from` : on ajoute 24 h pour
+  // dérouler la plage d'un seul tenant, puis `formatTime` ramène l'heure
+  // dans la journée.
+  const end = range.to <= range.from ? range.to + MINUTES_PER_DAY : range.to;
+  const out: string[] = [];
+  for (let m = range.from; m < end; m += stepMin) out.push(formatTime(m));
+  return out;
+}
