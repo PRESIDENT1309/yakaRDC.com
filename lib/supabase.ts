@@ -3,7 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+/**
+ * Clé publique du client.
+ *
+ * Supabase remplace les clés héritées (JWT `eyJ…`, role anon) par des clés
+ * publiables (`sb_publishable_…`). Sur ce projet, la passerelle des Edge
+ * Functions a cessé d'accepter la clé héritée — elle répond
+ * INVALID_CREDENTIALS avant même de regarder le jeton — alors que PostgREST
+ * la tolère encore. D'où une app à moitié fonctionnelle, difficile à
+ * diagnostiquer.
+ *
+ * On préfère donc la clé publiable dès qu'elle est renseignée, sans casser
+ * les installations restées sur l'ancienne.
+ */
+const SUPABASE_ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 // expo-secure-store ne fonctionne pas sur le web — on adapte selon la plateforme
 const ExpoSecureStoreAdapter = {
