@@ -81,8 +81,13 @@ export default function BecomePartnerScreen() {
 
   // Le profil arrive après le montage : on ne remplit que les champs restés
   // vides, pour ne jamais écraser une saisie en cours.
+  //
+  // JAMAIS pour un administrateur : il remplit ce formulaire pour le compte
+  // d'un tiers, pas pour lui-même. Pré-remplir son adresse le rendrait
+  // propriétaire de l'établissement sans qu'il s'en aperçoive — et priverait
+  // le vrai partenaire de son accès.
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || profile.role === 'admin') return;
     if (profile.full_name) setContactName(prev => prev || profile.full_name!);
     if (profile.phone) setContactPhone(prev => prev || profile.phone!);
     if (profile.email) setContactEmail(prev => prev || profile.email!);
@@ -111,10 +116,14 @@ export default function BecomePartnerScreen() {
     }
 
     setSubmitting(true);
-    const { error: insertError } = await supabase.from('partner_requests').insert({
+    const { data: created, error: insertError } = await supabase.from('partner_requests').insert({
       // Rattachement au compte quand le demandeur en a déjà un. Vide sinon :
       // le compte est alors créé à l'approbation, par la fonction serveur.
-      user_id: session?.user?.id ?? null,
+      //
+      // Un administrateur ne se rattache jamais : il dépose pour un tiers.
+      // Sans cette exception, il deviendrait propriétaire de l'établissement,
+      // et le partenaire n'aurait jamais accès au sien.
+      user_id: profile?.role === 'admin' ? null : (session?.user?.id ?? null),
       establishment_type: type,
       establishment_name: name.trim(),
       description: description.trim() || null,
@@ -128,13 +137,27 @@ export default function BecomePartnerScreen() {
       contact_phone: contactPhone.trim(),
       contact_email: contactEmail.trim() || null,
       photo_urls: [],
-    });
+    }).select('id').single();
 
     setSubmitting(false);
     if (insertError) {
       setError('Une erreur est survenue. Veuillez réessayer.');
       return;
     }
+
+    // Accusé de réception, envoyé par le serveur — la clé d'envoi ne peut pas
+    // vivre dans l'application.
+    //
+    // Volontairement sans await bloquant ni gestion d'échec visible : la
+    // demande EST enregistrée. Faire dépendre l'écran de confirmation d'un
+    // envoi d'email laisserait croire à un échec là où il n'y en a pas.
+    // Un envoi manqué se retrouve dans les journaux de la fonction.
+    if (created?.id) {
+      supabase.functions
+        .invoke('notify-partner-request', { body: { request_id: created.id } })
+        .catch(() => { /* l'accusé n'est pas critique, la demande est enregistrée */ });
+    }
+
     setSuccess(true);
   }
 
@@ -147,8 +170,10 @@ export default function BecomePartnerScreen() {
         <Text style={styles.successTitle}>Demande envoyée !</Text>
         <Text style={styles.successText}>
           Merci pour votre candidature. Notre équipe va examiner les informations de{' '}
-          <Text style={{ fontWeight: '500' }}>{name}</Text> et vous recontactera au{' '}
-          <Text style={{ fontWeight: '500' }}>{contactPhone}</Text> sous peu.
+          <Text style={{ fontWeight: '500' }}>{name}</Text> et vous répond sous 48h.
+          {contactEmail.trim()
+            ? <> Un accusé de réception vient de partir à <Text style={{ fontWeight: '500' }}>{contactEmail.trim()}</Text>.</>
+            : <> Nous vous recontacterons au <Text style={{ fontWeight: '500' }}>{contactPhone}</Text>.</>}
         </Text>
         <Pressable style={styles.successBtn} onPress={() => router.replace('/(auth)/login')}>
           <Text style={styles.successBtnText}>Retour à l'accueil</Text>

@@ -21,6 +21,7 @@
 // métadonnées du compte : l'app impose son remplacement à la connexion.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { sendEmail, layout, button, notice } from '../_shared/email.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -70,39 +71,27 @@ function welcomeEmail(params: {
   const { establishmentName, contactName, email, password, appUrl } = params;
   return {
     subject: `Félicitations — ${establishmentName} est approuvé sur YakaRDC`,
-    html: `
-<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:0 auto;color:#2C2C2A">
-  <div style="background:#712B13;padding:28px 24px;border-radius:14px 14px 0 0">
-    <div style="color:#FAC775;font-size:13px;letter-spacing:1.5px">YAKARDC</div>
-    <div style="color:#FAF8F4;font-size:22px;font-weight:600;margin-top:6px">Félicitations !</div>
-  </div>
-  <div style="background:#FFFFFF;padding:24px;border:1px solid #E7E2DA;border-top:none;border-radius:0 0 14px 14px">
-    <p>Bonjour ${contactName},</p>
-    <p>
-      Votre établissement <strong>${establishmentName}</strong> vient d'être approuvé.
-      Il est désormais visible par les voyageurs sur YakaRDC.
-    </p>
-    <p>Voici vos identifiants de connexion :</p>
-    <div style="background:#FAF8F4;border:1px solid #E7E2DA;border-radius:10px;padding:16px;margin:16px 0">
-      <div style="font-size:12px;color:#8A857D">Adresse email</div>
-      <div style="font-size:15px;font-weight:600;margin-bottom:12px">${email}</div>
-      <div style="font-size:12px;color:#8A857D">Mot de passe provisoire</div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:1px;font-family:monospace">${password}</div>
-    </div>
-    <p style="background:#FAEEDA;border-radius:10px;padding:12px;font-size:13px;color:#854F0B">
-      Ce mot de passe est provisoire. Changez-le dès votre première connexion,
-      dans <strong>Profil › Mot de passe</strong>. Supprimez ensuite cet email.
-    </p>
-    <p style="text-align:center;margin:24px 0">
-      <a href="${appUrl}/login" style="background:#712B13;color:#FAF8F4;text-decoration:none;padding:12px 28px;border-radius:999px;font-weight:600;display:inline-block">
-        Accéder à mon espace
-      </a>
-    </p>
-    <p style="font-size:12px;color:#8A857D">
-      Vous n'êtes pas à l'origine de cette demande ? Répondez à cet email, nous la retirerons.
-    </p>
-  </div>
-</div>`.trim(),
+    html: layout({
+      title: 'Félicitations !',
+      body: `
+<p>Bonjour ${contactName},</p>
+<p>
+  Votre établissement <strong>${establishmentName}</strong> vient d'être approuvé.
+  Il est désormais visible par les voyageurs sur YakaRDC.
+</p>
+<p>Voici vos identifiants de connexion :</p>
+<div style="background:#FAF8F4;border:1px solid #E7E2DA;border-radius:10px;padding:16px;margin:16px 0">
+  <div style="font-size:12px;color:#8A857D">Adresse email</div>
+  <div style="font-size:15px;font-weight:600;margin-bottom:12px">${email}</div>
+  <div style="font-size:12px;color:#8A857D">Mot de passe provisoire</div>
+  <div style="font-size:18px;font-weight:700;letter-spacing:1px;font-family:monospace">${password}</div>
+</div>
+${notice("Ce mot de passe est provisoire. Changez-le dès votre première connexion, dans <strong>Profil › Mot de passe</strong>. Supprimez ensuite cet email.")}
+${button(`${appUrl}/login`, 'Accéder à mon espace')}
+<p style="font-size:12px;color:#8A857D">
+  Vous n'êtes pas à l'origine de cette demande ? Répondez à cet email, nous la retirerons.
+</p>`.trim(),
+    }),
   };
 }
 
@@ -142,6 +131,9 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_URL = firstEnv('SUPABASE_URL');
   const SECRET = secretKey();
   const PUBLISHABLE = firstEnv('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
+  // RESEND_API_KEY et MAIL_FROM ne servent plus qu'a la ligne de diagnostic
+  // ci-dessous : l'envoi lui-meme les relit dans _shared/email.ts, seul
+  // endroit ou la cle est manipulee.
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const MAIL_FROM = Deno.env.get('MAIL_FROM') ?? 'YakaRDC <onboarding@resend.dev>';
   const APP_URL = Deno.env.get('APP_URL') ?? 'https://yakardc.app';
@@ -311,8 +303,6 @@ Deno.serve(async (req: Request) => {
 
     if (!password) {
       emailError = "Le partenaire avait déjà un compte : aucun mot de passe n'a été envoyé.";
-    } else if (!RESEND_API_KEY) {
-      emailError = "RESEND_API_KEY absent : l'email n'a pas pu être envoyé.";
     } else {
       const mail = welcomeEmail({
         establishmentName: request.establishment_name,
@@ -321,19 +311,10 @@ Deno.serve(async (req: Request) => {
         password,
         appUrl: APP_URL,
       });
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ from: MAIL_FROM, to: [email], ...mail }),
-      });
-      if (res.ok) { emailSent = true; log('email envoye a', email); }
-      else {
-        emailError = `Envoi refusé (${res.status}) : ${(await res.text()).slice(0, 200)}`;
-        log('email refuse', emailError);
-      }
+      const result = await sendEmail({ to: email, subject: mail.subject, html: mail.html });
+      emailSent = result.sent;
+      emailError = result.error;
+      log(result.sent ? 'email envoye a' : 'envoi refuse', result.sent ? email : result.error);
     }
 
     return json({
