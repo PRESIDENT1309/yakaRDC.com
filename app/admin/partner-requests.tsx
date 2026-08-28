@@ -78,18 +78,49 @@ export default function PartnerRequestsScreen() {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
+  /**
+   * L'approbation passe par une fonction serveur, plus par un appel direct.
+   *
+   * Créer le compte du partenaire exige la clé de service, qui ne peut pas
+   * vivre dans l'application : elle donne un accès total à la base. La
+   * fonction `approve-partner` la détient côté serveur, crée le compte,
+   * délègue la création de l'établissement à `approve_partner_request` en
+   * base, puis envoie l'email d'identifiants.
+   */
   async function handleApprove(request: PartnerRequest) {
     if (!profile?.id) return;
     setProcessing(true);
-    const { error } = await supabase.rpc('approve_partner_request', {
-      p_request_id: request.id,
-      p_admin_id: profile.id,
+
+    const { data, error } = await supabase.functions.invoke('approve-partner', {
+      body: { request_id: request.id },
     });
     setProcessing(false);
-    if (error) {
-      Alert.alert('Erreur', error.message);
+
+    // Une fonction distante échoue de deux façons : le transport, et le corps
+    // de la réponse. Ignorer la seconde donnerait une approbation « réussie »
+    // qui n'a rien fait.
+    const failure = error?.message ?? (data as any)?.error;
+    if (failure) {
+      Alert.alert('Approbation impossible', failure);
       return;
     }
+
+    // L'établissement est créé même si l'email n'est pas parti : on le dit,
+    // parce que le partenaire attend alors des identifiants qui n'arriveront
+    // jamais et qu'il faut le rattraper à la main.
+    const res = data as { account_created?: boolean; email_sent?: boolean; email_error?: string };
+    if (res?.email_sent) {
+      Alert.alert(
+        'Partenaire approuvé',
+        `${request.establishment_name} est en ligne. Les identifiants ont été envoyés à ${request.contact_email}.`,
+      );
+    } else {
+      Alert.alert(
+        'Approuvé, mais email non envoyé',
+        `${request.establishment_name} est en ligne${res?.account_created === false ? ' (le compte existait déjà)' : ''}. ${res?.email_error ?? "L'email n'a pas pu être envoyé."} Prévenez le partenaire directement.`,
+      );
+    }
+
     setSelected(null);
     fetchRequests();
   }

@@ -230,6 +230,8 @@ export type PartnerRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export interface PartnerRequest {
   id: string;
+  /** Compte du demandeur (migration 0011). null = demande antérieure, à rattacher à la main */
+  user_id: string | null;
   establishment_type: EstablishmentType;
   establishment_name: string;
   description: string | null;
@@ -245,6 +247,10 @@ export interface PartnerRequest {
   photo_urls: string[];
   status: PartnerRequestStatus;
   rejection_reason: string | null;
+  // Champs renseignés à l'examen par approve_partner_request (migration 0012)
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_establishment_id: string | null;
   created_at: string;
 }
 

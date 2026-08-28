@@ -3,5 +3,17 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
+  },
+
+  // Les Edge Functions tournent sous Deno, pas sous Node : sans ce réglage,
+  // l'éditeur les analyse avec la configuration de l'application et signale
+  // des erreurs qui n'en sont pas (« Cannot find name 'Deno' », modules
+  // 'jsr:' introuvables). Le reste du dépôt reste en TypeScript classique.
+  "deno.enable": true,
+  "deno.enablePaths": ["./supabase/functions"],
+  "deno.lint": true,
+  "deno.unstable": ["kv"],
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   }
 }

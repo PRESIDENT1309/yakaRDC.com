@@ -27,6 +27,7 @@ import {
   X,
   Store,
   Camera,
+  KeyRound,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
@@ -220,6 +221,12 @@ export default function ProfileScreen() {
               iconBg="#FAECE7"
               label="Modifier le profil"
               onPress={() => router.push('/edit-profile')}
+            />
+            <MenuItem
+              icon={<KeyRound size={15} color="#712B13" />}
+              iconBg="#FAECE7"
+              label="Mot de passe"
+              onPress={() => router.push('/change-password')}
             />
             <MenuItem
               icon={<Heart size={15} color="#712B13" />}

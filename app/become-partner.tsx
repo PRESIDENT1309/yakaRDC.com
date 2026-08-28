@@ -11,6 +11,7 @@ import {
   CheckCircle, User, Phone, Mail,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../lib/auth-context';
 import { colors, categoryColors } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
@@ -70,12 +71,22 @@ export default function BecomePartnerScreen() {
   const [avenue, setAvenue] = useState('');
   const [numero, setNumero] = useState('');
   const [reference, setReference] = useState('');
+  const { session, profile } = useAuth();
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Le profil arrive après le montage : on ne remplit que les champs restés
+  // vides, pour ne jamais écraser une saisie en cours.
+  useEffect(() => {
+    if (!profile) return;
+    if (profile.full_name) setContactName(prev => prev || profile.full_name!);
+    if (profile.phone) setContactPhone(prev => prev || profile.phone!);
+    if (profile.email) setContactEmail(prev => prev || profile.email!);
+  }, [profile?.id, profile?.full_name, profile?.phone, profile?.email]);
   const [communeError, setCommuneError] = useState(false);
 
   async function handleSubmit() {
@@ -101,6 +112,9 @@ export default function BecomePartnerScreen() {
 
     setSubmitting(true);
     const { error: insertError } = await supabase.from('partner_requests').insert({
+      // Rattachement au compte quand le demandeur en a déjà un. Vide sinon :
+      // le compte est alors créé à l'approbation, par la fonction serveur.
+      user_id: session?.user?.id ?? null,
       establishment_type: type,
       establishment_name: name.trim(),
       description: description.trim() || null,
@@ -255,7 +269,7 @@ export default function BecomePartnerScreen() {
           <Field label="Votre nom complet" value={contactName} onChange={setContactName} placeholder="Jean Mbeki" />
           <View style={styles.row}>
             <View style={{ flex: 1 }}><Field label="Téléphone" value={contactPhone} onChange={setContactPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
-            <View style={{ flex: 1 }}><Field label="Email (optionnel)" value={contactEmail} onChange={setContactEmail} placeholder="vous@exemple.cd" keyboardType="email-address" /></View>
+            <View style={{ flex: 1 }}><Field label="Email" value={contactEmail} onChange={setContactEmail} placeholder="vous@exemple.cd" keyboardType="email-address" /></View>
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}

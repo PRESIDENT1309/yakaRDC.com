@@ -41,12 +41,22 @@ export default function LoginScreen() {
     }
     setError(null);
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
     setLoading(false);
     if (authError) { setError('Email ou mot de passe incorrect.'); return; }
+
+    // Un partenaire approuvé se connecte avec un mot de passe reçu par email,
+    // qui reste lisible dans sa boîte de réception. Tant qu'il ne l'a pas
+    // remplacé, cet email vaut les clés de son établissement : on impose le
+    // changement avant tout accès, plutôt que de compter sur sa bonne volonté.
+    if (data.user?.user_metadata?.must_change_password) {
+      router.replace({ pathname: '/change-password', params: { forced: '1' } });
+      return;
+    }
+
     router.replace(safeRedirect(params.redirect) as never);
   }
 
