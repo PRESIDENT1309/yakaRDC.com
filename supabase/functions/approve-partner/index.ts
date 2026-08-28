@@ -99,15 +99,63 @@ function welcomeEmail(params: {
   };
 }
 
+/**
+ * Première variable d'environnement non vide parmi celles proposées.
+ *
+ * Supabase migre son système de clés : les projets récents reçoivent
+ * `SUPABASE_PUBLISHABLE_KEY` et `SUPABASE_SECRET_KEY(S)`, les plus anciens
+ * `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY`. Coder en dur l'un des
+ * deux jeux revient à ne fonctionner que sur la moitié des projets — et à
+ * échouer silencieusement sur l'autre, ce qui est exactement ce qui s'est
+ * produit ici.
+ */
+function firstEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = Deno.env.get(n);
+    if (v && v.trim()) return v.trim();
+  }
+  return undefined;
+}
+
+/**
+ * `SUPABASE_SECRET_KEYS` est au pluriel : la rotation de clés en autorise
+ * plusieurs, séparées par des virgules. La première active fait foi.
+ */
+function secretKey(): string | undefined {
+  const single = firstEnv('SUPABASE_SECRET_KEY');
+  if (single) return single;
+  const list = Deno.env.get('SUPABASE_SECRET_KEYS');
+  const first = list?.split(',').map(v => v.trim()).filter(Boolean)[0];
+  return first ?? firstEnv('SUPABASE_SERVICE_ROLE_KEY');
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-  const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const SUPABASE_URL = firstEnv('SUPABASE_URL');
+  const SECRET = secretKey();
+  const PUBLISHABLE = firstEnv('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const MAIL_FROM = Deno.env.get('MAIL_FROM') ?? 'YakaRDC <onboarding@resend.dev>';
   const APP_URL = Deno.env.get('APP_URL') ?? 'https://yakardc.app';
+
+  // Une clé manquante donnait un client cassé, puis un 401 muet qui laissait
+  // croire à un problème d'authentification. On le dit franchement, en
+  // signalant quelles clés sont présentes — jamais leur valeur.
+  if (!SUPABASE_URL || !PUBLISHABLE || !SECRET) {
+    return json({
+      error: "Configuration incomplète : la fonction n'a pas toutes ses clés.",
+      detail: {
+        SUPABASE_URL: SUPABASE_URL ? 'présente' : 'ABSENTE',
+        cle_publique: PUBLISHABLE
+          ? 'présente'
+          : 'ABSENTE — attendue dans SUPABASE_PUBLISHABLE_KEY ou SUPABASE_ANON_KEY',
+        cle_secrete: SECRET
+          ? 'présente'
+          : 'ABSENTE — attendue dans SUPABASE_SECRET_KEY, SUPABASE_SECRET_KEYS ou SUPABASE_SERVICE_ROLE_KEY',
+      },
+    }, 500);
+  }
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -116,18 +164,36 @@ Deno.serve(async (req: Request) => {
     // ── 1. L'appelant est-il administrateur ? ────────────────────────────
     // Vérifié avec SON jeton, pas avec la clé de service : la question est
     // « qui appelle », pas « que peut faire le serveur ».
-    const asCaller = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user: caller } } = await asCaller.auth.getUser();
-    if (!caller) return json({ error: 'Session invalide.' }, 401);
+    // Le jeton est passé EXPLICITEMENT à getUser(). Sans argument, supabase-js
+    // lit la session de son propre stockage — inexistant côté serveur — et
+    // renvoie « aucun utilisateur » même avec un en-tête valide. C'était la
+    // seconde cause du 401.
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const asCaller = createClient(SUPABASE_URL, PUBLISHABLE);
+    const { data: userData, error: userError } = await asCaller.auth.getUser(token);
+    const caller = userData?.user;
+    if (userError || !caller) {
+      return json({
+        error: 'Session invalide.',
+        detail: userError?.message ?? 'Le jeton fourni ne correspond à aucun utilisateur.',
+      }, 401);
+    }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+    const admin = createClient(SUPABASE_URL, SECRET);
 
-    const { data: callerProfile } = await admin
-      .from('profiles').select('role').eq('id', caller.id).single();
+    const { data: callerProfile, error: profileError } = await admin
+      .from('profiles').select('role').eq('id', caller.id).maybeSingle();
+    if (profileError) {
+      return json({
+        error: "Impossible de vérifier votre rôle.",
+        detail: profileError.message,
+      }, 500);
+    }
     if (callerProfile?.role !== 'admin') {
-      return json({ error: 'Réservé aux administrateurs.' }, 403);
+      return json({
+        error: 'Réservé aux administrateurs.',
+        detail: `Rôle du compte ${caller.id} : ${callerProfile?.role ?? 'aucun profil trouvé'}.`,
+      }, 403);
     }
 
     const { request_id } = await req.json();
@@ -235,6 +301,11 @@ Deno.serve(async (req: Request) => {
       email_error: emailError,
     });
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Erreur inattendue.' }, 500);
+    // La pile est renvoyée : sans elle, une erreur ici reste indéchiffrable
+    // depuis l'app, et les logs Supabase ne montrent qu'un code de statut.
+    return json({
+      error: e instanceof Error ? e.message : 'Erreur inattendue.',
+      detail: e instanceof Error ? e.stack?.split('\n').slice(0, 4).join(' | ') : String(e),
+    }, 500);
   }
 });

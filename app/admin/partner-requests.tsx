@@ -113,16 +113,30 @@ export default function PartnerRequestsScreen() {
       return;
     }
 
-    const failure = error?.message ?? (data as any)?.error;
+    // Une fonction distante peut renvoyer un statut d'erreur avec un corps
+    // explicatif. supabase-js met alors le corps hors de portee : il faut le
+    // relire depuis error.context, sinon on n'affiche qu'un statut nu.
+    let body: any = data;
+    if (error && (error as any).context instanceof Response) {
+      try { body = await (error as any).context.clone().json(); } catch { /* corps non JSON */ }
+    }
+
+    const failure = body?.error ?? error?.message;
     if (failure) {
-      Alert.alert('Approbation impossible', failure);
+      const detail = body?.detail;
+      Alert.alert(
+        'Approbation impossible',
+        detail
+          ? `${failure}\n\n${typeof detail === 'string' ? detail : JSON.stringify(detail, null, 1)}`
+          : failure,
+      );
       return;
     }
 
     // L'établissement est créé même si l'email n'est pas parti : on le dit,
     // parce que le partenaire attend alors des identifiants qui n'arriveront
     // jamais et qu'il faut le rattraper à la main.
-    const res = data as { account_created?: boolean; email_sent?: boolean; email_error?: string };
+    const res = body as { account_created?: boolean; email_sent?: boolean; email_error?: string };
     if (res?.email_sent) {
       Alert.alert(
         'Partenaire approuvé',
