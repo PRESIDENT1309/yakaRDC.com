@@ -99,6 +99,20 @@ export default function PartnerRequestsScreen() {
     // Une fonction distante échoue de deux façons : le transport, et le corps
     // de la réponse. Ignorer la seconde donnerait une approbation « réussie »
     // qui n'a rien fait.
+    //
+    // « Failed to send a request » ne dit rien à personne : c'est ce que
+    // renvoie supabase-js quand l'appel réseau lui-même échoue, le plus
+    // souvent parce que la fonction n'est pas déployée. On le traduit.
+    const transportFailed = error?.name === 'FunctionsFetchError'
+      || /failed to send a request/i.test(error?.message ?? '');
+    if (transportFailed) {
+      Alert.alert(
+        'Fonction indisponible',
+        "La fonction serveur « approve-partner » ne répond pas. Elle n'est probablement pas déployée. Déployez-la depuis le tableau de bord Supabase (Edge Functions), puis réessayez.",
+      );
+      return;
+    }
+
     const failure = error?.message ?? (data as any)?.error;
     if (failure) {
       Alert.alert('Approbation impossible', failure);
