@@ -28,11 +28,18 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
+const log = (...parts: unknown[]) => console.log('[approve-partner]', ...parts);
+
+const json = (body: unknown, status = 200) => {
+  // Toute sortie en erreur laisse une trace lisible dans les logs Supabase.
+  // Sans cela, un échec ne se voit que comme un code de statut nu, et la
+  // raison reste hors de portée quand l'app tourne sur un autre appareil.
+  if (status >= 400) log('ECHEC', status, JSON.stringify(body).slice(0, 500));
+  return new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+};
 
 /**
  * Mot de passe lisible à voix haute et à recopier.
@@ -157,6 +164,14 @@ Deno.serve(async (req: Request) => {
     }, 500);
   }
 
+  log('config', {
+    url: !!SUPABASE_URL,
+    publiable: !!PUBLISHABLE,
+    secrete: !!SECRET,
+    resend: !!RESEND_API_KEY,
+    mail_from: MAIL_FROM,
+  });
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json({ error: 'Authentification requise.' }, 401);
@@ -191,6 +206,7 @@ Deno.serve(async (req: Request) => {
       }, 401);
     }
 
+    log('appelant', caller.id, caller.email);
     const admin = createClient(SUPABASE_URL, SECRET);
 
     const { data: callerProfile, error: profileError } = await admin
@@ -210,6 +226,7 @@ Deno.serve(async (req: Request) => {
 
     const { request_id } = await req.json();
     if (!request_id) return json({ error: 'request_id manquant.' }, 400);
+    log('demande', request_id);
 
     // ── 2. La demande ────────────────────────────────────────────────────
     const { data: request, error: reqError } = await admin
@@ -252,9 +269,13 @@ Deno.serve(async (req: Request) => {
           },
         });
         if (createError || !created?.user) {
-          return json({ error: `Création du compte impossible : ${createError?.message}` }, 500);
+          return json({
+            error: 'Création du compte impossible.',
+            detail: `${createError?.message ?? 'aucun utilisateur renvoyé'} (email : ${email})`,
+          }, 500);
         }
         ownerId = created.user.id;
+        log('compte cree', ownerId, '(mot de passe genere, non consigne)');
 
         await admin.from('profiles').upsert({
           id: ownerId,
@@ -269,11 +290,18 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── 4. La logique métier reste en base ───────────────────────────────
+    log('appel approve_partner_request', { request_id, owner: ownerId });
     const { data: establishmentId, error: rpcError } = await admin.rpc(
       'approve_partner_request',
       { p_request_id: request_id, p_admin_id: caller.id },
     );
-    if (rpcError) return json({ error: rpcError.message }, 500);
+    if (rpcError) {
+      return json({
+        error: "La création de l'établissement a échoué.",
+        detail: `${rpcError.message}${rpcError.hint ? ' — ' + rpcError.hint : ''} (code ${rpcError.code ?? '?'})`,
+      }, 500);
+    }
+    log('etablissement cree', establishmentId);
 
     // ── 5. L'email ───────────────────────────────────────────────────────
     // Envoyé en dernier : l'approbation ne doit pas échouer parce que le
@@ -301,8 +329,11 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({ from: MAIL_FROM, to: [email], ...mail }),
       });
-      if (res.ok) emailSent = true;
-      else emailError = `Envoi refusé (${res.status}) : ${(await res.text()).slice(0, 200)}`;
+      if (res.ok) { emailSent = true; log('email envoye a', email); }
+      else {
+        emailError = `Envoi refusé (${res.status}) : ${(await res.text()).slice(0, 200)}`;
+        log('email refuse', emailError);
+      }
     }
 
     return json({
