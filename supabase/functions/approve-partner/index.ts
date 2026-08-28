@@ -164,18 +164,30 @@ Deno.serve(async (req: Request) => {
     // ── 1. L'appelant est-il administrateur ? ────────────────────────────
     // Vérifié avec SON jeton, pas avec la clé de service : la question est
     // « qui appelle », pas « que peut faire le serveur ».
-    // Le jeton est passé EXPLICITEMENT à getUser(). Sans argument, supabase-js
-    // lit la session de son propre stockage — inexistant côté serveur — et
-    // renvoie « aucun utilisateur » même avec un en-tête valide. C'était la
-    // seconde cause du 401.
-    const token = authHeader.replace(/^Bearer\s+/i, '');
-    const asCaller = createClient(SUPABASE_URL, PUBLISHABLE);
-    const { data: userData, error: userError } = await asCaller.auth.getUser(token);
-    const caller = userData?.user;
-    if (userError || !caller) {
+    //
+    // On interroge le serveur d'authentification DIRECTEMENT, sans passer par
+    // supabase-js. Ce projet signe les jetons utilisateur en ES256 (clés
+    // asymétriques) ; les versions récentes de la bibliothèque tentent alors
+    // une vérification locale via JWKS, qui échoue dans cet environnement et
+    // renvoie un « pas d'utilisateur » indiscernable d'un vrai refus.
+    // Un simple appel REST ne dépend d'aucune version et donne un statut et
+    // un corps exploitables quand il échoue.
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: authHeader, apikey: PUBLISHABLE },
+    });
+
+    if (!authRes.ok) {
       return json({
         error: 'Session invalide.',
-        detail: userError?.message ?? 'Le jeton fourni ne correspond à aucun utilisateur.',
+        detail: `Le serveur d'authentification a répondu ${authRes.status} : ${(await authRes.text()).slice(0, 200)}`,
+      }, 401);
+    }
+
+    const caller = await authRes.json() as { id?: string; email?: string };
+    if (!caller?.id) {
+      return json({
+        error: 'Session invalide.',
+        detail: "Le jeton est accepté mais ne désigne aucun utilisateur.",
       }, 401);
     }
 
@@ -299,6 +311,12 @@ Deno.serve(async (req: Request) => {
       account_created: password !== null,
       email_sent: emailSent,
       email_error: emailError,
+      // Filet de secours : quand l'email n'est pas parti, le partenaire a un
+      // compte auquel il ne peut pas accéder. Le mot de passe est alors rendu
+      // à l'administrateur — lui seul, il vient d'approuver — pour qu'il le
+      // transmette. Jamais renvoyé quand l'email est bien parti : il n'aurait
+      // aucune raison de circuler une seconde fois.
+      temporary_password: !emailSent && password ? password : undefined,
     });
   } catch (e) {
     // La pile est renvoyée : sans elle, une erreur ici reste indéchiffrable

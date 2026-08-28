@@ -1,0 +1,26 @@
+project_id = "liweghymxnzyaoyheznu"
+
+# ═══════════════════════════════════════════
+# Edge Functions
+# ═══════════════════════════════════════════
+
+[functions.approve-partner]
+# Vérification du jeton DÉSACTIVÉE au niveau de la passerelle — délibérément.
+#
+# POURQUOI
+# La passerelle de ce projet vérifie les jetons avec l'ancien secret
+# symétrique, alors que le projet émet désormais des jetons utilisateur signés
+# en ES256 (clés asymétriques). Elle rejette donc tout, y compris la clé anon
+# du projet, avec `INVALID_CREDENTIALS` — sans que la requête atteigne jamais
+# le code de la fonction.
+#
+# CE QUE ÇA NE DÉGRADE PAS
+# La fonction fait sa propre vérification, et elle est plus stricte que celle
+# de la passerelle : en-tête `Authorization` obligatoire, jeton validé auprès
+# de `/auth/v1/user`, puis rôle `admin` exigé dans `profiles`. La passerelle,
+# elle, se contentait de constater qu'un jeton était valide — y compris celui
+# d'un simple voyageur.
+#
+# Autrement dit, on ne retire pas un contrôle : on retire un contrôle cassé
+# qui doublonnait un contrôle sain.
+verify_jwt = false

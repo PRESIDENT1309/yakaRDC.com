@@ -136,16 +136,27 @@ export default function PartnerRequestsScreen() {
     // L'établissement est créé même si l'email n'est pas parti : on le dit,
     // parce que le partenaire attend alors des identifiants qui n'arriveront
     // jamais et qu'il faut le rattraper à la main.
-    const res = body as { account_created?: boolean; email_sent?: boolean; email_error?: string };
+    const res = body as {
+      account_created?: boolean;
+      email_sent?: boolean;
+      email_error?: string;
+      temporary_password?: string;
+    };
     if (res?.email_sent) {
       Alert.alert(
         'Partenaire approuvé',
         `${request.establishment_name} est en ligne. Les identifiants ont été envoyés à ${request.contact_email}.`,
       );
     } else {
+      // Sans email parti, le partenaire a un compte inaccessible. Le mot de
+      // passe est affiché ici pour que l'administrateur le transmette lui-même
+      // — c'est la seule façon de ne pas laisser l'établissement bloqué.
+      const identifiants = res?.temporary_password
+        ? `\n\nIdentifiants à transmettre :\n${request.contact_email}\n${res.temporary_password}\n\nRappelez-lui qu'il devra le changer à la première connexion.`
+        : '';
       Alert.alert(
         'Approuvé, mais email non envoyé',
-        `${request.establishment_name} est en ligne${res?.account_created === false ? ' (le compte existait déjà)' : ''}. ${res?.email_error ?? "L'email n'a pas pu être envoyé."} Prévenez le partenaire directement.`,
+        `${request.establishment_name} est en ligne${res?.account_created === false ? ' (le compte existait déjà)' : ''}. ${res?.email_error ?? "L'email n'a pas pu être envoyé."}${identifiants}`,
       );
     }
 

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, typography, radii, spacing } from '../../lib/theme';
 import LandscapeIllustration from '../../components/LandscapeIllustration';
@@ -26,6 +27,9 @@ export default function LoginScreen() {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Un partenaire saisit ici un mot de passe provisoire de 14 caractères reçu
+  // par email : à l'aveugle, la faute de frappe est quasi certaine.
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,17 +103,24 @@ export default function LoginScreen() {
           />
         </View>
 
-        <View style={[styles.pill, !!error && styles.pillError]}>
+        <View style={[styles.pill, styles.pillRow, !!error && styles.pillError]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { flex: 1 }]}
             value={password}
             onChangeText={setPassword}
             placeholder="🔒  Mot de passe"
             placeholderTextColor="#B4B2A9"
-            secureTextEntry
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={handleLogin}
           />
+          <Pressable onPress={() => setShowPassword(v => !v)} hitSlop={10}>
+            {showPassword
+              ? <EyeOff size={17} color="#8A857D" strokeWidth={1.75} />
+              : <Eye size={17} color="#8A857D" strokeWidth={1.75} />}
+          </Pressable>
         </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
@@ -189,6 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderRadius: 999,
     paddingHorizontal: 20, paddingVertical: 14,
   },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   pillError: { borderWidth: 1.5, borderColor: '#C0392B' },
   input: { fontSize: 14, color: '#2C2C2A' },
   errorText: { fontSize: 12, color: '#FFB4A8', textAlign: 'center', ...shadow },
