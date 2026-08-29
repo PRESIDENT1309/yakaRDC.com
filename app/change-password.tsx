@@ -28,6 +28,12 @@ export default function ChangePasswordScreen() {
   const { forced } = useLocalSearchParams<{ forced?: string }>();
   const isForced = forced === '1';
 
+  // Supabase exige le mot de passe actuel sur ce projet — réglage
+  // GOTRUE_SECURITY_UPDATE_PASSWORD_REQUIRE_CURRENT_PASSWORD. Sans ce champ,
+  // l'appel échoue avec « Current password required when setting new
+  // password », un message que l'utilisateur ne peut pas résoudre : il n'a
+  // nulle part où le saisir.
+  const [current, setCurrent] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [visible, setVisible] = useState(false);
@@ -37,6 +43,12 @@ export default function ChangePasswordScreen() {
   async function handleSave() {
     setError(null);
 
+    if (!current) {
+      setError(isForced
+        ? 'Saisissez le mot de passe provisoire reçu par email.'
+        : 'Saisissez votre mot de passe actuel.');
+      return;
+    }
     if (password.length < MIN_LENGTH) {
       setError(`Le mot de passe doit contenir au moins ${MIN_LENGTH} caractères.`);
       return;
@@ -51,16 +63,27 @@ export default function ChangePasswordScreen() {
     // renverrait l'utilisateur sur cet écran à chaque ouverture, alors qu'il
     // vient précisément de faire ce qu'on lui demandait.
     const { error: updateError } = await supabase.auth.updateUser({
+      current_password: current,
       password,
       data: { must_change_password: false },
     });
     setSaving(false);
 
     if (updateError) {
+      // Les messages de Supabase sont en anglais et parfois obscurs. On
+      // traduit ceux qu'un utilisateur peut effectivement corriger, et on
+      // laisse les autres tels quels plutôt que d'inventer une explication.
+      const m = updateError.message.toLowerCase();
       setError(
-        updateError.message.includes('should be different')
+        m.includes('should be different')
           ? "Choisissez un mot de passe différent de l'actuel."
-          : updateError.message,
+        : m.includes('current password')
+          ? isForced
+            ? "Le mot de passe provisoire est incorrect. Recopiez-le depuis l'email, tirets compris."
+            : 'Le mot de passe actuel est incorrect.'
+        : m.includes('weak') || m.includes('pwned')
+          ? 'Ce mot de passe est trop courant. Choisissez-en un moins prévisible.'
+        : updateError.message,
       );
       return;
     }
@@ -96,6 +119,23 @@ export default function ChangePasswordScreen() {
               </Text>
             </View>
           )}
+
+          <Text style={styles.label}>
+            {isForced ? 'Mot de passe provisoire reçu par email' : 'Mot de passe actuel'}
+          </Text>
+          <View style={styles.field}>
+            <TextInput
+              style={styles.input}
+              value={current}
+              onChangeText={setCurrent}
+              placeholder={isForced ? 'Celui de l\'email' : 'Votre mot de passe actuel'}
+              placeholderTextColor={colors.faint}
+              secureTextEntry={!visible}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="current-password"
+            />
+          </View>
 
           <Text style={styles.label}>Nouveau mot de passe</Text>
           <View style={styles.field}>
@@ -136,7 +176,7 @@ export default function ChangePasswordScreen() {
             label="Enregistrer"
             onPress={handleSave}
             loading={saving}
-            disabled={!password || !confirm}
+            disabled={!current || !password || !confirm}
             color={colors.lave}
           />
         </ScrollView>
