@@ -418,11 +418,22 @@ export default function EstablishmentScreen() {
 
     const digits = next.replace(/\D/g, '').slice(0, 4);
     if (digits.length === 0) return '';
-    if (digits.length <= 2) {
-      // Une heure au-delà de 23 est impossible : on ignore la frappe.
-      if (digits.length === 2 && Number(digits) > 23) return previous;
-      return digits;
+
+    if (digits.length === 1) {
+      // Un premier chiffre de 3 à 9 ne peut commencer aucune heure valable :
+      // il n'existe pas d'heure « 30 » à « 99 ». C'est donc 9h, pas 9x —
+      // on complète en « 09 » pour que la saisie continue vers les minutes.
+      // Sans ça, taper « 930 » pour 9h30 bloquait sur « 9 » : le masque
+      // refusait « 93 » puis tous les chiffres suivants, et il fallait
+      // deviner qu'on devait écrire « 0930 ».
+      return Number(digits) >= 3 ? `0${digits}` : digits;
     }
+
+    if (digits.length === 2) {
+      // Une heure au-delà de 23 est impossible : on ignore la frappe.
+      return Number(digits) > 23 ? previous : digits;
+    }
+
     const h = digits.slice(0, 2);
     const m = digits.slice(2);
     if (Number(h) > 23) return previous;
@@ -794,6 +805,8 @@ export default function EstablishmentScreen() {
                             placeholder="08:00"
                             placeholderTextColor={colors.faint}
                             maxLength={5}
+                            keyboardType="number-pad"
+                            selectTextOnFocus
                           />
                           <Text style={styles.timeSeparator}>→</Text>
                           <TextInput
@@ -803,6 +816,8 @@ export default function EstablishmentScreen() {
                             placeholder="22:00"
                             placeholderTextColor={colors.faint}
                             maxLength={5}
+                            keyboardType="number-pad"
+                            selectTextOnFocus
                           />
                         </View>
                       ) : (

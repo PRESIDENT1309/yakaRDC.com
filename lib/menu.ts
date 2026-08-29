@@ -56,7 +56,11 @@ export function parseMenu(raw: unknown): Menu {
     for (const i of Array.isArray(s?.items) ? s.items : []) {
       const label = typeof i?.label === 'string' ? i.label.trim() : '';
       if (!label) continue;
-      const price = Number(i?.price);
+      // `Number(null)` vaut 0 : sans ce filtre, un plat SANS prix devient un
+      // plat GRATUIT. La nuance compte — « prix non communiqué » et « offert »
+      // ne disent pas la même chose au voyageur.
+      const brut = i?.price;
+      const price = brut === null || brut === undefined || brut === '' ? NaN : Number(brut);
       items.push({
         label,
         description: typeof i?.description === 'string' && i.description.trim()

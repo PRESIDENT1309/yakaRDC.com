@@ -123,6 +123,11 @@ export default function LoginScreen() {
           </Pressable>
         </View>
 
+        {/* Sous le champ, la ou on se rend compte qu'on l'a oublie. */}
+        <Pressable style={styles.forgotRow} onPress={() => router.push('/forgot-password')} hitSlop={6}>
+          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+        </Pressable>
+
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <Pressable style={[styles.primaryBtn, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
@@ -203,6 +208,8 @@ const styles = StyleSheet.create({
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   pillError: { borderWidth: 1.5, borderColor: '#C0392B' },
   input: { fontSize: 14, color: '#2C2C2A' },
+  forgotRow: { alignSelf: 'flex-end', paddingVertical: 2 },
+  forgotText: { fontSize: 12.5, color: '#FAC775', fontWeight: '600', ...shadow },
   errorText: { fontSize: 12, color: '#FFB4A8', textAlign: 'center', ...shadow },
   primaryBtn: {
     backgroundColor: '#FAC775', borderRadius: 999,
