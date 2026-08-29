@@ -104,8 +104,12 @@ function unitLabel(unit: string | null): string {
 // Disponibilités transmises aux formulaires de réservation
 interface Availability {
   fullDays: Set<string>;
+  /**
+   * Charge par créneau, tous services confondus. Conservée pour le seul
+   * `establishment_slot_load`, qui alimente encore le compteur global — la
+   * disponibilité qui compte, elle, est calculée par offre.
+   */
   slotLoads: Record<string, number>;
-  capacity: number | null;
   /** Jours où l'établissement est fermé — à ne pas confondre avec complet */
   closedDays: Set<string>;
 }
@@ -239,32 +243,33 @@ function Counter({ label, value, onDec, onInc, accent }:
 }
 
 // Sélecteur de créneau qui grise les horaires complets
-function SlotPicker({ slots, selected, onSelect, accent, slotLoads, capacity, partySize }:
-  { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string;
-    slotLoads: Record<string, number>; capacity: number | null; partySize: number }) {
+/**
+ * Choix du créneau.
+ *
+ * Ce composant grisait les horaires complets d'après `establishments.capacity`
+ * — une valeur unique pour tout l'établissement, jamais renseignée nulle part.
+ * Le mécanisme n'a donc jamais rien grisé, et il reposait de toute façon sur
+ * une notion trop grossière : un restaurant n'a pas « une capacité », il a des
+ * places par service et par formule.
+ *
+ * La disponibilité réelle passe désormais par les offres, calculée par
+ * `remainingForSlot` et affichée sur chaque carte. Ce composant ne fait plus
+ * que ce qu'il sait faire : présenter les créneaux ouverts.
+ */
+function SlotPicker({ slots, selected, onSelect, accent }:
+  { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string }) {
   return (
     <View style={[styles.formRow, { flexWrap: 'wrap', gap: 6 }]}>
       {slots.map(s => {
-        const taken = slotLoads[s] ?? 0;
-        const isFull = capacity != null && taken + partySize > capacity;
         const isSelected = selected === s;
         return (
           <Pressable
             key={s}
-            style={[
-              styles.chip,
-              isSelected && { backgroundColor: accent, borderColor: accent },
-              isFull && styles.chipFull,
-            ]}
-            onPress={() => !isFull && onSelect(s)}
-            disabled={isFull}
+            style={[styles.chip, isSelected && { backgroundColor: accent, borderColor: accent }]}
+            onPress={() => onSelect(s)}
           >
-            <Text style={[
-              styles.chipText,
-              isSelected && { color: colors.cream, fontWeight: '500' },
-              isFull && styles.chipTextFull,
-            ]}>
-              {s}{isFull ? ' · complet' : ''}
+            <Text style={[styles.chipText, isSelected && { color: colors.cream, fontWeight: '500' }]}>
+              {s}
             </Text>
           </Pressable>
         );
@@ -484,9 +489,6 @@ function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading, avail
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
-              slotLoads={availability.slotLoads}
-              capacity={availability.capacity}
-              partySize={covers}
             />
           )}
 
@@ -689,9 +691,6 @@ function SiteBookingForm({ accent, form, setForm, onSubmit, loading, availabilit
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
-              slotLoads={availability.slotLoads}
-              capacity={availability.capacity}
-              partySize={hasTickets ? cartCount : form.adults + form.children}
             />
           )}
 
@@ -1021,7 +1020,12 @@ export default function ListingDetailScreen() {
         .eq('status', 'approved')
         .neq('id', establishment.id)
         .limit(3);
-      q = establishment.commune ? q.eq('commune', establishment.commune) : q.eq('city', establishment.city);
+      // Comparaison insensible a la casse : des donnees saisies a la main
+      // ont deja contenu « gombe » et « Gombe », ce qui faisait disparaitre
+      // les etablissements voisins sans que rien ne le signale.
+      q = establishment.commune
+        ? q.ilike('commune', establishment.commune.trim())
+        : q.ilike('city', establishment.city.trim());
 
       const { data } = await q;
       if (cancelled) return;
@@ -1231,7 +1235,6 @@ export default function ListingDetailScreen() {
   const availability: Availability = {
     fullDays,
     slotLoads,
-    capacity: establishment.capacity ?? null,
     closedDays,
   };
 
@@ -2095,8 +2098,6 @@ const styles = StyleSheet.create({
   },
   recapTotalLabel: { ...typography.caption, color: colors.muted },
   recapTotal: { ...typography.cardTitle, color: colors.ink },
-  chipFull: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
-  chipTextFull: { color: colors.danger, textDecorationLine: 'line-through' },
   // Contact — rangée segmentée, un seul conteneur, séparateurs fins.
   contactRow: {
     flexDirection: 'row', alignItems: 'stretch', marginBottom: 12,

@@ -102,7 +102,6 @@ export default function EstablishmentScreen() {
   const [amenities, setAmenities]     = useState<string[]>([]);
   const [price, setPrice]             = useState('');
   const [currency, setCurrency]       = useState('USD');
-  const [capacity, setCapacity]       = useState('');
   const [discountPercent, setDiscountPercent] = useState('');
   const [discountLabel, setDiscountLabel]     = useState('');
   const [pendingCount, setPendingCount] = useState(0);
@@ -150,7 +149,6 @@ export default function EstablishmentScreen() {
       setAmenities(e.amenities ?? []);
       setDiscountPercent(e.discount_percent != null ? String(e.discount_percent) : '');
       setDiscountLabel(e.discount_label ?? '');
-      setCapacity(e.capacity != null ? String(e.capacity) : '');
       setLogoUrl(e.logo_url ?? null);
       const oh = (e as any).opening_hours as OpeningHours | null | undefined;
       setAlwaysOpen(oh?.always_open ?? false);
@@ -353,7 +351,6 @@ export default function EstablishmentScreen() {
       commune, neighborhood, avenue, numero, reference, amenities,
       discount_percent: discountPercent ? parseInt(discountPercent, 10) : null,
       discount_label: discountLabel.trim() || null,
-      capacity: capacity ? parseInt(capacity, 10) : null,
       opening_hours: openingHours,
       // Sections sans titre et lignes sans libellé sont écartées ici : les
       // garder produirait des lignes vides sur la fiche du voyageur.
@@ -847,26 +844,6 @@ export default function EstablishmentScreen() {
             />
           </View>
 
-          {/* Capacité — reste au niveau de l'établissement pour l'instant.
-              Elle descendra au niveau de l'offre au lot B2, quand le calcul de
-              disponibilité basculera dessus. */}
-          <View style={styles.card}>
-            <CardTitle icon={<Users {...SECTION_ICON} />} label="Capacité d'accueil" />
-            <Field
-              label={
-                establishment.type === 'restaurant' ? 'Capacité (couverts par créneau)'
-                : establishment.type === 'site' ? 'Capacité (visiteurs par créneau)'
-                : 'Capacité (personnes par nuit)'
-              }
-              value={capacity}
-              onChange={setCapacity}
-              placeholder="Ex : 40 — laissez vide pour aucune limite"
-              keyboardType="number-pad"
-            />
-            <Text style={styles.hint}>
-              Sert à bloquer automatiquement les dates complètes côté voyageur. Ce nombre ne lui est jamais affiché.
-            </Text>
-          </View>
 
           <Pressable style={[styles.saveBtnFull, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator color="#FAF8F4" /> :

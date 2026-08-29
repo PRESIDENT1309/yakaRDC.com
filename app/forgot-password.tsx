@@ -38,8 +38,16 @@ export default function ForgotPasswordScreen() {
     setSending(false);
 
     // Un échec de transport se dit ; un compte inexistant, non.
+    //
+    // On distingue la panne réseau du service absent : accuser la connexion de
+    // l'utilisateur quand c'est le serveur qui manque l'envoie chercher un
+    // problème chez lui, et il ne le trouvera jamais.
     if (fnError && !(data as any)?.sent) {
-      setError("L'envoi n'a pas pu aboutir. Vérifiez votre connexion et réessayez.");
+      const introuvable = fnError.name === 'FunctionsFetchError'
+        || /not.?found|failed to send a request/i.test(fnError.message ?? '');
+      setError(introuvable
+        ? "Le service d'envoi est momentanément indisponible. Réessayez dans quelques minutes, ou contactez-nous."
+        : "L'envoi n'a pas pu aboutir. Vérifiez votre connexion et réessayez.");
       return;
     }
     setSent(true);

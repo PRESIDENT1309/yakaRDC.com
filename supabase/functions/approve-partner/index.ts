@@ -22,6 +22,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { sendEmail, layout, button, notice } from '../_shared/email.ts';
+import { keyKind, firstEnv, secretKey, publishableKey } from '../_shared/keys.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -95,105 +96,13 @@ ${button(`${appUrl}/login`, 'Accéder à mon espace')}
   };
 }
 
-/**
- * Première variable d'environnement non vide parmi celles proposées.
- *
- * Supabase migre son système de clés : les projets récents reçoivent
- * `SUPABASE_PUBLISHABLE_KEY` et `SUPABASE_SECRET_KEY(S)`, les plus anciens
- * `SUPABASE_ANON_KEY` et `SUPABASE_SERVICE_ROLE_KEY`. Coder en dur l'un des
- * deux jeux revient à ne fonctionner que sur la moitié des projets — et à
- * échouer silencieusement sur l'autre, ce qui est exactement ce qui s'est
- * produit ici.
- */
-/**
- * Nature d'une clé, sans jamais en révéler la valeur.
- *
- * Savoir qu'une clé est « présente » ne sert à rien quand elle est présente
- * mais insuffisante : c'est exactement le cas qui a fait échouer la lecture
- * des demandes, la fonction lisant alors avec les politiques appliquées au
- * lieu de les contourner.
- */
-function keyKind(v: string | undefined): string {
-  if (!v) return 'ABSENTE';
-  if (v.startsWith('sb_secret_')) return 'secrete (sb_secret_)';
-  if (v.startsWith('sb_publishable_')) return 'PUBLIABLE — insuffisante pour cette fonction';
-  if (v.startsWith('eyJ')) {
-    try {
-      const role = JSON.parse(atob(v.split('.')[1])).role;
-      return `JWT herite, role ${role}` + (role === 'service_role' ? '' : ' — insuffisante');
-    } catch { return 'JWT illisible'; }
-  }
-  return 'forme inconnue';
-}
-
-function firstEnv(...names: string[]): string | undefined {
-  for (const n of names) {
-    const v = Deno.env.get(n);
-    if (v && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-/**
- * `SUPABASE_SECRET_KEYS` est au pluriel : la rotation de clés en autorise
- * plusieurs, séparées par des virgules. La première active fait foi.
- */
-/**
- * Une clé secrète EXPLOITABLE, choisie parmi les variables disponibles.
- *
- * Prendre la première variable présente ne suffit pas : sur ce projet,
- * `SUPABASE_SECRET_KEYS` existe mais ne contient pas une clé utilisable, et
- * la fonction s'en servait quand même — les lectures passaient alors sous les
- * politiques d'accès au lieu de les contourner, rendant les demandes
- * invisibles alors qu'elles existaient. Une clé présente n'est pas une clé
- * valable ; on vérifie sa forme avant de la retenir.
- */
-function looksUsable(v: string): boolean {
-  if (v.startsWith('sb_secret_')) return true;
-  if (v.startsWith('eyJ')) {
-    try {
-      return JSON.parse(atob(v.split('.')[1])).role === 'service_role';
-    } catch {
-      return false;
-    }
-  }
-  return false;
-}
-
-function secretKeyWithSource(): { value?: string; source: string; found: string[] } {
-  const candidates: { value: string; source: string }[] = [];
-  const add = (name: string) => {
-    const v = Deno.env.get(name)?.trim();
-    if (v) candidates.push({ value: v, source: name });
-  };
-
-  add('SUPABASE_SECRET_KEY');
-  add('SUPABASE_SERVICE_ROLE_KEY');
-
-  // Au pluriel : la rotation de clés en autorise plusieurs.
-  const list = Deno.env.get('SUPABASE_SECRET_KEYS');
-  if (list) {
-    list.split(',').map(v => v.trim()).filter(Boolean).forEach((value, i) => {
-      candidates.push({ value, source: `SUPABASE_SECRET_KEYS[${i}]` });
-    });
-  }
-
-  // Inventaire de ce qui a été trouvé, en types seulement — jamais en valeurs.
-  const found = candidates.map(c => `${c.source} : ${keyKind(c.value)}`);
-  const usable = candidates.find(c => looksUsable(c.value));
-
-  return usable
-    ? { value: usable.value, source: usable.source, found }
-    : { source: 'aucune clé secrète exploitable', found };
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const SUPABASE_URL = firstEnv('SUPABASE_URL');
-  const secret = secretKeyWithSource();
+  const secret = secretKey();
   const SECRET = secret.value;
-  const PUBLISHABLE = firstEnv('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
+  const PUBLISHABLE = publishableKey();
   // RESEND_API_KEY et MAIL_FROM ne servent plus qu'a la ligne de diagnostic
   // ci-dessous : l'envoi lui-meme les relit dans _shared/email.ts, seul
   // endroit ou la cle est manipulee.

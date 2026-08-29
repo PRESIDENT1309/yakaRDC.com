@@ -50,7 +50,6 @@ export interface Establishment {
   suspension_reason: string | null;
   discount_percent: number | null;
   discount_label: string | null;
-  capacity: number | null;
   view_count: number;
   // Horaires d'ouverture — voir lib/opening-hours.ts pour la forme et le
   // calcul d'état. null tant que le partenaire ne les a pas saisis.
@@ -74,15 +73,6 @@ export interface ListingPhoto {
   position: number;
   /** Rattachement à une offre (migration 0007). null = photo générale. */
   offer_id: string | null;
-  // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
-}
-
-export interface Rate {
-  id: string;
-  establishment_id: string;
-  price: number;
-  currency: string;
-  unit: 'night' | 'person' | 'visit';
   // Pas de created_at : la table n'a pas cette colonne (vérifié en base).
 }
 

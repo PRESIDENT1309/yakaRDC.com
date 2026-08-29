@@ -16,6 +16,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { sendEmail, layout, button, notice } from '../_shared/email.ts';
+import { keyKind, firstEnv, secretKey, publishableKey } from '../_shared/keys.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -32,57 +33,6 @@ const json = (body: unknown, status = 200) => {
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 };
-
-function keyKind(v: string | undefined): string {
-  if (!v) return 'ABSENTE';
-  if (v.startsWith('sb_secret_')) return 'secrete (sb_secret_)';
-  if (v.startsWith('sb_publishable_')) return 'PUBLIABLE — insuffisante';
-  if (v.startsWith('eyJ')) {
-    try {
-      const role = JSON.parse(atob(v.split('.')[1])).role;
-      return `JWT herite, role ${role}` + (role === 'service_role' ? '' : ' — insuffisante');
-    } catch { return 'JWT illisible'; }
-  }
-  return 'forme inconnue';
-}
-
-function firstEnv(...names: string[]): string | undefined {
-  for (const n of names) {
-    const v = Deno.env.get(n);
-    if (v && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-/** Voir approve-partner : une clé présente n'est pas une clé valable. */
-function looksUsable(v: string): boolean {
-  if (v.startsWith('sb_secret_')) return true;
-  if (v.startsWith('eyJ')) {
-    try { return JSON.parse(atob(v.split('.')[1])).role === 'service_role'; } catch { return false; }
-  }
-  return false;
-}
-
-function secretKeyWithSource(): { value?: string; source: string; found: string[] } {
-  const candidates: { value: string; source: string }[] = [];
-  const add = (name: string) => {
-    const v = Deno.env.get(name)?.trim();
-    if (v) candidates.push({ value: v, source: name });
-  };
-  add('SUPABASE_SECRET_KEY');
-  add('SUPABASE_SERVICE_ROLE_KEY');
-  const list = Deno.env.get('SUPABASE_SECRET_KEYS');
-  if (list) {
-    list.split(',').map(v => v.trim()).filter(Boolean).forEach((value, i) => {
-      candidates.push({ value, source: `SUPABASE_SECRET_KEYS[${i}]` });
-    });
-  }
-  const found = candidates.map(c => `${c.source} : ${keyKind(c.value)}`);
-  const usable = candidates.find(c => looksUsable(c.value));
-  return usable
-    ? { value: usable.value, source: usable.source, found }
-    : { source: 'aucune clé secrète exploitable', found };
-}
 
 function resetEmail(params: { lien: string; email: string }) {
   return {
@@ -110,7 +60,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const SUPABASE_URL = firstEnv('SUPABASE_URL');
-  const secret = secretKeyWithSource();
+  const secret = secretKey();
   const SECRET = secret.value;
   const APP_URL = Deno.env.get('APP_URL') ?? 'https://www.yakardc.com';
 
