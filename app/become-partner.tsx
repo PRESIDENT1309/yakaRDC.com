@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
+import { uuidv4 } from '../lib/uuid';
 import { colors, categoryColors } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
@@ -116,7 +117,18 @@ export default function BecomePartnerScreen() {
     }
 
     setSubmitting(true);
-    const { data: created, error: insertError } = await supabase.from('partner_requests').insert({
+
+    // L'identifiant est choisi ICI, avant l'insertion, et non relu après.
+    //
+    // Relire la ligne qu'on vient d'écrire suppose un `INSERT ... RETURNING`,
+    // donc le droit de la LIRE — réservé au propriétaire de la demande, ce
+    // qu'un visiteur anonyme n'est pas. L'écriture réussissait, la relecture
+    // échouait, et Postgres remontait une erreur de politique qui donnait
+    // l'impression que le dépôt était refusé.
+    const requestId = uuidv4();
+
+    const { error: insertError } = await supabase.from('partner_requests').insert({
+      id: requestId,
       // Rattachement au compte quand le demandeur en a déjà un. Vide sinon :
       // le compte est alors créé à l'approbation, par la fonction serveur.
       //
@@ -137,7 +149,7 @@ export default function BecomePartnerScreen() {
       contact_phone: contactPhone.trim(),
       contact_email: contactEmail.trim() || null,
       photo_urls: [],
-    }).select('id').single();
+    });
 
     setSubmitting(false);
     if (insertError) {
@@ -152,11 +164,9 @@ export default function BecomePartnerScreen() {
     // demande EST enregistrée. Faire dépendre l'écran de confirmation d'un
     // envoi d'email laisserait croire à un échec là où il n'y en a pas.
     // Un envoi manqué se retrouve dans les journaux de la fonction.
-    if (created?.id) {
-      supabase.functions
-        .invoke('notify-partner-request', { body: { request_id: created.id } })
-        .catch(() => { /* l'accusé n'est pas critique, la demande est enregistrée */ });
-    }
+    supabase.functions
+      .invoke('notify-partner-request', { body: { request_id: requestId } })
+      .catch(() => { /* l'accusé n'est pas critique, la demande est enregistrée */ });
 
     setSuccess(true);
   }

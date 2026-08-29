@@ -1,3 +1,11 @@
+-- ⚠️  PÉRIMÉE — REMPLACÉE PAR LA 0015. NE PAS REJOUER.
+--
+-- Les conditions du `with check` ci-dessous refusent toute insertion sur ce
+-- projet, pour une raison qui n'a pas pu être identifiée à distance. La
+-- migration 0015 les remplace par un déclencheur, qui corrige la ligne au
+-- lieu de la refuser. Rejouer ce fichier ANNULE le correctif : il recrée la
+-- politique sous le même nom.
+
 -- Dépôt d'une demande de partenariat par un visiteur non connecté.
 --
 -- CONSTAT

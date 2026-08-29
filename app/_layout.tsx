@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   PlayfairDisplay_400Regular_Italic,
@@ -21,6 +23,18 @@ export default function RootLayout() {
   // "Terre & Fleuve". Les graisses supplémentaires sont additives : les écrans
   // qui n'utilisent encore que PlayfairDisplay_400Regular_Italic continuent
   // de fonctionner sans changement.
+  // Le serveur de developpement sert un gabarit HTML fige sur lang="en",
+  // qu'aucun fichier du projet ne controle. Chrome croit alors lire de
+  // l'anglais et retraduit une interface deja francaise, en la deformant :
+  // « Enregistrer » devient « Economiser », et les messages d'erreur
+  // deviennent illisibles. La compilation est corrigee par
+  // scripts/fix-html-lang.mjs ; ceci couvre le developpement.
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.lang = 'fr';
+    }
+  }, []);
+
   const [fontsLoaded] = useFonts({
     PlayfairDisplay_400Regular_Italic,
     PlayfairDisplay_500Medium,

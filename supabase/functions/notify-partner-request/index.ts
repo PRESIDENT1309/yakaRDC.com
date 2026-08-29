@@ -37,6 +37,27 @@ const json = (body: unknown, status = 200) => {
   });
 };
 
+/**
+ * Nature d'une clé, sans jamais en révéler la valeur.
+ *
+ * Savoir qu'une clé est « présente » ne sert à rien quand elle est présente
+ * mais insuffisante : c'est exactement le cas qui a fait échouer la lecture
+ * des demandes, la fonction lisant alors avec les politiques appliquées au
+ * lieu de les contourner.
+ */
+function keyKind(v: string | undefined): string {
+  if (!v) return 'ABSENTE';
+  if (v.startsWith('sb_secret_')) return 'secrete (sb_secret_)';
+  if (v.startsWith('sb_publishable_')) return 'PUBLIABLE — insuffisante pour cette fonction';
+  if (v.startsWith('eyJ')) {
+    try {
+      const role = JSON.parse(atob(v.split('.')[1])).role;
+      return `JWT herite, role ${role}` + (role === 'service_role' ? '' : ' — insuffisante');
+    } catch { return 'JWT illisible'; }
+  }
+  return 'forme inconnue';
+}
+
 function firstEnv(...names: string[]): string | undefined {
   for (const n of names) {
     const v = Deno.env.get(n);
@@ -45,12 +66,53 @@ function firstEnv(...names: string[]): string | undefined {
   return undefined;
 }
 
-function secretKey(): string | undefined {
-  const single = firstEnv('SUPABASE_SECRET_KEY');
-  if (single) return single;
+/**
+ * Une clé secrète EXPLOITABLE, choisie parmi les variables disponibles.
+ *
+ * Prendre la première variable présente ne suffit pas : sur ce projet,
+ * `SUPABASE_SECRET_KEYS` existe mais ne contient pas une clé utilisable, et
+ * la fonction s'en servait quand même — les lectures passaient alors sous les
+ * politiques d'accès au lieu de les contourner, rendant les demandes
+ * invisibles alors qu'elles existaient. Une clé présente n'est pas une clé
+ * valable ; on vérifie sa forme avant de la retenir.
+ */
+function looksUsable(v: string): boolean {
+  if (v.startsWith('sb_secret_')) return true;
+  if (v.startsWith('eyJ')) {
+    try {
+      return JSON.parse(atob(v.split('.')[1])).role === 'service_role';
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+function secretKeyWithSource(): { value?: string; source: string; found: string[] } {
+  const candidates: { value: string; source: string }[] = [];
+  const add = (name: string) => {
+    const v = Deno.env.get(name)?.trim();
+    if (v) candidates.push({ value: v, source: name });
+  };
+
+  add('SUPABASE_SECRET_KEY');
+  add('SUPABASE_SERVICE_ROLE_KEY');
+
+  // Au pluriel : la rotation de clés en autorise plusieurs.
   const list = Deno.env.get('SUPABASE_SECRET_KEYS');
-  const first = list?.split(',').map(v => v.trim()).filter(Boolean)[0];
-  return first ?? firstEnv('SUPABASE_SERVICE_ROLE_KEY');
+  if (list) {
+    list.split(',').map(v => v.trim()).filter(Boolean).forEach((value, i) => {
+      candidates.push({ value, source: `SUPABASE_SECRET_KEYS[${i}]` });
+    });
+  }
+
+  // Inventaire de ce qui a été trouvé, en types seulement — jamais en valeurs.
+  const found = candidates.map(c => `${c.source} : ${keyKind(c.value)}`);
+  const usable = candidates.find(c => looksUsable(c.value));
+
+  return usable
+    ? { value: usable.value, source: usable.source, found }
+    : { source: 'aucune clé secrète exploitable', found };
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -103,14 +165,16 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const SUPABASE_URL = firstEnv('SUPABASE_URL');
-  const SECRET = secretKey();
+  const secret = secretKeyWithSource();
+  const SECRET = secret.value;
 
   if (!SUPABASE_URL || !SECRET) {
     return json({
       error: "Configuration incomplète : la fonction n'a pas toutes ses clés.",
       detail: {
         SUPABASE_URL: SUPABASE_URL ? 'présente' : 'ABSENTE',
-        cle_secrete: SECRET ? 'présente' : 'ABSENTE',
+        cle_secrete: SECRET ? 'présente' : 'AUCUNE EXPLOITABLE',
+        variables_trouvees: secret.found,
       },
     }, 500);
   }
@@ -119,11 +183,24 @@ Deno.serve(async (req: Request) => {
     const { request_id } = await req.json();
     if (!request_id) return json({ error: 'request_id manquant.' }, 400);
 
+    log('config', { secrete: keyKind(SECRET), source: secret.source });
     const admin = createClient(SUPABASE_URL, SECRET);
     const { data: request, error } = await admin
       .from('partner_requests').select('*').eq('id', request_id).single();
 
-    if (error || !request) return json({ error: 'Demande introuvable.' }, 404);
+    if (error || !request) {
+      // Une demande « introuvable » a deux causes très différentes : elle
+      // n'existe pas, ou la clé employée ne permet pas de la voir. Les
+      // confondre a coûté un long détour — on les sépare.
+      return json({
+        error: 'Demande introuvable.',
+        detail: `Clé utilisée : ${secret.source} — ${keyKind(SECRET)}. ` +
+          `Variables trouvées : ${secret.found.join(' | ')}. ` +
+          "Si cette clé n'est pas secrète, la lecture s'effectue sous les " +
+          "politiques d'accès et la demande reste invisible même si elle existe. " +
+          (error ? `Erreur : ${error.message}` : 'Aucune ligne renvoyée.'),
+      }, 404);
+    }
 
     // Déjà notifiée : on répond succès sans réémettre. Rejouer un appel ne
     // doit pas produire un second email.
