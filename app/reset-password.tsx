@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/alert';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
 import Button from '../components/Button';
 
 const MIN_LENGTH = 8;
@@ -152,7 +152,7 @@ export default function ResetPasswordScreen() {
               autoCapitalize="none"
               autoComplete="new-password"
             />
-            <Pressable onPress={() => setVisible(v => !v)} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setVisible(v => !v)} hitSlop={8}>
               {visible
                 ? <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />
                 : <Eye size={16} color={colors.faint} strokeWidth={1.75} />}
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter, paddingTop: 52, paddingBottom: spacing.md,
   },
   headerTitle: { ...typography.cardTitle, color: colors.ink },
-  content: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
   notice: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
     backgroundColor: colors.successSoft, borderRadius: radii.md,

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { TrendingUp, Users, Award, BarChart3 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 import type { EstablishmentType } from '../../lib/types';
 
 type Period = 'day' | 'week' | 'month' | 'year';
@@ -22,10 +22,10 @@ const CATEGORY_LABELS: Record<EstablishmentType, string> = {
 };
 
 const CATEGORY_COLORS: Record<EstablishmentType, string> = {
-  hotel: '#712B13',
-  furnished_house: '#0F6E56',
-  restaurant: '#854F0B',
-  site: '#1F4D3A',
+  hotel: colors.lave,
+  furnished_house: colors.fleuve,
+  restaurant: colors.warning,
+  site: colors.success,
 };
 
 function periodStart(period: Period): Date {
@@ -100,13 +100,13 @@ export default function StatsScreen() {
                 <Text style={styles.bigLabel}>Réservations</Text>
               </View>
               <View style={styles.bigCard}>
-                <TrendingUp size={18} color="#1F4D3A" />
-                <Text style={[styles.bigValue, { color: '#1F4D3A' }]}>{confirmationRate}%</Text>
+                <TrendingUp size={18} color={colors.success} />
+                <Text style={[styles.bigValue, { color: colors.success }]}>{confirmationRate}%</Text>
                 <Text style={styles.bigLabel}>Taux confirmation</Text>
               </View>
               <View style={styles.bigCard}>
-                <Users size={18} color="#854F0B" />
-                <Text style={[styles.bigValue, { color: '#854F0B' }]}>{newSignups}</Text>
+                <Users size={18} color={colors.warning} />
+                <Text style={[styles.bigValue, { color: colors.warning }]}>{newSignups}</Text>
                 <Text style={styles.bigLabel}>Nouveaux inscrits</Text>
               </View>
             </View>
@@ -138,24 +138,26 @@ export default function StatsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
   content: { padding: 20, gap: 14, maxWidth: 700 },
   periodRow: { flexDirection: 'row', gap: 6 },
-  periodPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+  periodPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   periodPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  periodText: { fontSize: 12, color: colors.muted },
-  periodTextActive: { color: '#FAF8F4', fontWeight: '500' },
+  periodText: { ...typography.bodyXs, color: colors.muted, },
+  periodTextActive: { color: colors.cream, fontWeight: '500' },
   statsGrid: { flexDirection: 'row', gap: 10 },
-  bigCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center', gap: 6 },
-  bigValue: { fontSize: 22, fontWeight: '500', color: colors.ink },
-  bigLabel: { fontSize: 11, color: colors.muted, textAlign: 'center' },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  emptyText: { fontSize: 12, color: colors.muted, marginTop: 10 },
+  bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center', gap: 6 },
+  bigValue: { ...typography.titleLg, color: colors.ink, },
+  bigLabel: { ...typography.captionSm, color: colors.muted, textAlign: 'center', },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, },
+  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: 10, },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  barLabel: { width: 80, fontSize: 11, color: colors.muted },
-  barTrack: { flex: 1, height: 8, backgroundColor: '#F5F4F0', borderRadius: 4, overflow: 'hidden' },
+  barLabel: { ...typography.captionSm, width: 80, color: colors.muted, },
+  barTrack: { flex: 1, height: 8, backgroundColor: colors.surfaceSunken, borderRadius: 4, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
-  barPct: { width: 36, fontSize: 11, color: colors.ink, textAlign: 'right' },
+  barPct: { ...typography.captionSm, width: 36, color: colors.ink, textAlign: 'right', },
 });

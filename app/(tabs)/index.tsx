@@ -253,7 +253,7 @@ export default function HomeScreen() {
               <View style={styles.heroContentPanel}>
                 <View style={styles.heroPanelTop}>
                   <LogoLockup />
-                  <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
+                  <Pressable hitSlop={5} accessibilityRole="button" accessibilityLabel="Notifications" style={styles.bellBtn} onPress={() => router.push('/notifications')}>
                     <Bell size={17} color={colors.cream} strokeWidth={1.75} />
                   </Pressable>
                 </View>
@@ -284,7 +284,7 @@ export default function HomeScreen() {
             <PhotoScrim from="bottom" intensity={0.65} />
             <View style={styles.topBarFloating}>
               <LogoLockup />
-              <Pressable style={styles.bellBtn} onPress={() => router.push('/notifications')}>
+              <Pressable hitSlop={5} accessibilityRole="button" accessibilityLabel="Notifications" style={styles.bellBtn} onPress={() => router.push('/notifications')}>
                 <Bell size={17} color={colors.cream} strokeWidth={1.75} />
               </Pressable>
             </View>

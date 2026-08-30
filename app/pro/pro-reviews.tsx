@@ -8,8 +8,9 @@ import { goBack } from '../../lib/navigation';
 import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography, breakpoints } from '../../lib/theme';
 import type { Establishment, Review } from '../../lib/types';
+import ScreenHeader from '../../components/ScreenHeader';
 
 export default function PartnerReviewsScreen() {
   const { profile } = useAuth();
@@ -52,18 +53,14 @@ export default function PartnerReviewsScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBack('/pro')} hitSlop={8}>
-          <ArrowLeft size={18} color="#FAF8F4" />
-        </Pressable>
-        <View>
-          <Text style={styles.headerTitle}>Avis clients</Text>
-          <Text style={styles.headerSub}>{reviews.length} avis · {avgRating} ★ en moyenne</Text>
-        </View>
-        <View style={{ width: 18 }} />
-      </View>
+      <ScreenHeader
+        title="Avis clients"
+        subtitle={`${reviews.length} avis · ${avgRating} ★ en moyenne`}
+        backFallback="/pro"
+        contentMaxWidth={breakpoints.panelMax}
+      />
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: 16 }}>
         {loading ? (
           <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
         ) : reviews.length === 0 ? (
@@ -75,7 +72,7 @@ export default function PartnerReviewsScreen() {
                 <View style={styles.reviewTop}>
                   <View style={{ flexDirection: 'row', gap: 1 }}>
                     {[1, 2, 3, 4, 5].map(i => (
-                      <Star key={i} size={12} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                      <Star key={i} size={12} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                     ))}
                   </View>
                   <Text style={styles.reviewDate}>
@@ -122,27 +119,19 @@ export default function PartnerReviewsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F5F4EF' },
-  header: {
-    backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 18,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: '#FAF8F4', textAlign: 'center' },
-  headerSub: { fontSize: 10.5, color: 'rgba(250,248,244,0.7)', marginTop: 2, textAlign: 'center' },
-  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 40 },
+  screen: { flex: 1, backgroundColor: colors.cream },
+  emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', marginTop: 40, },
   reviewCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
+    backgroundColor: colors.white, borderRadius: 14, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
   reviewTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  reviewDate: { fontSize: 10, color: colors.faint },
-  reviewComment: { fontSize: 12.5, color: colors.ink, lineHeight: 18, marginBottom: 10 },
+  reviewDate: { ...typography.captionSm, color: colors.faint, },
+  reviewComment: { ...typography.bodyXs, color: colors.ink, marginBottom: 10, },
   replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 9 },
-  replyLabel: { fontSize: 9.5, color: colors.lave, fontWeight: '600', marginBottom: 2 },
-  replyText: { fontSize: 11.5, color: colors.ink },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F0EEE4', paddingTop: 9 },
-  replyInput: { flex: 1, fontSize: 12, color: colors.ink, paddingVertical: 4 },
-  replyBtnText: { fontSize: 11.5, color: colors.lave, fontWeight: '600' },
+  replyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: 2, },
+  replyText: { ...typography.captionSm, color: colors.ink, },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 9 },
+  replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, paddingVertical: 4, },
+  replyBtnText: { ...typography.caption, color: colors.lave, },
 });

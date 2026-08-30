@@ -32,7 +32,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useConfirm } from '../../lib/confirm-context';
-import { colors } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints } from '../../lib/theme';
 
 function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -63,14 +63,14 @@ function MenuItem({
       style={({ pressed }) => [
         styles.menuItem,
         !last && styles.menuItemBorder,
-        pressed && { backgroundColor: '#FAFAF9' },
+        pressed && { backgroundColor: colors.cream },
       ]}
       onPress={onPress}
     >
       <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <Text style={styles.menuLabel}>{label}</Text>
       {value && <Text style={styles.menuValue}>{value}</Text>}
-      <ChevronRight size={15} color="#C4C2BA" />
+      <ChevronRight size={15} color={colors.borderStrong} />
     </Pressable>
   );
 }
@@ -172,8 +172,8 @@ export default function ProfileScreen() {
       >
         {/* ── En-tête ── */}
         <View style={styles.header}>
-          <Pressable style={styles.settingsBtn} onPress={() => showComingSoon('Paramètres')}>
-            <Settings size={16} color="#FAF8F4" />
+          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Paramètres" style={styles.settingsBtn} onPress={() => showComingSoon('Paramètres')}>
+            <Settings size={16} color={colors.cream} />
           </Pressable>
 
           {/* Photo de profil, modifiable au clic */}
@@ -217,27 +217,27 @@ export default function ProfileScreen() {
           {/* ── Mon compte ── */}
           <MenuSection title="MON COMPTE">
             <MenuItem
-              icon={<User size={15} color="#712B13" />}
-              iconBg="#FAECE7"
+              icon={<User size={15} color={colors.lave} />}
+              iconBg={colors.laveSoft}
               label="Modifier le profil"
               onPress={() => router.push('/edit-profile')}
             />
             <MenuItem
-              icon={<KeyRound size={15} color="#712B13" />}
-              iconBg="#FAECE7"
+              icon={<KeyRound size={15} color={colors.lave} />}
+              iconBg={colors.laveSoft}
               label="Mot de passe"
               onPress={() => router.push('/change-password')}
             />
             <MenuItem
-              icon={<Heart size={15} color="#712B13" />}
-              iconBg="#FAECE7"
+              icon={<Heart size={15} color={colors.lave} />}
+              iconBg={colors.laveSoft}
               label="Mes favoris"
               value={favoriteCount > 0 ? String(favoriteCount) : undefined}
               onPress={() => router.push('/favorites')}
             />
             <MenuItem
-              icon={<CalendarCheck size={15} color="#712B13" />}
-              iconBg="#FAECE7"
+              icon={<CalendarCheck size={15} color={colors.lave} />}
+              iconBg={colors.laveSoft}
               label="Historique des réservations"
               onPress={() => router.push('/(tabs)/bookings')}
               last
@@ -247,14 +247,14 @@ export default function ProfileScreen() {
           {/* ── Préférences ── */}
           <MenuSection title="PRÉFÉRENCES">
             <MenuItem
-              icon={<Bell size={15} color="#085041" />}
-              iconBg="#E1F5EE"
+              icon={<Bell size={15} color={colors.fleuveDark} />}
+              iconBg={colors.fleuveSoft}
               label="Notifications"
               onPress={() => router.push('/notifications')}
             />
             <MenuItem
-              icon={<Languages size={15} color="#085041" />}
-              iconBg="#E1F5EE"
+              icon={<Languages size={15} color={colors.fleuveDark} />}
+              iconBg={colors.fleuveSoft}
               label="Langue"
               value="Français"
               onPress={() =>
@@ -270,8 +270,8 @@ export default function ProfileScreen() {
           {/* ── Devenir partenaire ── */}
           <MenuSection title="VOUS AVEZ UN ÉTABLISSEMENT ?">
             <MenuItem
-              icon={<Store size={15} color="#854F0B" />}
-              iconBg="#FAEEDA"
+              icon={<Store size={15} color={colors.warning} />}
+              iconBg={colors.warningSoft}
               label="Devenir partenaire"
               onPress={() => router.push('/become-partner')}
               last
@@ -281,14 +281,14 @@ export default function ProfileScreen() {
           {/* ── Assistance ── */}
           <MenuSection title="ASSISTANCE">
             <MenuItem
-              icon={<HelpCircle size={15} color="#854F0B" />}
-              iconBg="#FAEEDA"
+              icon={<HelpCircle size={15} color={colors.warning} />}
+              iconBg={colors.warningSoft}
               label="Centre d'aide"
               onPress={() => showComingSoon("Centre d'aide")}
             />
             <MenuItem
-              icon={<Shield size={15} color="#854F0B" />}
-              iconBg="#FAEEDA"
+              icon={<Shield size={15} color={colors.warning} />}
+              iconBg={colors.warningSoft}
               label="Confidentialité"
               onPress={() => showComingSoon('Politique de confidentialité')}
               last
@@ -297,7 +297,7 @@ export default function ProfileScreen() {
 
           {/* ── Déconnexion ── */}
           <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut color="#C0392B" size={15} />
+            <LogOut color={colors.danger} size={15} />
             <Text style={styles.logoutText}>Se déconnecter</Text>
           </Pressable>
         </View>
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F5F4EF' },
+  screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     backgroundColor: colors.lave,
     paddingTop: Platform.OS === 'ios' ? 60 : 32,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: '#FAC775',
+    backgroundColor: colors.amber,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
@@ -345,8 +345,7 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: {
-    fontSize: 32,
-    fontWeight: '500',
+    ...typography.displayLg,
     color: colors.lave,
   },
   cameraBadge: {
@@ -356,20 +355,20 @@ const styles = StyleSheet.create({
     width: 27,
     height: 27,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.lave,
   },
   name: {
-    fontFamily: 'PlayfairDisplay_400Regular_Italic',
+    fontFamily: fonts.display,
     fontSize: 21,
-    color: '#FAF8F4',
+    color: colors.cream,
     marginBottom: 3,
   },
   contact: {
-    fontSize: 12,
+    ...typography.captionSm,
     color: 'rgba(250,248,244,0.7)',
     marginBottom: 20,
   },
@@ -380,12 +379,11 @@ const styles = StyleSheet.create({
   },
   stat: { alignItems: 'center' },
   statValue: {
-    fontSize: 19,
-    fontWeight: '600',
-    color: '#FAF8F4',
+    ...typography.titleMd,
+    color: colors.cream,
   },
   statLabel: {
-    fontSize: 10,
+    ...typography.captionSm,
     color: 'rgba(250,248,244,0.65)',
     marginTop: 2,
   },
@@ -395,19 +393,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   content: {
+    // Étirées sur 780 px, ces lignes laissaient 700 px de vide entre le libellé
+    // et son chevron. On les ramène à la largeur des écrans qu'elles ouvrent
+    // (édition du profil, mot de passe) : la ligne et sa destination se
+    // répondent. Sans effet sous 480 px.
+    maxWidth: breakpoints.formMax,
+    width: '100%',
+    alignSelf: 'center',
     padding: 16,
     gap: 16,
   },
   section: { gap: 7 },
   sectionLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9A9892',
-    letterSpacing: 0.6,
+    ...typography.overlineXs,
+    color: colors.faint,
     paddingHorizontal: 6,
   },
   sectionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -425,7 +428,7 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F4F0',
+    borderBottomColor: colors.surfaceSunken,
   },
   menuIcon: {
     width: 30,
@@ -435,13 +438,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: {
+    ...typography.bodySm,
     flex: 1,
-    fontSize: 13,
     color: colors.ink,
   },
   menuValue: {
-    fontSize: 12,
-    color: '#9A9892',
+    ...typography.captionSm,
+    color: colors.faint,
     marginRight: 2,
   },
   logoutButton: {
@@ -449,12 +452,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 14,
     paddingVertical: 14,
     marginTop: 2,
   },
-  logoutText: { color: '#C0392B', fontSize: 13, fontWeight: '500' },
+  logoutText: { ...typography.pillLabel, color: colors.danger },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -463,7 +466,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalBox: {
-    backgroundColor: '#FAF8F4',
+    backgroundColor: colors.cream,
     borderRadius: 20,
     padding: 22,
     width: '100%',
@@ -476,14 +479,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.titleSm,
     color: colors.ink,
   },
   modalText: {
-    fontSize: 13,
+    ...typography.bodySm,
     color: colors.muted,
-    lineHeight: 20,
     marginBottom: 20,
   },
   modalActions: {
@@ -494,25 +495,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     alignItems: 'center',
   },
   cancelBtnText: {
-    fontSize: 14,
+    ...typography.labelMd,
     color: colors.ink,
   },
   confirmBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#C0392B',
+    backgroundColor: colors.danger,
     alignItems: 'center',
   },
   confirmBtnText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
+    ...typography.labelMd,
+    color: colors.white,
   },
 });

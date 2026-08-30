@@ -8,7 +8,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, radii, spacing } from '../../lib/theme';
+import { colors, fonts, typography, radii, spacing, breakpoints } from '../../lib/theme';
 import LandscapeIllustration from '../../components/LandscapeIllustration';
 
 // Destination d'après connexion. N'accepte qu'un chemin interne : doit commencer
@@ -95,7 +95,7 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="✉  Adresse email"
-            placeholderTextColor="#B4B2A9"
+            placeholderTextColor={colors.faint}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -109,17 +109,17 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             placeholder="🔒  Mot de passe"
-            placeholderTextColor="#B4B2A9"
+            placeholderTextColor={colors.faint}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={handleLogin}
           />
-          <Pressable onPress={() => setShowPassword(v => !v)} hitSlop={10}>
+          <Pressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setShowPassword(v => !v)} hitSlop={10}>
             {showPassword
-              ? <EyeOff size={17} color="#8A857D" strokeWidth={1.75} />
-              : <Eye size={17} color="#8A857D" strokeWidth={1.75} />}
+              ? <EyeOff size={17} color={colors.faint} strokeWidth={1.75} />
+              : <Eye size={17} color={colors.faint} strokeWidth={1.75} />}
           </Pressable>
         </View>
 
@@ -178,22 +178,34 @@ const shadow = {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#3D1408' },
+  screen: { flex: 1, backgroundColor: colors.nuit3 },
   flex: { flex: 1, justifyContent: 'flex-end' },
   veil: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
-  headerZone: { paddingHorizontal: 32, paddingBottom: 24 },
+  // Titre, sous-titre et formulaire partagent la même largeur maximale : sur un
+  // écran large, ils formaient jusqu'ici une colonne de 740 px, illisible pour
+  // un champ de saisie. Contraints et centrés, ils redeviennent une colonne.
+  headerZone: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 32, paddingBottom: 24,
+  },
+  // Playfair, comme partout ailleurs. Ces deux titres tombaient sur `serif` :
+  // du Times New Roman sur le web. La fonte étant déjà italique, on retire le
+  // `fontStyle`, qui superposait une inclinaison simulée à la vraie.
   headline: {
-    fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
-    fontStyle: 'italic', fontSize: 30, color: '#FFF8EC', ...shadow,
+    fontFamily: fonts.display,
+    fontSize: 30, color: colors.cream, ...shadow,
   },
   subheadline: {
-    fontFamily: Platform.select({ ios: 'Georgia', default: 'serif' }),
-    fontStyle: 'italic', fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: 4, ...shadow,
+    fontFamily: fonts.display,
+    fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: 4, ...shadow,
   },
-  form: { paddingHorizontal: 32, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: 12 },
+  form: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 32, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: 12,
+  },
   // Bloc ajouté pour le motif de redirection — en jetons, contrairement au
   // reste de cet écran (non encore repris par le design system).
   reasonNote: {
@@ -202,26 +214,26 @@ const styles = StyleSheet.create({
   },
   reasonText: { ...typography.caption, color: colors.cream, textAlign: 'center' },
   pill: {
-    backgroundColor: '#FFFFFF', borderRadius: 999,
+    backgroundColor: colors.white, borderRadius: 999,
     paddingHorizontal: 20, paddingVertical: 14,
   },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  pillError: { borderWidth: 1.5, borderColor: '#C0392B' },
-  input: { fontSize: 14, color: '#2C2C2A' },
+  pillError: { borderWidth: 1.5, borderColor: colors.danger },
+  input: { ...typography.body, color: colors.ink, },
   forgotRow: { alignSelf: 'flex-end', paddingVertical: 2 },
-  forgotText: { fontSize: 12.5, color: '#FAC775', fontWeight: '600', ...shadow },
-  errorText: { fontSize: 12, color: '#FFB4A8', textAlign: 'center', ...shadow },
+  forgotText: { ...typography.caption, color: colors.amber, ...shadow, },
+  errorText: { ...typography.bodyXs, color: '#FFB4A8', textAlign: 'center', ...shadow, },
   primaryBtn: {
-    backgroundColor: '#FAC775', borderRadius: 999,
+    backgroundColor: colors.amber, borderRadius: 999,
     paddingVertical: 15, alignItems: 'center', marginTop: 4,
   },
-  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#5A2210' },
+  primaryBtnText: { ...typography.titleSm, color: colors.laveDeep, },
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
     backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 999, paddingVertical: 13,
   },
-  googleText: { fontSize: 13.5, fontWeight: '500', color: '#2C2C2A' },
+  googleText: { ...typography.pillLabel, color: colors.ink, },
   linksRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
-  linkText: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '600', ...shadow },
-  dot: { fontSize: 12, color: 'rgba(255,255,255,0.5)' },
+  linkText: { ...typography.caption, color: 'rgba(255,255,255,0.9)', ...shadow, },
+  dot: { ...typography.bodyXs, color: 'rgba(255,255,255,0.5)', },
 });

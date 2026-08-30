@@ -95,7 +95,7 @@ export default function PhoneField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
+  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   row: { flexDirection: 'row', gap: spacing.sm },
   dialBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
@@ -103,10 +103,8 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
   },
   dialText: { ...typography.body, color: colors.ink },
-  input: {
-    flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink,
-  },
+  input: { ...typography.body, flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.ink, },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,

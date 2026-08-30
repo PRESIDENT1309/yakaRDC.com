@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   selectablePad: { paddingHorizontal: 16, paddingVertical: 9 },
   filterPad: { paddingHorizontal: 12, paddingVertical: 7, gap: 4 },
   label: { ...typography.pillLabel, color: colors.ink },
-  labelFilter: { fontSize: 12 },
+  labelFilter: { ...typography.bodyXs, },
   selectableActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   labelSelectableActive: { color: colors.cream },
   filterActive: { backgroundColor: colors.laveSoft, borderColor: colors.lave },

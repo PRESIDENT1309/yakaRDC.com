@@ -1,6 +1,6 @@
 import type { KeyboardTypeOptions } from 'react-native';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { colors } from '../lib/theme';
+import { colors, typography } from '../lib/theme';
 
 export interface FormFieldProps {
   label: string;
@@ -33,7 +33,7 @@ export default function FormField({ label, value, onChange, placeholder, keyboar
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
-  input: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink },
+  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
+  input: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.ink, },
   inputMulti: { height: 70, textAlignVertical: 'top' },
 });

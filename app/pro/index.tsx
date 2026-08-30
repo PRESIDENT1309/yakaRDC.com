@@ -11,7 +11,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { bookingTotal } from '../../lib/offers';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography, breakpoints } from '../../lib/theme';
 import type { Establishment, Booking, Review } from '../../lib/types';
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -131,7 +131,7 @@ export default function PartnerDashboard() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center', padding: 18, paddingBottom: 40 }}>
 
         {/* En-tête */}
         <View style={styles.headerRow}>
@@ -139,7 +139,7 @@ export default function PartnerDashboard() {
             <Text style={styles.brandName}>{establishment.name}</Text>
             <Text style={styles.headerSub}>Bonjour, voici votre activité 👋</Text>
           </View>
-          <Pressable style={styles.bellBtn} onPress={() => Alert.alert('Notifications', 'Bientôt disponible.')}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" style={styles.bellBtn} onPress={() => Alert.alert('Notifications', 'Bientôt disponible.')}>
             <Bell size={16} color={colors.lave} />
           </Pressable>
         </View>
@@ -147,32 +147,32 @@ export default function PartnerDashboard() {
         {/* 4 cartes couleur pleine */}
         <View style={styles.statsGrid}>
           <StatCard
-            icon={<CalendarCheck size={16} color="#FFF" />}
+            icon={<CalendarCheck size={16} color={colors.white} />}
             value={String(todayCount)}
             label="Réservations"
             sub="aujourd'hui"
-            bg="#712B13"
+            bg={colors.lave}
           />
           <StatCard
-            icon={<Users size={16} color="#FFF" />}
+            icon={<Users size={16} color={colors.white} />}
             value={String(establishment.view_count)}
             label="Visiteurs"
             sub="de la fiche"
-            bg="#1F4D3A"
+            bg={colors.success}
           />
           <StatCard
-            icon={<Wallet size={16} color="#FFF" />}
+            icon={<Wallet size={16} color={colors.white} />}
             value={`${revenue.toFixed(0)} $`}
             label="Généré"
             sub="réservations confirmées"
-            bg="#854F0B"
+            bg={colors.warning}
           />
           <StatCard
-            icon={<Star size={16} color="#FFF" />}
+            icon={<Star size={16} color={colors.white} />}
             value={avgRating != null ? avgRating.toFixed(1) : '—'}
             label="Note moyenne"
             sub={`${reviewCount} avis`}
-            bg="#085041"
+            bg={colors.fleuveDark}
           />
         </View>
 
@@ -189,7 +189,7 @@ export default function PartnerDashboard() {
                     styles.barFill,
                     {
                       height: `${(count / maxCount) * 100}%`,
-                      backgroundColor: i === bestDayIdx ? colors.lave : '#F0E4D0',
+                      backgroundColor: i === bestDayIdx ? colors.lave : colors.surfaceSunken,
                     },
                   ]} />
                 </View>
@@ -229,7 +229,7 @@ export default function PartnerDashboard() {
                     <View style={styles.reviewMetaRow}>
                       <View style={{ flexDirection: 'row', gap: 1 }}>
                         {[1, 2, 3, 4, 5].map(i => (
-                          <Star key={i} size={10} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                          <Star key={i} size={10} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                         ))}
                       </View>
                     </View>
@@ -270,7 +270,7 @@ export default function PartnerDashboard() {
           <View style={styles.promoTicket}>
             <View style={styles.promoNotchLeft} />
             <View style={styles.promoNotchRight} />
-            <Tag size={14} color="#FAC775" />
+            <Tag size={14} color={colors.amber} />
             <View>
               <Text style={styles.promoLabel}>PROMOTION ACTIVE</Text>
               <Text style={styles.promoText}>
@@ -285,17 +285,17 @@ export default function PartnerDashboard() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F5F4EF' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F4EF' },
-  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: colors.cream },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
+  emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   headerRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
     marginBottom: 18, paddingTop: Platform.OS === 'ios' ? 46 : 6,
   },
   brandName: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 21, color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 3 },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 3, },
   bellBtn: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF',
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.white,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
@@ -305,43 +305,43 @@ const styles = StyleSheet.create({
     width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 6,
   },
-  statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: '#FFFFFF' },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
-  statSub: { fontSize: 9, color: 'rgba(255,255,255,0.6)' },
+  statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: colors.white },
+  statLabel: { ...typography.captionSm, color: 'rgba(255,255,255,0.9)', marginTop: 2, },
+  statSub: { ...typography.captionSm, color: 'rgba(255,255,255,0.6)', },
   chartCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 20,
+    backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
   chartHeader: { marginBottom: 14 },
-  chartTitle: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  chartTitle: { ...typography.pillLabel, color: colors.ink, },
   chartBars: { flexDirection: 'row', justifyContent: 'space-between', height: 90, alignItems: 'flex-end' },
   barColumn: { alignItems: 'center', gap: 6, flex: 1 },
   barTrack: { width: 14, height: 64, justifyContent: 'flex-end' },
   barFill: { width: '100%', borderRadius: 4, minHeight: 4 },
-  barLabel: { fontSize: 9.5, color: colors.muted },
-  chartFooter: { fontSize: 10.5, color: colors.lave, marginTop: 12, fontStyle: 'italic' },
+  barLabel: { ...typography.captionSm, color: colors.muted, },
+  chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: 12, fontStyle: 'italic', },
   section: { marginBottom: 20 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: colors.ink },
-  seeAll: { fontSize: 11, color: colors.lave, fontWeight: '600' },
+  seeAll: { ...typography.caption, color: colors.lave, },
   reviewCard: {
-    flexDirection: 'row', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
+    flexDirection: 'row', gap: 8, backgroundColor: colors.white, borderRadius: 14, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
-  reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: '#F0E4D0', lineHeight: 30 },
-  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: '#5F5E5A', marginBottom: 6 },
+  reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: colors.surfaceSunken, lineHeight: 30 },
+  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: 6 },
   reviewMetaRow: { flexDirection: 'row', marginBottom: 8 },
   replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 8 },
-  replyText: { flex: 1, fontSize: 11, color: colors.ink },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F0EEE4', paddingTop: 8 },
-  replyInput: { flex: 1, fontSize: 11.5, color: colors.ink, paddingVertical: 4 },
-  replyBtnText: { fontSize: 11, color: colors.lave, fontWeight: '600' },
+  replyText: { ...typography.captionSm, flex: 1, color: colors.ink, },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 8 },
+  replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, paddingVertical: 4, },
+  replyBtnText: { ...typography.caption, color: colors.lave, },
   promoTicket: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.lave, borderRadius: 12, padding: 14, position: 'relative', overflow: 'hidden',
   },
-  promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: '#F5F4EF' },
-  promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: '#F5F4EF' },
-  promoLabel: { fontSize: 8.5, color: '#FAC775', letterSpacing: 0.5 },
-  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: '#FAF8F4', marginTop: 2 },
+  promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: colors.cream },
+  promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: colors.cream },
+  promoLabel: { ...typography.captionSm, color: colors.amber, letterSpacing: 0.5, },
+  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: colors.cream, marginTop: 2 },
 });

@@ -20,7 +20,7 @@ import { supabase } from '../../lib/supabase';
 import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, radii } from '../../lib/theme';
+import { colors, categoryColors, radii, typography } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import CategoryIcon from '../../components/CategoryIcon';
 import EmptyState from '../../components/EmptyState';
@@ -107,7 +107,7 @@ function TicketModal({
               <Text style={styles.ticketType}>{cat?.label ?? 'Établissement'}</Text>
               <Text style={styles.ticketName}>{booking.establishment.name}</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Fermer le billet" onPress={onClose} hitSlop={8}>
               <X size={20} color="rgba(250,248,244,0.8)" />
             </Pressable>
           </View>
@@ -119,7 +119,7 @@ function TicketModal({
                   value={booking.qr_token}
                   size={140}
                   color={colors.ink}
-                  backgroundColor="#FFFFFF"
+                  backgroundColor={colors.white}
                 />
               </View>
               <Text style={styles.ticketQrNote}>
@@ -210,7 +210,7 @@ function BookingCard({
               Code : <Text style={styles.cardCodeValue}>{item.unique_code}</Text>
             </Text>
             <Pressable style={[styles.actionBtn, { backgroundColor: accent }]} onPress={onTicket}>
-              <QrCode size={13} color="#FAF8F4" />
+              <QrCode size={13} color={colors.cream} />
               <Text style={styles.actionBtnText}>Mon ticket</Text>
             </Pressable>
           </>
@@ -358,7 +358,7 @@ export default function BookingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
-    backgroundColor: '#FAF8F4',
+    backgroundColor: colors.cream,
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingHorizontal: 18,
     paddingBottom: 12,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerInner: { gap: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '500', color: colors.ink },
+  headerTitle: { ...typography.titleLg, color: colors.ink, },
   list: { padding: 14, gap: 10, paddingBottom: 100 },
   // Tablette/desktop uniquement : la colonne unique passe en grille 2
   // colonnes (voir cardWidth dans BookingsScreen).
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   // maintenant de EmptyState lui-même.
   empty: { flex: 1, justifyContent: 'center' },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -404,9 +404,9 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 3,
   },
-  cardName: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.ink },
-  cardMeta: { fontSize: 11, color: colors.muted },
-  cardDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  cardName: { ...typography.pillLabel, flex: 1, color: colors.ink, },
+  cardMeta: { ...typography.captionSm, color: colors.muted, },
+  cardDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -414,11 +414,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F4F0',
+    borderTopColor: colors.surfaceSunken,
   },
-  cardCode: { fontSize: 11, color: colors.muted },
+  cardCode: { ...typography.captionSm, color: colors.muted, },
   cardCodeValue: { fontWeight: '500', color: colors.ink, letterSpacing: 0.5 },
-  cardFooterNote: { fontSize: 11, color: colors.muted },
+  cardFooterNote: { ...typography.captionSm, color: colors.muted, },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radii.sm,
   },
-  actionBtnText: { fontSize: 11, color: '#FAF8F4', fontWeight: '500' },
+  actionBtnText: { ...typography.captionMd, color: colors.cream, },
   cancelBtn: {
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -435,14 +435,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  cancelBtnText: { fontSize: 11, color: '#C0392B' },
+  cancelBtnText: { ...typography.captionSm, color: colors.danger, },
   ticketOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   ticketSheet: {
-    backgroundColor: '#FAF8F4',
+    backgroundColor: colors.cream,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 16,
   },
-  ticketType: { fontSize: 11, color: 'rgba(250,248,244,0.7)', marginBottom: 3 },
-  ticketName: { fontSize: 17, fontWeight: '500', color: '#FAF8F4' },
+  ticketType: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginBottom: 3, },
+  ticketName: { ...typography.titleSm, color: colors.cream, },
   ticketBody: { paddingHorizontal: 20 },
   ticketQrPlaceholder: {
     alignItems: 'center',
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   },
   qrWrapper: {
     padding: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -486,15 +486,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  ticketQrNote: { fontSize: 12, color: colors.muted, textAlign: 'center' },
-  ticketCode: {
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '500',
+  ticketQrNote: { ...typography.bodyXs, color: colors.muted, textAlign: 'center', },
+  ticketCode: { ...typography.titleLg, textAlign: 'center',
     letterSpacing: 3,
     color: colors.ink,
-    marginBottom: 16,
-  },
+    marginBottom: 16, },
   ticketDivider: {
     position: 'relative',
     marginBottom: 14,
@@ -520,16 +516,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F4F0',
+    borderBottomColor: colors.surfaceSunken,
   },
-  ticketDetailLabel: { fontSize: 13, color: colors.muted },
-  ticketDetailValue: { fontSize: 13, fontWeight: '500', color: colors.ink },
+  ticketDetailLabel: { ...typography.bodySm, color: colors.muted, },
+  ticketDetailValue: { ...typography.pillLabel, color: colors.ink, },
   ticketFooter: {
     marginTop: 16,
     padding: 10,
-    backgroundColor: '#F5F4F0',
+    backgroundColor: colors.surfaceSunken,
     borderRadius: radii.sm,
     alignItems: 'center',
   },
-  ticketFooterText: { fontSize: 11, color: colors.muted, textAlign: 'center' },
+  ticketFooterText: { ...typography.captionSm, color: colors.muted, textAlign: 'center', },
 });

@@ -201,7 +201,7 @@ export default function SearchScreen() {
               returnKeyType="search"
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Effacer la recherche" onPress={() => setQuery('')} hitSlop={8}>
                 <X size={16} color={colors.faint} strokeWidth={1.75} />
               </Pressable>
             )}

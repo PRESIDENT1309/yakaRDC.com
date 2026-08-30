@@ -6,8 +6,9 @@ import {
 import { ArrowLeft, MailCheck } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { goBack } from '../lib/navigation';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
 import Button from '../components/Button';
+import ScreenHeader from '../components/ScreenHeader';
 
 /**
  * Demande de réinitialisation.
@@ -78,13 +79,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable onPress={() => goBack('/(auth)/login')} hitSlop={8} style={styles.backBtn}>
-            <ArrowLeft size={18} color={colors.ink} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Mot de passe oublié</Text>
-          <View style={{ width: 34 }} />
-        </View>
+        <ScreenHeader title="Mot de passe oublié" variant="plain" backFallback="/(auth)/login" contentMaxWidth={breakpoints.formMax} />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.lede}>
@@ -126,16 +121,7 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.gutter, paddingTop: 52, paddingBottom: spacing.md,
-  },
-  backBtn: {
-    width: 34, height: 34, borderRadius: radii.pill,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white,
-  },
-  headerTitle: { ...typography.cardTitle, color: colors.ink },
-  content: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
   lede: { ...typography.body, color: colors.muted, lineHeight: 21, marginBottom: spacing.lg },
   label: { ...typography.badgeSm, color: colors.faint, marginBottom: 6 },
   field: {

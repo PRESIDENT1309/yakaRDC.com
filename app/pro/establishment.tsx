@@ -16,7 +16,7 @@ import {
 import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, spacing, radii } from '../../lib/theme';
+import { colors, typography, spacing, radii, breakpoints } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
 import OfferManager from '../../components/OfferManager';
 import type { Establishment, ListingPhoto, EstablishmentType } from '../../lib/types';
@@ -510,15 +510,17 @@ export default function EstablishmentScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
         <View style={styles.header}>
+          <View style={styles.headerInner}>
           <View>
             <Text style={styles.headerTitle}>Mon établissement</Text>
             <Text style={styles.headerSub}>Modifications visibles par les voyageurs</Text>
           </View>
           <Pressable style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color="#FAF8F4" size="small" /> :
-             saved ? <><Check size={14} color="#FAF8F4" /><Text style={styles.saveBtnText}>Sauvegardé ✓</Text></> :
-             <><Save size={14} color="#FAF8F4" /><Text style={styles.saveBtnText}>Sauvegarder</Text></>}
+            {saving ? <ActivityIndicator color={colors.cream} size="small" /> :
+             saved ? <><Check size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegardé ✓</Text></> :
+             <><Save size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegarder</Text></>}
           </Pressable>
+          </View>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}
@@ -531,18 +533,18 @@ export default function EstablishmentScreen() {
               <Text style={styles.statLabel}>En attente</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={[styles.statVal, { color: '#1F4D3A' }]}>{confirmedCount}</Text>
+              <Text style={[styles.statVal, { color: colors.success }]}>{confirmedCount}</Text>
               <Text style={styles.statLabel}>Confirmées</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={[styles.statVal, { color: colors.ink }]}>{checkinCount}</Text>
               <Text style={styles.statLabel}>Check-ins</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: '#FAEEDA', borderColor: '#F0C070' }]}>
-              <Text style={[styles.statVal, { color: '#854F0B', fontSize: 15 }]}>
+            <View style={[styles.statCard, { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder }]}>
+              <Text style={[styles.statVal, { color: colors.warning, fontSize: 15 }]}>
                 {price ? `${price}$` : '—'}
               </Text>
-              <Text style={[styles.statLabel, { color: '#854F0B' }]}>/{unitLabel}</Text>
+              <Text style={[styles.statLabel, { color: colors.warning }]}>/{unitLabel}</Text>
             </View>
           </View>
 
@@ -560,9 +562,9 @@ export default function EstablishmentScreen() {
                   ) : (
                     <Svg width="40" height="40" viewBox="0 0 120 120">
                       <Rect width="120" height="120" rx="20" fill="#993C1D" />
-                      <Circle cx="60" cy="48" r="22" fill="#FAC775" />
-                      <Polygon points="34,80 60,38 86,80" fill="#712B13" />
-                      <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
+                      <Circle cx="60" cy="48" r="22" fill={colors.amber} />
+                      <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
+                      <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
                     </Svg>
                   )}
                   <Text style={{ fontSize: 9, color: colors.lave, marginTop: 4 }}>Changer</Text>
@@ -576,8 +578,8 @@ export default function EstablishmentScreen() {
                       <Pressable onPress={() => setViewerIndex(index)}>
                         <Image source={{ uri: photo.url }} style={styles.photoThumb} />
                       </Pressable>
-                      <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(photo)} hitSlop={6}>
-                        <X size={11} color="#FFFFFF" />
+                      <Pressable accessibilityRole="button" accessibilityLabel="Supprimer la photo" style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(photo)} hitSlop={12}>
+                        <X size={11} color={colors.white} />
                       </Pressable>
                     </View>
                   ))}
@@ -630,8 +632,8 @@ export default function EstablishmentScreen() {
                     <Pressable onPress={() => setMenuViewerIndex(index)}>
                       <Image source={{ uri: photo.url }} style={styles.photoThumb} />
                     </Pressable>
-                    <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeleteMenuPhoto(photo)} hitSlop={6}>
-                      <X size={11} color="#FFFFFF" />
+                    <Pressable accessibilityRole="button" accessibilityLabel="Supprimer la photo du menu" style={styles.photoDeleteBtn} onPress={() => handleDeleteMenuPhoto(photo)} hitSlop={12}>
+                      <X size={11} color={colors.white} />
                     </Pressable>
                   </View>
                 ))}
@@ -726,7 +728,7 @@ export default function EstablishmentScreen() {
                   <Pressable key={a}
                     style={[styles.amenityChip, active && styles.amenityChipActive]}
                     onPress={() => toggleAmenity(a)}>
-                    {active && <Check size={11} color="#1F4D3A" />}
+                    {active && <Check size={11} color={colors.success} />}
                     <Text style={[styles.amenityText, active && styles.amenityTextActive]}>{a}</Text>
                   </Pressable>
                 );
@@ -846,8 +848,8 @@ export default function EstablishmentScreen() {
 
 
           <Pressable style={[styles.saveBtnFull, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color="#FAF8F4" /> :
-             <><Save size={16} color="#FAF8F4" /><Text style={styles.saveBtnFullText}>Sauvegarder les modifications</Text></>}
+            {saving ? <ActivityIndicator color={colors.cream} /> :
+             <><Save size={16} color={colors.cream} /><Text style={styles.saveBtnFullText}>Sauvegarder les modifications</Text></>}
           </Pressable>
         </ScrollView>
 
@@ -863,8 +865,8 @@ export default function EstablishmentScreen() {
               <Text style={styles.viewerCounter}>
                 {viewerIndex !== null ? `${viewerIndex + 1} / ${photos.length}` : ''}
               </Text>
-              <Pressable onPress={() => setViewerIndex(null)} hitSlop={12}>
-                <X size={22} color="#FFFFFF" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie" onPress={() => setViewerIndex(null)} hitSlop={12}>
+                <X size={22} color={colors.white} />
               </Pressable>
             </View>
 
@@ -879,30 +881,30 @@ export default function EstablishmentScreen() {
             </View>
 
             <View style={styles.viewerFooter}>
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
                 style={[styles.viewerNavBtn, viewerIndex === 0 && styles.viewerNavBtnDisabled]}
                 onPress={() => setViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
                 disabled={viewerIndex === 0}
                 hitSlop={10}
               >
-                <ChevronLeft size={22} color="#FFFFFF" />
+                <ChevronLeft size={22} color={colors.white} />
               </Pressable>
 
               <Pressable
                 style={styles.viewerDeleteBtn}
                 onPress={() => currentViewerPhoto && handleDeletePhoto(currentViewerPhoto)}
               >
-                <Trash2 size={15} color="#FFFFFF" />
+                <Trash2 size={15} color={colors.white} />
                 <Text style={styles.viewerDeleteText}>Supprimer</Text>
               </Pressable>
 
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
                 style={[styles.viewerNavBtn, viewerIndex === photos.length - 1 && styles.viewerNavBtnDisabled]}
                 onPress={() => setViewerIndex(i => (i !== null && i < photos.length - 1 ? i + 1 : i))}
                 disabled={viewerIndex === photos.length - 1}
                 hitSlop={10}
               >
-                <ChevronRight size={22} color="#FFFFFF" />
+                <ChevronRight size={22} color={colors.white} />
               </Pressable>
             </View>
           </View>
@@ -920,8 +922,8 @@ export default function EstablishmentScreen() {
               <Text style={styles.viewerCounter}>
                 {menuViewerIndex !== null ? `${menuViewerIndex + 1} / ${menuPhotos.length}` : ''}
               </Text>
-              <Pressable onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
-                <X size={22} color="#FFFFFF" />
+              <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie du menu" onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
+                <X size={22} color={colors.white} />
               </Pressable>
             </View>
 
@@ -936,30 +938,30 @@ export default function EstablishmentScreen() {
             </View>
 
             <View style={styles.viewerFooter}>
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
                 style={[styles.viewerNavBtn, menuViewerIndex === 0 && styles.viewerNavBtnDisabled]}
                 onPress={() => setMenuViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
                 disabled={menuViewerIndex === 0}
                 hitSlop={10}
               >
-                <ChevronLeft size={22} color="#FFFFFF" />
+                <ChevronLeft size={22} color={colors.white} />
               </Pressable>
 
               <Pressable
                 style={styles.viewerDeleteBtn}
                 onPress={() => currentMenuViewerPhoto && handleDeleteMenuPhoto(currentMenuViewerPhoto)}
               >
-                <Trash2 size={15} color="#FFFFFF" />
+                <Trash2 size={15} color={colors.white} />
                 <Text style={styles.viewerDeleteText}>Supprimer</Text>
               </Pressable>
 
-              <Pressable
+              <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
                 style={[styles.viewerNavBtn, menuViewerIndex === menuPhotos.length - 1 && styles.viewerNavBtnDisabled]}
                 onPress={() => setMenuViewerIndex(i => (i !== null && i < menuPhotos.length - 1 ? i + 1 : i))}
                 disabled={menuViewerIndex === menuPhotos.length - 1}
                 hitSlop={10}
               >
-                <ChevronRight size={22} color="#FFFFFF" />
+                <ChevronRight size={22} color={colors.white} />
               </Pressable>
             </View>
           </View>
@@ -972,29 +974,33 @@ export default function EstablishmentScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: colors.cream },
-  emptyText: { fontSize: 14, color: colors.muted },
+  emptyText: { ...typography.body, color: colors.muted, },
   header: {
     backgroundColor: colors.lave, paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 18,
+    paddingBottom: 16,
+  },
+  headerInner: {
+    maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 18,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '500', color: '#FAF8F4' },
-  headerSub: { fontSize: 11, color: 'rgba(250,248,244,0.7)', marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.cream, },
+  headerSub: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginTop: 2, },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 8,
   },
-  saveBtnText: { fontSize: 12, color: '#FAF8F4', fontWeight: '500' },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  saveBtnText: { ...typography.caption, color: colors.cream, },
+  content: { maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center', padding: 16, gap: 12, paddingBottom: 40 },
   statsRow: { flexDirection: 'row', gap: 8 },
-  statCard: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
-  statVal: { fontSize: 20, fontWeight: '500' },
-  statLabel: { fontSize: 9, color: colors.muted, marginTop: 2 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
+  statCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  statVal: { ...typography.titleLg, },
+  statLabel: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 14 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 12, },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
-  cardTitleText: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  cardTitleText: { ...typography.pillLabel, color: colors.ink, },
   // ── Horaires d'ouverture ──
   menuPhotoLabel: {
     ...typography.badgeSm, color: colors.faint,
@@ -1030,37 +1036,37 @@ const styles = StyleSheet.create({
   timeSeparator: { ...typography.caption, color: colors.faint },
   dayClosed: { ...typography.caption, color: colors.faint },
   hoursHint: { ...typography.caption, color: colors.faint, marginTop: spacing.sm, lineHeight: 17 },
-  subLabel: { fontSize: 10, color: colors.faint },
-  logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: '#F5C4B3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  subLabel: { ...typography.captionSm, color: colors.faint, },
+  logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: colors.laveBorder, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: 12 },
   addPhotoBtn: { width: 72, height: 72, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   photoThumbWrap: { width: 72, height: 72, borderRadius: 10, overflow: 'visible', position: 'relative' },
-  photoThumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: '#F5F4F0' },
+  photoThumb: { width: 72, height: 72, borderRadius: 10, backgroundColor: colors.surfaceSunken },
   photoDeleteBtn: {
     position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#C0392B', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#FAF8F4',
+    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.cream,
   },
-  hint: { fontSize: 10, color: colors.faint, marginTop: 6 },
-  promoHint: { fontSize: 11, color: colors.muted, marginBottom: 10, lineHeight: 16 },
+  hint: { ...typography.captionSm, color: colors.faint, marginTop: 6, },
+  promoHint: { ...typography.captionSm, color: colors.muted, marginBottom: 10, },
   row: { flexDirection: 'row', gap: 10 },
   fieldWrap: { marginBottom: 10 },
-  fieldLabel: { fontSize: 11, fontWeight: '500', color: colors.muted, marginBottom: 4 },
-  fieldInput: { backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, fontSize: 13, color: colors.ink },
+  fieldLabel: { ...typography.captionMd, color: colors.muted, marginBottom: 4, },
+  fieldInput: { ...typography.bodySm, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9, color: colors.ink, },
   fieldInputMulti: { height: 80, textAlignVertical: 'top' },
   amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 6 },
-  amenityChipActive: { backgroundColor: '#DCEEE3', borderColor: '#A8D5B5' },
-  amenityText: { fontSize: 11, color: colors.muted },
-  amenityTextActive: { color: '#1F4D3A', fontWeight: '500' },
-  communeChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 6 },
+  amenityChipActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
+  amenityText: { ...typography.captionSm, color: colors.muted, },
+  amenityTextActive: { color: colors.success, fontWeight: '500' },
+  communeChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   communeChipActive: { backgroundColor: colors.laveSoft, borderColor: colors.lave },
-  communeChipText: { fontSize: 11.5, color: colors.muted },
+  communeChipText: { ...typography.captionSm, color: colors.muted, },
   communeChipTextActive: { color: colors.lave, fontWeight: '500' },
   communeWarning: { backgroundColor: colors.orSoft, borderRadius: 8, padding: 10, marginBottom: 10 },
-  communeWarningText: { fontSize: 11, color: colors.or, lineHeight: 16 },
+  communeWarningText: { ...typography.captionSm, color: colors.or, },
   saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14, marginTop: 4 },
-  saveBtnFullText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+  saveBtnFullText: { ...typography.sheetOption, color: colors.cream, },
 
   // Visionneuse plein écran
   viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
@@ -1068,7 +1074,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: 12,
   },
-  viewerCounter: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
+  viewerCounter: { ...typography.pillLabel, color: colors.white, },
   viewerImageWrap: { flex: 1, paddingHorizontal: 10 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1084,5 +1090,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(192,57,43,0.9)', borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 11,
   },
-  viewerDeleteText: { fontSize: 13, color: '#FFFFFF', fontWeight: '500' },
+  viewerDeleteText: { ...typography.pillLabel, color: colors.white, },
 });

@@ -8,7 +8,8 @@ import { goBack } from '../lib/navigation';
 import { ArrowLeft, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors } from '../lib/theme';
+import { colors, typography, breakpoints } from '../lib/theme';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function EditProfileScreen() {
   const { profile, refreshProfile } = useAuth();
@@ -32,13 +33,7 @@ export default function EditProfileScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8}>
-            <ArrowLeft size={18} color="#FAF8F4" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Modifier le profil</Text>
-          <View style={{ width: 18 }} />
-        </View>
+        <ScreenHeader title="Modifier le profil" backFallback="/(tabs)/profile" contentMaxWidth={breakpoints.formMax} />
 
         <View style={styles.content}>
           <Text style={styles.fieldLabel}>Nom complet</Text>
@@ -73,9 +68,9 @@ export default function EditProfileScreen() {
             disabled={saving}
           >
             {saving
-              ? <ActivityIndicator color="#FAF8F4" />
+              ? <ActivityIndicator color={colors.cream} />
               : saved
-              ? <><Check size={16} color="#FAF8F4" /><Text style={styles.saveBtnText}>Enregistré</Text></>
+              ? <><Check size={16} color={colors.cream} /><Text style={styles.saveBtnText}>Enregistré</Text></>
               : <Text style={styles.saveBtnText}>Enregistrer</Text>}
           </Pressable>
         </View>
@@ -86,25 +81,16 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 18,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerTitle: { fontSize: 17, fontWeight: '500', color: '#FAF8F4' },
-  content: { padding: 20 },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 6, marginTop: 14 },
-  fieldInput: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.ink,
-  },
-  fieldInputDisabled: { backgroundColor: '#F5F4F0' },
-  disabledText: { fontSize: 14, color: colors.muted },
-  hint: { fontSize: 11, color: colors.faint, marginTop: 5 },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: 20 },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 6, marginTop: 14, },
+  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink, },
+  fieldInputDisabled: { backgroundColor: colors.surfaceSunken },
+  disabledText: { ...typography.body, color: colors.muted, },
+  hint: { ...typography.captionSm, color: colors.faint, marginTop: 5, },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 15, marginTop: 28,
   },
-  saveBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+  saveBtnText: { ...typography.sheetOption, color: colors.cream, },
 });

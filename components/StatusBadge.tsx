@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radii } from '../lib/theme';
+import { colors, radii, typography } from '../lib/theme';
 import type { Booking } from '../lib/types';
 
 export interface StatusBadgeProps {
@@ -18,7 +18,7 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
     confirmed: { label: 'Confirmée', bg: colors.successSoft, color: colors.success },
     checked_in: { label: 'Utilisée', bg: colors.fleuveSoft, color: colors.fleuveDark },
     rejected: { label: 'Refusée', bg: colors.dangerSoft, color: colors.danger },
-    cancelled: { label: 'Annulée', bg: '#F5F4F0', color: colors.faint },
+    cancelled: { label: 'Annulée', bg: colors.surfaceSunken, color: colors.faint },
   };
   const c = config[status] ?? config.pending;
   return (
@@ -30,5 +30,5 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
 
 const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
-  badgeText: { fontSize: 10, fontWeight: '500' },
+  badgeText: { ...typography.captionMd, },
 });

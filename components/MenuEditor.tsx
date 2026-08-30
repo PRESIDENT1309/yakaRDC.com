@@ -98,7 +98,7 @@ export default function MenuEditor({
               placeholder="Nom de la section"
               placeholderTextColor={colors.faint}
             />
-            <Pressable onPress={() => removeSection(sIdx)} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Supprimer cette section du menu" onPress={() => removeSection(sIdx)} hitSlop={8}>
               <Trash2 size={15} color={colors.danger} strokeWidth={1.75} />
             </Pressable>
           </View>
@@ -122,7 +122,7 @@ export default function MenuEditor({
                   keyboardType="decimal-pad"
                 />
                 <Text style={styles.currency}>{item.currency}</Text>
-                <Pressable onPress={() => removeItem(sIdx, iIdx)} hitSlop={8}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Supprimer ce plat" onPress={() => removeItem(sIdx, iIdx)} hitSlop={8}>
                   <Trash2 size={13} color={colors.faint} strokeWidth={1.75} />
                 </Pressable>
               </View>

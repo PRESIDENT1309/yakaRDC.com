@@ -6,7 +6,7 @@ import {
 import { router } from 'expo-router';
 import { Search, Store, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, typography } from '../../lib/theme';
 import CategoryIcon from '../../components/CategoryIcon';
 import type { Establishment, PartnerRequest } from '../../lib/types';
 
@@ -126,12 +126,12 @@ export default function AdminOverview() {
                 <Text style={styles.statValue}>{totalUsers}</Text>
               </View>
               <View style={[styles.statCard, styles.statCardGreen]}>
-                <Text style={[styles.statLabel, { color: '#1F4D3A' }]}>Nouveaux ce mois</Text>
-                <Text style={[styles.statValue, { color: '#1F4D3A' }]}>{newUsersThisMonth}</Text>
+                <Text style={[styles.statLabel, { color: colors.success }]}>Nouveaux ce mois</Text>
+                <Text style={[styles.statValue, { color: colors.success }]}>{newUsersThisMonth}</Text>
               </View>
               <View style={[styles.statCard, styles.statCardAmber]}>
-                <Text style={[styles.statLabel, { color: '#854F0B' }]}>Demandes partenaires</Text>
-                <Text style={[styles.statValue, { color: '#854F0B' }]}>{pendingRequests}</Text>
+                <Text style={[styles.statLabel, { color: colors.warning }]}>Demandes partenaires</Text>
+                <Text style={[styles.statValue, { color: colors.warning }]}>{pendingRequests}</Text>
               </View>
             </View>
 
@@ -147,11 +147,11 @@ export default function AdminOverview() {
                   <Text style={styles.todayLabel}>En attente</Text>
                 </View>
                 <View style={styles.todayBox}>
-                  <Text style={[styles.todayValue, { color: '#1F4D3A' }]}>{todayConfirmed}</Text>
+                  <Text style={[styles.todayValue, { color: colors.success }]}>{todayConfirmed}</Text>
                   <Text style={styles.todayLabel}>Confirmées</Text>
                 </View>
                 <View style={styles.todayBox}>
-                  <Text style={[styles.todayValue, { color: '#085041' }]}>{todayCheckedIn}</Text>
+                  <Text style={[styles.todayValue, { color: colors.fleuveDark }]}>{todayCheckedIn}</Text>
                   <Text style={styles.todayLabel}>Check-ins</Text>
                 </View>
               </View>
@@ -174,18 +174,18 @@ export default function AdminOverview() {
                         <Text style={styles.estabName} numberOfLines={1}>{s.establishment.name}</Text>
                         <View style={{ flexDirection: 'row', gap: 4 }}>
                           {s.pending > 0 && (
-                            <View style={[styles.miniBadge, { backgroundColor: '#FFF8E6' }]}>
-                              <Text style={[styles.miniBadgeText, { color: '#854F0B' }]}>{s.pending} attente</Text>
+                            <View style={[styles.miniBadge, { backgroundColor: colors.warningSoft }]}>
+                              <Text style={[styles.miniBadgeText, { color: colors.warning }]}>{s.pending} attente</Text>
                             </View>
                           )}
                           {s.confirmed > 0 && (
-                            <View style={[styles.miniBadge, { backgroundColor: '#DCEEE3' }]}>
-                              <Text style={[styles.miniBadgeText, { color: '#1F4D3A' }]}>{s.confirmed} confirm.</Text>
+                            <View style={[styles.miniBadge, { backgroundColor: colors.successSoft }]}>
+                              <Text style={[styles.miniBadgeText, { color: colors.success }]}>{s.confirmed} confirm.</Text>
                             </View>
                           )}
                           {s.checkedIn > 0 && (
-                            <View style={[styles.miniBadge, { backgroundColor: '#E1F5EE' }]}>
-                              <Text style={[styles.miniBadgeText, { color: '#085041' }]}>{s.checkedIn} check-in</Text>
+                            <View style={[styles.miniBadge, { backgroundColor: colors.fleuveSoft }]}>
+                              <Text style={[styles.miniBadgeText, { color: colors.fleuveDark }]}>{s.checkedIn} check-in</Text>
                             </View>
                           )}
                         </View>
@@ -238,53 +238,60 @@ export default function AdminOverview() {
   );
 }
 
+// Largeur de la colonne de contenu. L'en-tete la partage : mesure faite dans
+// le DOM, il courait jusqu'a 1220 px alors que le contenu s'arretait a 900,
+// laissant le champ de recherche flotter 320 px au-dela. Le filet du bas
+// delimite desormais exactement la colonne.
+const ADMIN_MAX = 900;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
+    maxWidth: ADMIN_MAX, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
     paddingHorizontal: 20, paddingBottom: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: 8, paddingHorizontal: 11, paddingVertical: 7,
   },
-  searchPlaceholder: { fontSize: 11, color: colors.faint },
-  content: { padding: 20, gap: 14, maxWidth: 900 },
+  searchPlaceholder: { ...typography.captionSm, color: colors.faint, },
+  content: { padding: 20, gap: 14, maxWidth: ADMIN_MAX },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statCard: {
     flex: 1, minWidth: 140,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: 10, padding: 10,
   },
-  statCardAccent: { backgroundColor: colors.laveSoft, borderColor: '#F5C4B3' },
-  statCardGreen: { backgroundColor: '#DCEEE3', borderColor: '#A8D5B5' },
-  statCardAmber: { backgroundColor: '#FAEEDA', borderColor: '#F0C070' },
-  statLabel: { fontSize: 9, color: colors.muted },
-  statValue: { fontSize: 18, fontWeight: '500', color: colors.ink, marginTop: 4 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
+  statCardAccent: { backgroundColor: colors.laveSoft, borderColor: colors.laveBorder },
+  statCardGreen: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
+  statCardAmber: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
+  statLabel: { ...typography.captionSm, color: colors.muted, },
+  statValue: { ...typography.titleSm, color: colors.ink, marginTop: 4, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  cardHeaderTotal: { fontSize: 11, color: colors.lave, fontWeight: '500' },
-  cardLink: { fontSize: 11, color: colors.lave, fontWeight: '500' },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, },
+  cardHeaderTotal: { ...typography.captionMd, color: colors.lave, },
+  cardLink: { ...typography.captionMd, color: colors.lave, },
   todayRow: { flexDirection: 'row', gap: 6, marginTop: 10 },
-  todayBox: { flex: 1, backgroundColor: '#FAFAF9', borderRadius: 8, padding: 8, alignItems: 'center' },
-  todayValue: { fontSize: 16, fontWeight: '500' },
-  todayLabel: { fontSize: 9, color: colors.muted, marginTop: 2 },
-  emptyText: { fontSize: 12, color: colors.muted, marginTop: 8 },
-  estabRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, backgroundColor: '#FAFAF9', borderRadius: 8 },
+  todayBox: { flex: 1, backgroundColor: colors.cream, borderRadius: 8, padding: 8, alignItems: 'center' },
+  todayValue: { ...typography.titleSm, },
+  todayLabel: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: 8, },
+  estabRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, backgroundColor: colors.cream, borderRadius: 8 },
   estabIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  estabName: { flex: 1, fontSize: 12, fontWeight: '500', color: colors.ink },
+  estabName: { ...typography.caption, flex: 1, color: colors.ink, },
   miniBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
-  miniBadgeText: { fontSize: 10, fontWeight: '500' },
+  miniBadgeText: { ...typography.captionMd, },
   requestRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8, backgroundColor: colors.laveSoft, borderRadius: 8 },
-  requestIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  requestName: { fontSize: 12, fontWeight: '500', color: colors.ink },
-  requestMeta: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  requestIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  requestName: { ...typography.caption, color: colors.ink, },
+  requestMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
   examineBtn: { backgroundColor: colors.lave, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
-  examineBtnText: { fontSize: 10, color: '#FAF8F4', fontWeight: '500' },
+  examineBtnText: { ...typography.captionMd, color: colors.cream, },
 });

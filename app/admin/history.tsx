@@ -2,14 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Check, X, UserCog, Store, History as HistoryIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 import type { AdminActivityLog } from '../../lib/types';
 
 const ACTION_CONFIG: Record<string, { icon: (c: string) => React.ReactNode; bg: string; color: string }> = {
-  establishment_approved:       { icon: c => <Check size={13} color={c} />, bg: '#DCEEE3', color: '#1F4D3A' },
-  partner_request_approved:     { icon: c => <Check size={13} color={c} />, bg: '#DCEEE3', color: '#1F4D3A' },
-  partner_request_rejected:     { icon: c => <X size={13} color={c} />, bg: '#FFF0F0', color: '#C0392B' },
-  role_changed:                 { icon: c => <UserCog size={13} color={c} />, bg: '#FAECE7', color: '#712B13' },
+  establishment_approved:       { icon: c => <Check size={13} color={c} />, bg: colors.successSoft, color: colors.success },
+  partner_request_approved:     { icon: c => <Check size={13} color={c} />, bg: colors.successSoft, color: colors.success },
+  partner_request_rejected:     { icon: c => <X size={13} color={c} />, bg: colors.dangerSoft, color: colors.danger },
+  role_changed:                 { icon: c => <UserCog size={13} color={c} />, bg: colors.laveSoft, color: colors.lave },
 };
 
 function describeAction(log: AdminActivityLog): string {
@@ -61,7 +61,7 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.card}>
             {logs.map((log, i) => {
-              const cfg = ACTION_CONFIG[log.action] ?? { icon: (c: string) => <Check size={13} color={c} />, bg: '#F5F4F0', color: colors.muted };
+              const cfg = ACTION_CONFIG[log.action] ?? { icon: (c: string) => <Check size={13} color={c} />, bg: colors.surfaceSunken, color: colors.muted };
               return (
                 <View key={log.id} style={[styles.row, i !== logs.length - 1 && styles.rowBorder]}>
                   <View style={[styles.icon, { backgroundColor: cfg.bg }]}>{cfg.icon(cfg.color)}</View>
@@ -83,16 +83,18 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, maxWidth: 700 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 12, color: colors.muted },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' },
+  emptyText: { ...typography.bodyXs, color: colors.muted, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#F5F4F0' },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
   icon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  rowText: { fontSize: 12.5, color: colors.ink },
-  rowDate: { fontSize: 10.5, color: colors.faint, marginTop: 2 },
+  rowText: { ...typography.bodyXs, color: colors.ink, },
+  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: 2, },
 });

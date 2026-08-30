@@ -10,8 +10,9 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors } from '../lib/theme';
+import { colors, categoryColors, typography } from '../lib/theme';
 import type { Favorite, Establishment, EstablishmentType } from '../lib/types';
+import ScreenHeader from '../components/ScreenHeader';
 
 type FavoriteWithEstablishment = Favorite & { establishment: Establishment };
 
@@ -52,13 +53,7 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8}>
-          <ArrowLeft size={18} color="#FAF8F4" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Mes favoris</Text>
-        <View style={{ width: 18 }} />
-      </View>
+      <ScreenHeader title="Mes favoris" backFallback="/(tabs)/profile" />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -82,7 +77,7 @@ export default function FavoritesScreen() {
                   style={styles.row}
                   onPress={() => router.push(`/listing/${e.id}`)}
                 >
-                  <View style={[styles.iconBox, { backgroundColor: cat?.soft ?? '#FAECE7' }]}>
+                  <View style={[styles.iconBox, { backgroundColor: cat?.soft ?? colors.laveSoft }]}>
                     <TypeIcon type={e?.type} size={20} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -96,7 +91,7 @@ export default function FavoritesScreen() {
                     onPress={(ev) => { ev.stopPropagation(); handleRemove(f.id); }}
                     hitSlop={8}
                   >
-                    <Heart size={18} color="#C0392B" fill="#C0392B" />
+                    <Heart size={18} color={colors.danger} fill={colors.danger} />
                   </Pressable>
                 </Pressable>
               );
@@ -110,24 +105,17 @@ export default function FavoritesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 18,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerTitle: { fontSize: 17, fontWeight: '500', color: '#FAF8F4' },
   content: { padding: 16 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 14, fontWeight: '500', color: colors.ink },
-  emptySubtext: { fontSize: 12, color: colors.muted, textAlign: 'center', lineHeight: 18, maxWidth: 260 },
+  emptyText: { ...typography.labelMd, color: colors.ink, },
+  emptySubtext: { ...typography.bodyXs, color: colors.muted, textAlign: 'center', maxWidth: 260, },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: 12, padding: 12,
   },
   iconBox: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  rowName: { fontSize: 13, fontWeight: '500', color: colors.ink },
+  rowName: { ...typography.pillLabel, color: colors.ink, },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
-  rowLocation: { fontSize: 11, color: colors.faint },
+  rowLocation: { ...typography.captionSm, color: colors.faint, },
 });

@@ -7,7 +7,7 @@ import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, RotateCcw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 
 const SETTING_KEY = 'auth_background_url';
 
@@ -98,10 +98,10 @@ export default function AppearanceScreen() {
 
           <Pressable style={[styles.uploadBtn, uploading && { opacity: 0.7 }]} onPress={handlePickImage} disabled={uploading}>
             {uploading ? (
-              <ActivityIndicator color="#FAF8F4" size="small" />
+              <ActivityIndicator color={colors.cream} size="small" />
             ) : (
               <>
-                <Upload size={15} color="#FAF8F4" />
+                <Upload size={15} color={colors.cream} />
                 <Text style={styles.uploadBtnText}>Changer l'image</Text>
               </>
             )}
@@ -127,24 +127,27 @@ export default function AppearanceScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
   header: {
+    maxWidth: 500, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
     paddingHorizontal: 20, paddingBottom: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, gap: 14, maxWidth: 500 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
-  previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 14, aspectRatio: 16 / 10, backgroundColor: '#F5F4F0' },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 12, },
+  previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 14, aspectRatio: 16 / 10, backgroundColor: colors.surfaceSunken },
   previewImage: { width: '100%', height: '100%' },
   previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  previewEmptyText: { fontSize: 11.5, color: colors.faint, textAlign: 'center', paddingHorizontal: 20 },
+  previewEmptyText: { ...typography.captionSm, color: colors.faint, textAlign: 'center', paddingHorizontal: 20, },
   uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 10, paddingVertical: 12 },
-  uploadBtnText: { fontSize: 13, color: '#FAF8F4', fontWeight: '500' },
+  uploadBtnText: { ...typography.pillLabel, color: colors.cream, },
   resetBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginTop: 8 },
-  resetBtnText: { fontSize: 11.5, color: colors.muted },
-  infoCard: { backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
-  infoText: { fontSize: 11.5, color: colors.muted, lineHeight: 17 },
+  resetBtnText: { ...typography.captionSm, color: colors.muted, },
+  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
+  infoText: { ...typography.captionSm, color: colors.muted, },
 });

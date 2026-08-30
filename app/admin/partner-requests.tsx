@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, typography } from '../../lib/theme';
 import type { PartnerRequest, EstablishmentType, PartnerRequestStatus } from '../../lib/types';
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all';
@@ -43,9 +43,9 @@ function TypeIcon({ type, size = 18 }: { type: EstablishmentType; size?: number 
 
 function StatusBadge({ status }: { status: PartnerRequestStatus }) {
   const config = {
-    pending:  { label: 'En attente', bg: '#FFF8E6', color: '#854F0B' },
-    approved: { label: 'Approuvée', bg: '#DCEEE3', color: '#1F4D3A' },
-    rejected: { label: 'Refusée', bg: '#FFF0F0', color: '#C0392B' },
+    pending:  { label: 'En attente', bg: colors.warningSoft, color: colors.warning },
+    approved: { label: 'Approuvée', bg: colors.successSoft, color: colors.success },
+    rejected: { label: 'Refusée', bg: colors.dangerSoft, color: colors.danger },
   };
   const c = config[status];
   return (
@@ -230,7 +230,7 @@ export default function PartnerRequestsScreen() {
                     style={[styles.listCard, selected?.id === r.id && styles.listCardActive]}
                     onPress={() => { setSelected(r); setRejecting(false); }}
                   >
-                    <View style={[styles.listIcon, { backgroundColor: categoryColors[r.establishment_type]?.soft ?? '#FAECE7' }]}>
+                    <View style={[styles.listIcon, { backgroundColor: categoryColors[r.establishment_type]?.soft ?? colors.laveSoft }]}>
                       <TypeIcon type={r.establishment_type} size={16} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -264,7 +264,7 @@ export default function PartnerRequestsScreen() {
                   </Pressable>
                 )}
                 <View style={styles.detailHeader}>
-                  <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAECE7' }]}>
+                  <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? colors.laveSoft }]}>
                     <TypeIcon type={selected.establishment_type} size={22} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -277,7 +277,7 @@ export default function PartnerRequestsScreen() {
                 </View>
 
                 {/* Type bien visible */}
-                <View style={[styles.typeBanner, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? '#FAEEDA' }]}>
+                <View style={[styles.typeBanner, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? colors.warningSoft }]}>
                 <TypeIcon type={selected.establishment_type} size={15} />
                 <Text style={[styles.typeBannerText, { color: categoryColors[selected.establishment_type]?.accent ?? colors.lave }]}>
                   Type d'établissement : <Text style={{ fontWeight: '500' }}>{TYPE_LABELS[selected.establishment_type]}</Text>
@@ -366,11 +366,11 @@ export default function PartnerRequestsScreen() {
                         disabled={processing}
                       >
                         {processing
-                          ? <ActivityIndicator color="#FAF8F4" size="small" />
-                          : <><Check size={15} color="#FAF8F4" /><Text style={styles.approveBtnText}>Approuver</Text></>}
+                          ? <ActivityIndicator color={colors.cream} size="small" />
+                          : <><Check size={15} color={colors.cream} /><Text style={styles.approveBtnText}>Approuver</Text></>}
                       </Pressable>
                       <Pressable style={styles.rejectBtn} onPress={() => setRejecting(true)}>
-                        <X size={15} color="#C0392B" />
+                        <X size={15} color={colors.danger} />
                         <Text style={styles.rejectBtnText}>Refuser</Text>
                       </Pressable>
                     </View>
@@ -392,7 +392,7 @@ export default function PartnerRequestsScreen() {
                           disabled={processing}
                         >
                           {processing
-                            ? <ActivityIndicator color="#FAF8F4" size="small" />
+                            ? <ActivityIndicator color={colors.cream} size="small" />
                             : <Text style={styles.approveBtnText}>Confirmer le refus</Text>}
                         </Pressable>
                         <Pressable style={styles.cancelBtn} onPress={() => setRejecting(false)}>
@@ -418,57 +418,57 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'web' ? 16 : 50,
     paddingHorizontal: 20, paddingBottom: 10,
   },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   filterRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  filterPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+  filterPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   filterPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  filterText: { fontSize: 11, color: colors.muted },
-  filterTextActive: { color: '#FAF8F4', fontWeight: '500' },
+  filterText: { ...typography.captionSm, color: colors.muted, },
+  filterTextActive: { color: colors.cream, fontWeight: '500' },
   body: { flex: 1, flexDirection: 'row' },
   bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
   listMobile: { width: '100%', borderRightWidth: 0 },
   backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  backToListText: { fontSize: 13, color: colors.lave, fontWeight: '500' },
+  backToListText: { ...typography.pillLabel, color: colors.lave, },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 12, color: colors.muted },
-  listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  emptyText: { ...typography.bodyXs, color: colors.muted, },
+  listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
   listCardActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   listIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  listName: { fontSize: 12, fontWeight: '500', color: colors.ink },
-  listMeta: { fontSize: 10, color: colors.muted, marginTop: 1 },
+  listName: { ...typography.caption, color: colors.ink, },
+  listMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  statusBadgeText: { fontSize: 9.5, fontWeight: '500' },
+  statusBadgeText: { ...typography.captionMd, },
   detail: { flex: 1 },
   detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  detailEmptyText: { fontSize: 13, color: colors.muted },
+  detailEmptyText: { ...typography.bodySm, color: colors.muted, },
   detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   detailIcon: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  detailName: { fontSize: 17, fontWeight: '500', color: colors.ink },
-  detailDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  detailName: { ...typography.titleSm, color: colors.ink, },
+  detailDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   typeBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, padding: 11, marginBottom: 16 },
-  typeBannerText: { fontSize: 12 },
-  sectionLabel: { fontSize: 10.5, fontWeight: '500', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7, marginTop: 4 },
+  typeBannerText: { ...typography.bodyXs, },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7, marginTop: 4, },
   photosRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  photoPlaceholder: { width: 56, height: 56, borderRadius: 8, backgroundColor: '#F5F4F0', alignItems: 'center', justifyContent: 'center' },
-  descBox: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, marginBottom: 14 },
-  descText: { fontSize: 12, color: colors.ink, lineHeight: 19 },
+  photoPlaceholder: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  descBox: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, marginBottom: 14 },
+  descText: { ...typography.bodyXs, color: colors.ink, },
   infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  infoBox: { flex: 1, minWidth: 130, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 9 },
-  infoLabel: { fontSize: 9.5, color: colors.faint },
-  infoValue: { fontSize: 12, color: colors.ink, marginTop: 2 },
-  rejectionBox: { backgroundColor: '#FFF0F0', borderRadius: 10, padding: 12, marginBottom: 14 },
-  rejectionLabel: { fontSize: 10.5, fontWeight: '500', color: '#C0392B', marginBottom: 4 },
-  rejectionText: { fontSize: 12, color: '#C0392B' },
+  infoBox: { flex: 1, minWidth: 130, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 9 },
+  infoLabel: { ...typography.captionSm, color: colors.faint, },
+  infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: 2, },
+  rejectionBox: { backgroundColor: colors.dangerSoft, borderRadius: 10, padding: 12, marginBottom: 14 },
+  rejectionLabel: { ...typography.captionMd, color: colors.danger, marginBottom: 4, },
+  rejectionText: { ...typography.bodyXs, color: colors.danger, },
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#1F4D3A', borderRadius: 10, paddingVertical: 12 },
-  approveBtnText: { fontSize: 13, color: '#FAF8F4', fontWeight: '500' },
-  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
-  rejectBtnText: { fontSize: 13, color: '#C0392B' },
+  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.success, borderRadius: 10, paddingVertical: 12 },
+  approveBtnText: { ...typography.pillLabel, color: colors.cream, },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
+  rejectBtnText: { ...typography.bodySm, color: colors.danger, },
   rejectForm: { marginTop: 4 },
-  rejectInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 13, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: 12 },
-  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#C0392B', borderRadius: 10, paddingVertical: 12 },
-  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
-  cancelBtnText: { fontSize: 13, color: colors.ink },
+  rejectInput: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: 12, },
+  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: 10, paddingVertical: 12 },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
+  cancelBtnText: { ...typography.bodySm, color: colors.ink, },
 });

@@ -4,7 +4,7 @@ import { Alert } from '../../lib/alert';
 import { Star, Trash2, Building2, Home, UtensilsCrossed, Mountain } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, typography } from '../../lib/theme';
 import type { Review, Establishment, EstablishmentType } from '../../lib/types';
 
 type ReviewWithEstablishment = Review & { establishment: Establishment };
@@ -79,19 +79,19 @@ export default function ReviewsScreen() {
             {reviews.map(r => (
               <View key={r.id} style={styles.card}>
                 <View style={styles.cardTop}>
-                  <View style={[styles.estabIcon, { backgroundColor: categoryColors[r.establishment?.type]?.soft ?? '#FAECE7' }]}>
+                  <View style={[styles.estabIcon, { backgroundColor: categoryColors[r.establishment?.type]?.soft ?? colors.laveSoft }]}>
                     <TypeIcon type={r.establishment?.type} />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.estabName} numberOfLines={1}>{r.establishment?.name ?? 'Établissement inconnu'}</Text>
                     <View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}>
                       {[1,2,3,4,5].map(i => (
-                        <Star key={i} size={11} color="#854F0B" fill={i <= r.rating ? '#854F0B' : 'transparent'} />
+                        <Star key={i} size={11} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                       ))}
                     </View>
                   </View>
-                  <Pressable style={styles.deleteBtn} onPress={() => confirmDelete(r)} hitSlop={8}>
-                    <Trash2 size={15} color="#C0392B" />
+                  <Pressable accessibilityRole="button" accessibilityLabel="Supprimer cet avis" style={styles.deleteBtn} onPress={() => confirmDelete(r)} hitSlop={8}>
+                    <Trash2 size={15} color={colors.danger} />
                   </Pressable>
                 </View>
                 {r.comment && <Text style={styles.comment}>{r.comment}</Text>}
@@ -107,17 +107,19 @@ export default function ReviewsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, maxWidth: 700 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 12, color: colors.muted },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  emptyText: { ...typography.bodyXs, color: colors.muted, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   estabIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  estabName: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  deleteBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#FFF0F0', alignItems: 'center', justifyContent: 'center' },
-  comment: { fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 9 },
-  date: { fontSize: 10.5, color: colors.faint, marginTop: 7 },
+  estabName: { ...typography.pillLabel, color: colors.ink, },
+  deleteBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
+  comment: { ...typography.bodyXs, color: colors.muted, marginTop: 9, },
+  date: { ...typography.captionSm, color: colors.faint, marginTop: 7, },
 });

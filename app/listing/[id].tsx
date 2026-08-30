@@ -17,7 +17,6 @@ import {
 import { supabase } from '../../lib/supabase';
 import { cheapestActiveOffer } from '../../lib/offers';
 import { slotToTime, timeToSlot } from '../../lib/slots';
-import { slotsForDay, isOpenOn } from '../../lib/opening-hours';
 import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/menu';
 import MenuSheet from '../../components/MenuSheet';
 import type { OpeningHours } from '../../lib/opening-hours';
@@ -25,7 +24,7 @@ import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import { useConfirm } from '../../lib/confirm-context';
-import { getOpeningStatus } from '../../lib/opening-hours';
+import { getOpeningStatus, isOpenOn } from '../../lib/opening-hours';
 import FormField from '../../components/FormField';
 import Sheet from '../../components/Sheet';
 import OfferCard from '../../components/OfferCard';
@@ -35,6 +34,9 @@ import PhoneField from '../../components/PhoneField';
 import DateField from '../../components/DateField';
 import TimeField from '../../components/TimeField';
 import { DEFAULT_DIAL, findByDial } from '../../lib/countries';
+import { titleCase, sameValue, splitFullName, splitPhone, unitLabel } from '../../lib/listing-format';
+import { slotStateFor } from '../../lib/booking-slots';
+import type { TimeSlot } from '../../lib/booking-slots';
 import EmptyState from '../../components/EmptyState';
 import ListingCard from '../../components/ListingCard';
 import RiverMotif from '../../components/RiverMotif';
@@ -53,54 +55,6 @@ type SimilarEstablishment = Establishment & {
 // le lien ouvre une conversation pré-remplie.
 const SUPPORT_WHATSAPP = '243999000000';
 
-// ── Affichage de l'adresse ──
-// Les données partenaires arrivent telles que saisies (« gombe », « gombe  »).
-// On corrige à l'affichage uniquement, jamais en base.
-function titleCase(v: string): string {
-  return v.trim().split(/\s+/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function sameValue(a?: string | null, b?: string | null): boolean {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
-// `profiles.full_name` est un champ libre : on ne peut que deviner la coupure.
-// Premier mot = prénom, reste = nom. Les champs restent modifiables, donc une
-// mauvaise coupure se corrige — contrairement à ne rien pré-remplir du tout.
-function splitFullName(full?: string | null): { firstName: string; lastName: string } {
-  const parts = (full ?? '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { firstName: '', lastName: '' };
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
-}
-
-// Le téléphone du profil est stocké en un seul champ libre. S'il commence par
-// un indicatif connu, on le sépare pour alimenter le sélecteur ; sinon on
-// garde le numéro tel quel avec l'indicatif par défaut.
-function splitPhone(raw?: string | null): { dial: string; number: string } {
-  const v = (raw ?? '').replace(/\s+/g, ' ').trim();
-  if (!v.startsWith('+')) return { dial: DEFAULT_DIAL, number: v };
-  // Les indicatifs vont de 1 à 4 caractères après le « + » : on teste du plus
-  // long au plus court pour ne pas confondre +1 et +125.
-  for (let len = 4; len >= 1; len--) {
-    const candidate = '+' + v.slice(1).replace(/\D/g, '').slice(0, len);
-    if (findByDial(candidate)) {
-      const rest = v.slice(candidate.length).trim();
-      return { dial: candidate, number: rest };
-    }
-  }
-  return { dial: DEFAULT_DIAL, number: v };
-}
-
-function unitLabel(unit: string | null): string {
-  if (unit === 'night') return '/ nuit';
-  if (unit === 'person') return '/ pers.';
-  if (unit === 'visit') return '/ visite';
-  return '';
-}
-
 // Disponibilités transmises aux formulaires de réservation
 interface Availability {
   fullDays: Set<string>;
@@ -114,37 +68,12 @@ interface Availability {
   closedDays: Set<string>;
 }
 
-type TimeSlot = string;
-
 /**
  * Ce qu'un formulaire doit savoir du lieu au-delà des offres : ses horaires,
  * et de quoi consulter sa carte sans quitter la réservation.
  */
 interface VenueContext {
   openingHours: OpeningHours | null;
-}
-
-/**
- * Créneaux proposés un jour donné, et pourquoi il n'y en a pas.
- * On distingue trois situations que l'app confondait jusqu'ici : horaires non
- * publiés, jour de fermeture, et journée ouverte. Afficher les mêmes sept
- * créneaux partout revenait à promettre une disponibilité inconnue.
- */
-function slotStateFor(oh: OpeningHours | null, date: string, stepMin: number):
-  { slots: TimeSlot[]; message: string | null } {
-  if (!date) return { slots: [], message: "Choisissez d'abord une date." };
-  const open = isOpenOn(oh, date);
-  if (open === null) {
-    return {
-      slots: [],
-      message: "Cet établissement n'a pas encore publié ses horaires. Contactez-le directement pour convenir d'une heure.",
-    };
-  }
-  if (open === false) {
-    return { slots: [], message: 'Fermé ce jour-là. Choisissez une autre date.' };
-  }
-  const slots = slotsForDay(oh, date, stepMin);
-  return { slots, message: slots.length ? null : 'Aucun créneau disponible ce jour-là.' };
 }
 
 // Contexte des offres, passé aux formulaires : ils ont besoin de la liste, des
@@ -230,11 +159,11 @@ function Counter({ label, value, onDec, onInc, accent }:
     <View style={styles.counter}>
       <Text style={styles.counterLabel}>{label}</Text>
       <View style={styles.counterRow}>
-        <Pressable style={[styles.counterBtn, styles.counterBtnMuted]} onPress={onDec} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Diminuer : ' + label} style={[styles.counterBtn, styles.counterBtnMuted]} onPress={onDec} hitSlop={9}>
           <Minus size={14} color={colors.muted} />
         </Pressable>
         <Text style={styles.counterValue}>{value}</Text>
-        <Pressable style={[styles.counterBtn, { backgroundColor: accent }]} onPress={onInc} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Augmenter : ' + label} style={[styles.counterBtn, { backgroundColor: accent }]} onPress={onInc} hitSlop={9}>
           <Plus size={14} color={colors.cream} />
         </Pressable>
       </View>
@@ -594,14 +523,14 @@ function TicketRow({ offer, category, accent, quantity, onChange, remaining }:
         {full && <Text style={styles.ticketFull}>Complet à cette date</Text>}
       </View>
       <View style={styles.counterRow}>
-        <Pressable style={[styles.counterBtn, styles.counterBtnMuted]} onPress={() => onChange(Math.max(0, quantity - 1))} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Diminuer la quantité" style={[styles.counterBtn, styles.counterBtnMuted]} onPress={() => onChange(Math.max(0, quantity - 1))} hitSlop={9}>
           <Minus size={14} color={colors.muted} />
         </Pressable>
         <Text style={styles.counterValue}>{quantity}</Text>
-        <Pressable
+        <Pressable accessibilityRole="button" accessibilityLabel="Augmenter la quantité"
           style={[styles.counterBtn, { backgroundColor: atMax ? colors.border : accent }]}
           onPress={() => { if (!atMax) onChange(quantity + 1); }}
-          hitSlop={8}
+          hitSlop={9}
         >
           <Plus size={14} color={atMax ? colors.faint : colors.cream} />
         </Pressable>
@@ -1592,14 +1521,14 @@ export default function ListingDetailScreen() {
               </View>
             </>
           )}
-          <Pressable style={styles.backBtn} onPress={() => goBack('/(tabs)')}>
+          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Retour" style={styles.backBtn} onPress={() => goBack('/(tabs)')}>
             <ArrowLeft size={16} color={colors.ink} strokeWidth={1.75} />
           </Pressable>
           <View style={styles.heroActions}>
-            <Pressable style={styles.heroActionBtn} onPress={handleShare}>
+            <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Partager" style={styles.heroActionBtn} onPress={handleShare}>
               <Share2 size={16} color={colors.ink} strokeWidth={1.75} />
             </Pressable>
-            <Pressable style={styles.heroActionBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
+            <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel={isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'} style={styles.heroActionBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
               <Heart
                 size={16}
                 strokeWidth={1.75}
@@ -1925,7 +1854,7 @@ export default function ListingDetailScreen() {
         <Text style={styles.fieldLabel}>Votre note</Text>
         <View style={styles.starPicker}>
           {[1, 2, 3, 4, 5].map(i => (
-            <Pressable key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
+            <Pressable accessibilityRole="button" accessibilityLabel={'Noter ' + i + ' sur 5'} key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
               <Star
                 size={34}
                 color={colors.or}
@@ -1981,7 +1910,7 @@ export default function ListingDetailScreen() {
             <Text style={styles.viewerCounter}>
               {viewer ? `${viewer.index + 1} / ${viewerPhotos.length}` : ''}
             </Text>
-            <Pressable onPress={() => setViewer(null)} hitSlop={12}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie" onPress={() => setViewer(null)} hitSlop={12}>
               <X size={22} color={colors.white} strokeWidth={1.75} />
             </Pressable>
           </View>
@@ -1997,7 +1926,7 @@ export default function ListingDetailScreen() {
           </View>
 
           <View style={styles.viewerFooter}>
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
               style={[styles.viewerNavBtn, viewer?.index === 0 && styles.viewerNavBtnDisabled]}
               onPress={() => setViewer(v => (v && v.index > 0 ? { ...v, index: v.index - 1 } : v))}
               disabled={viewer?.index === 0}
@@ -2006,7 +1935,7 @@ export default function ListingDetailScreen() {
               <ChevronLeft size={22} color={colors.white} strokeWidth={1.75} />
             </Pressable>
             <View style={{ width: 44 }} />
-            <Pressable
+            <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
               style={[styles.viewerNavBtn, viewer !== null && viewer.index === viewerPhotos.length - 1 && styles.viewerNavBtnDisabled]}
               onPress={() => setViewer(v => (v && v.index < viewerPhotos.length - 1 ? { ...v, index: v.index + 1 } : v))}
               disabled={viewer !== null && viewer.index === viewerPhotos.length - 1}

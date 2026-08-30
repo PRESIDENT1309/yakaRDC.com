@@ -9,7 +9,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, fonts, typography } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import { useConfirm } from '../../lib/confirm-context';
 import CategoryIcon from '../../components/CategoryIcon';
@@ -295,7 +295,7 @@ export default function PlannerScreen() {
             Itinéraire heure par heure, budget, réservations, lieux à visiter et checklist — tout au même endroit.
           </Text>
           <Pressable style={styles.createBtn} onPress={() => openTripForm(false)}>
-            <Plus size={16} color="#FAF8F4" />
+            <Plus size={16} color={colors.cream} />
             <Text style={styles.createBtnText}>Créer mon voyage</Text>
           </Pressable>
         </View>
@@ -394,7 +394,7 @@ export default function PlannerScreen() {
                             {item.notes && <Text style={styles.itemNotes}>{item.notes}</Text>}
                           </View>
                           <Text style={styles.itemCost}>{Number(item.estimated_cost).toFixed(0)} $</Text>
-                          <Pressable onPress={() => deleteItem(item.id)} hitSlop={8}>
+                          <Pressable accessibilityRole="button" accessibilityLabel="Supprimer cette étape" onPress={() => deleteItem(item.id)} hitSlop={8}>
                             <Trash2 size={13} color={colors.faint} />
                           </Pressable>
                         </View>
@@ -495,7 +495,7 @@ export default function PlannerScreen() {
               <View style={{ gap: 8, paddingHorizontal: 18 }}>
                 {wishlistItems.map(item => (
                   <View key={item.id} style={styles.wishlistCard}>
-                    <Pressable onPress={() => toggleVisited(item)} style={[styles.checkCircle, item.visited && styles.checkCircleActive]}>
+                    <Pressable hitSlop={11} accessibilityRole="button" accessibilityLabel={item.visited ? 'Marquer comme non visité' : 'Marquer comme visité'} onPress={() => toggleVisited(item)} style={[styles.checkCircle, item.visited && styles.checkCircleActive]}>
                       {item.visited && <Check size={12} color={colors.white} />}
                     </Pressable>
                     <View style={{ flex: 1 }}>
@@ -507,7 +507,7 @@ export default function PlannerScreen() {
                         {item.visited ? 'Visité' : 'À visiter'}
                       </Text>
                     </View>
-                    <Pressable onPress={() => deleteItem(item.id)} hitSlop={8}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Retirer de la liste d'envies" onPress={() => deleteItem(item.id)} hitSlop={8}>
                       <Trash2 size={13} color={colors.faint} />
                     </Pressable>
                   </View>
@@ -538,11 +538,11 @@ export default function PlannerScreen() {
                     <View style={{ paddingHorizontal: 18, gap: 6 }}>
                       {catItems.map(item => (
                         <View key={item.id} style={styles.packingRow}>
-                          <Pressable onPress={() => togglePacking(item)} style={[styles.checkSquare, item.is_checked && styles.checkSquareActive]}>
+                          <Pressable hitSlop={13} accessibilityRole="button" accessibilityLabel={item.is_checked ? 'Décocher ' + item.label : 'Cocher ' + item.label} onPress={() => togglePacking(item)} style={[styles.checkSquare, item.is_checked && styles.checkSquareActive]}>
                             {item.is_checked && <Check size={11} color={colors.white} />}
                           </Pressable>
                           <Text style={[styles.packingLabel, item.is_checked && styles.packingLabelDone]}>{item.label}</Text>
-                          <Pressable onPress={() => deletePacking(item.id)} hitSlop={8}>
+                          <Pressable accessibilityRole="button" accessibilityLabel="Supprimer de la valise" onPress={() => deletePacking(item.id)} hitSlop={8}>
                             <Trash2 size={12} color={colors.faint} />
                           </Pressable>
                         </View>
@@ -575,7 +575,7 @@ export default function PlannerScreen() {
               textAlignVertical="top"
             />
             <Pressable style={[styles.createBtn, { marginHorizontal: 18 }]} onPress={handleSaveNotes} disabled={savingNotes}>
-              {savingNotes ? <ActivityIndicator color="#FAF8F4" /> : <Text style={styles.createBtnText}>Enregistrer les notes</Text>}
+              {savingNotes ? <ActivityIndicator color={colors.cream} /> : <Text style={styles.createBtnText}>Enregistrer les notes</Text>}
             </Pressable>
           </View>
         )}
@@ -592,7 +592,7 @@ export default function PlannerScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderRow}>
               <Text style={styles.modalTitle}>{editingTrip ? 'Modifier le voyage' : 'Nouveau voyage'}</Text>
-              <Pressable onPress={() => setShowTripForm(false)} hitSlop={8}><X size={18} color={colors.muted} /></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={() => setShowTripForm(false)} hitSlop={8}><X size={18} color={colors.muted} /></Pressable>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.fieldLabel}>Nom du voyage</Text>
@@ -626,7 +626,7 @@ export default function PlannerScreen() {
               {formError && <Text style={styles.errorText}>{formError}</Text>}
 
               <Pressable style={[styles.createBtn, saving && { opacity: 0.7 }]} onPress={handleSaveTrip} disabled={saving}>
-                {saving ? <ActivityIndicator color="#FAF8F4" /> : <Text style={styles.createBtnText}>{editingTrip ? 'Enregistrer' : 'Créer le voyage'}</Text>}
+                {saving ? <ActivityIndicator color={colors.cream} /> : <Text style={styles.createBtnText}>{editingTrip ? 'Enregistrer' : 'Créer le voyage'}</Text>}
               </Pressable>
             </ScrollView>
           </View>
@@ -707,89 +707,90 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingBottom: 12,
-    backgroundColor: '#FAF8F4',
+    backgroundColor: colors.cream,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerInner: { gap: 10 },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink, paddingHorizontal: 18 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, paddingHorizontal: 18, },
   dashboardRow: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingHorizontal: 18, backgroundColor: colors.lave, paddingVertical: 8, marginTop: Platform.OS === 'ios' ? -56 : -20, marginBottom: 4,
     paddingTop: Platform.OS === 'ios' ? 60 : 16,
   },
-  dashItem: { fontSize: 10.5, color: '#FAF8F4', fontWeight: '500' },
+  dashItem: { ...typography.captionMd, color: colors.cream, },
   tripCard: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 18, backgroundColor: '#FFFFFF',
+    marginHorizontal: 18, backgroundColor: colors.white,
     borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12,
   },
-  tripTitle: { fontSize: 14, fontWeight: '500', color: colors.ink },
-  tripMeta: { fontSize: 10.5, color: colors.muted, marginTop: 2 },
+  tripTitle: { ...typography.labelMd, color: colors.ink, },
+  tripMeta: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
   emptyIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  emptyTitle: { fontSize: 18, fontWeight: '500', color: colors.ink },
-  emptyText: { fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 20, maxWidth: 300 },
+  emptyTitle: { ...typography.titleSm, color: colors.ink, },
+  emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', maxWidth: 300, },
   createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14, marginTop: 8 },
-  createBtnText: { fontSize: 14, fontWeight: '500', color: '#FAF8F4' },
+  createBtnText: { ...typography.labelMd, color: colors.cream, },
   section: { marginTop: 18, marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginBottom: 10 },
-  sectionTitle: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.ink, textTransform: 'capitalize' },
-  sectionTitle2: { fontSize: 12, fontWeight: '500', color: colors.muted, paddingHorizontal: 18, marginBottom: 8, marginTop: 4 },
-  dayTotalText: { fontSize: 13, fontWeight: '500', color: colors.lave },
-  dayChip: { alignItems: 'center', gap: 2, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, minWidth: 58 },
+  sectionTitle: { ...typography.pillLabel, flex: 1, color: colors.ink, textTransform: 'capitalize', },
+  sectionTitle2: { ...typography.caption, color: colors.muted, paddingHorizontal: 18, marginBottom: 8, marginTop: 4, },
+  dayTotalText: { ...typography.pillLabel, color: colors.lave, },
+  dayChip: { alignItems: 'center', gap: 2, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, minWidth: 58 },
   dayChipActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  dayWeekday: { fontSize: 10, color: colors.faint, textTransform: 'capitalize' },
-  dayNumber: { fontSize: 12, fontWeight: '500', color: colors.ink },
-  dayBudget: { fontSize: 9, color: colors.faint },
-  dayTextActive: { color: '#FAF8F4' },
-  emptyDayText: { fontSize: 12, color: colors.muted, paddingHorizontal: 18, marginBottom: 10, lineHeight: 18 },
+  dayWeekday: { ...typography.captionSm, color: colors.faint, textTransform: 'capitalize', },
+  dayNumber: { ...typography.caption, color: colors.ink, },
+  dayBudget: { ...typography.captionSm, color: colors.faint, },
+  dayTextActive: { color: colors.cream },
+  emptyDayText: { ...typography.bodyXs, color: colors.muted, paddingHorizontal: 18, marginBottom: 10, },
   timelineRow: { flexDirection: 'row', gap: 10 },
   timelineTrack: { alignItems: 'center', width: 14 },
   timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.lave, marginTop: 4 },
   timelineLine: { width: 2, flex: 1, backgroundColor: colors.border, marginTop: 2, marginBottom: -2 },
-  itemTime: { fontSize: 10.5, fontWeight: '600', color: colors.lave, marginBottom: 4 },
-  itemCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 11, marginBottom: 14 },
-  itemTitle: { fontSize: 12.5, fontWeight: '500', color: colors.ink },
+  itemTime: { ...typography.caption, color: colors.lave, marginBottom: 4, },
+  itemCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 11, marginBottom: 14 },
+  itemTitle: { ...typography.caption, color: colors.ink, },
   itemTitleDone: { textDecorationLine: 'line-through', color: colors.faint },
-  itemNotes: { fontSize: 10.5, color: colors.muted, marginTop: 2 },
-  itemCost: { fontSize: 11.5, fontWeight: '500', color: colors.ink },
+  itemNotes: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  itemCost: { ...typography.captionMd, color: colors.ink, },
   addItemBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginHorizontal: 18, marginTop: 6, backgroundColor: colors.laveSoft, borderRadius: 10, paddingVertical: 11 },
-  addItemBtnText: { fontSize: 12.5, color: colors.lave, fontWeight: '500' },
+  addItemBtnText: { ...typography.caption, color: colors.lave, },
   budgetHero: { alignItems: 'center', backgroundColor: colors.lave, marginHorizontal: 18, borderRadius: 16, padding: 20, marginBottom: 14 },
-  budgetHeroLabel: { fontSize: 11, color: colors.cream + 'B3' },
-  budgetHeroValue: { fontSize: 30, fontWeight: '600', color: colors.amber, marginTop: 4 },
-  budgetHeroSub: { fontSize: 10.5, color: colors.cream + '99', marginTop: 2 },
+  budgetHeroLabel: { ...typography.captionSm, color: colors.cream + 'B3', },
+  // Montant total du budget : chiffre unique, plus grand que titleLg (22).
+  budgetHeroValue: { fontFamily: fonts.sansSemiBold, fontSize: 30, color: colors.amber, marginTop: 4 },
+  budgetHeroSub: { ...typography.captionSm, color: colors.cream + '99', marginTop: 2, },
   budgetGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 18, marginBottom: 14 },
-  budgetBox: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
-  budgetBoxLabel: { fontSize: 10.5, color: colors.muted },
-  budgetBoxValue: { fontSize: 18, fontWeight: '500', color: colors.ink, marginTop: 3 },
-  progressTrack: { height: 8, backgroundColor: '#F0EEE4', borderRadius: 4, marginHorizontal: 18, marginBottom: 18, overflow: 'hidden' },
+  budgetBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  budgetBoxLabel: { ...typography.captionSm, color: colors.muted, },
+  budgetBoxValue: { ...typography.titleSm, color: colors.ink, marginTop: 3, },
+  progressTrack: { height: 8, backgroundColor: colors.surfaceSunken, borderRadius: 4, marginHorizontal: 18, marginBottom: 18, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 4 },
-  budgetDayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F0EEE4' },
-  budgetDayLabel: { fontSize: 12, color: colors.ink, textTransform: 'capitalize' },
-  budgetDayValue: { fontSize: 12, fontWeight: '500', color: colors.lave },
-  reservationCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  budgetDayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
+  budgetDayLabel: { ...typography.bodyXs, color: colors.ink, textTransform: 'capitalize', },
+  budgetDayValue: { ...typography.caption, color: colors.lave, },
+  reservationCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
   reservationIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  reservationName: { fontSize: 12.5, fontWeight: '500', color: colors.ink },
-  reservationDate: { fontSize: 10.5, color: colors.muted, marginTop: 2 },
-  wishlistCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  reservationName: { ...typography.caption, color: colors.ink, },
+  reservationDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  wishlistCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
   checkCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   checkCircleActive: { backgroundColor: colors.success, borderColor: colors.success },
   wishlistBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  wishlistBadgeText: { fontSize: 9, fontWeight: '500' },
-  packingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  wishlistBadgeText: { ...typography.captionMd, },
+  packingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
   checkSquare: { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   checkSquareActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  packingLabel: { flex: 1, fontSize: 12.5, color: colors.ink },
+  packingLabel: { ...typography.bodyXs, flex: 1, color: colors.ink, },
   packingLabelDone: { textDecorationLine: 'line-through', color: colors.faint },
-  notesInput: { minHeight: 160, marginHorizontal: 18, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, fontSize: 13, color: colors.ink, marginBottom: 14 },
+  notesInput: { ...typography.bodySm, minHeight: 160, marginHorizontal: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.ink, marginBottom: 14, },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#FAF8F4', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '85%' },
+  modalSheet: { backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '85%' },
   modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
   modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  modalTitle: { fontSize: 16, fontWeight: '500', color: colors.ink, marginBottom: 10 },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 6, marginTop: 10 },
-  fieldInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: colors.ink },
+  modalTitle: { ...typography.titleSm, color: colors.ink, marginBottom: 10, },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 6, marginTop: 10, },
+  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: colors.ink, },
   row: { flexDirection: 'row', gap: 10 },
-  errorText: { fontSize: 12, color: '#C0392B', backgroundColor: '#FFF0F0', borderRadius: 8, padding: 10, marginTop: 12, textAlign: 'center' },
+  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 10, marginTop: 12, textAlign: 'center', },
 });

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography, breakpoints } from '../../lib/theme';
 
 type ScanFailure = 'not_found' | 'wrong_establishment' | 'unknown';
 
@@ -89,28 +89,32 @@ export default function ScanScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Scanner un ticket</Text>
-        <Text style={styles.headerSub}>
-          {mode === 'camera' ? 'Visez le QR code du client' : 'Entrez le code du ticket du client'}
-        </Text>
+        <View style={styles.headerInner}>
+          <Text style={styles.headerTitle}>Scanner un ticket</Text>
+          <Text style={styles.headerSub}>
+            {mode === 'camera' ? 'Visez le QR code du client' : 'Entrez le code du ticket du client'}
+          </Text>
+        </View>
       </View>
 
       {/* Bascule caméra / saisie manuelle */}
       <View style={styles.modeSwitch}>
+        <View style={styles.modeSwitchInner}>
         <Pressable
           style={[styles.modeBtn, mode === 'camera' && styles.modeBtnActive]}
           onPress={() => { setMode('camera'); handleReset(); }}
         >
-          <Camera size={14} color={mode === 'camera' ? '#FAF8F4' : colors.muted} />
+          <Camera size={14} color={mode === 'camera' ? colors.cream : colors.muted} />
           <Text style={[styles.modeBtnText, mode === 'camera' && styles.modeBtnTextActive]}>Caméra</Text>
         </Pressable>
         <Pressable
           style={[styles.modeBtn, mode === 'manual' && styles.modeBtnActive]}
           onPress={() => { setMode('manual'); handleReset(); }}
         >
-          <Keyboard size={14} color={mode === 'manual' ? '#FAF8F4' : colors.muted} />
+          <Keyboard size={14} color={mode === 'manual' ? colors.cream : colors.muted} />
           <Text style={[styles.modeBtnText, mode === 'manual' && styles.modeBtnTextActive]}>Saisie manuelle</Text>
         </Pressable>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -139,7 +143,7 @@ export default function ScanScreen() {
                 <View style={styles.viewfinder} pointerEvents="none" />
                 {loading && (
                   <View style={styles.cameraLoadingOverlay}>
-                    <ActivityIndicator color="#FAF8F4" />
+                    <ActivityIndicator color={colors.cream} />
                   </View>
                 )}
               </View>
@@ -170,8 +174,8 @@ export default function ScanScreen() {
               disabled={!code.trim() || loading}
             >
               {loading
-                ? <ActivityIndicator color="#FAF8F4" />
-                : <><Search size={16} color="#FAF8F4" /><Text style={styles.validateBtnText}>Valider le ticket</Text></>
+                ? <ActivityIndicator color={colors.cream} />
+                : <><Search size={16} color={colors.cream} /><Text style={styles.validateBtnText}>Valider le ticket</Text></>
               }
             </Pressable>
           </View>
@@ -187,14 +191,14 @@ export default function ScanScreen() {
           ]}>
             {result.success && !result.alreadyUsed ? (
               <>
-                <CheckCircle size={40} color="#1F4D3A" />
-                <Text style={[styles.resultTitle, { color: '#1F4D3A' }]}>✅ Ticket valide</Text>
+                <CheckCircle size={40} color={colors.success} />
+                <Text style={[styles.resultTitle, { color: colors.success }]}>✅ Ticket valide</Text>
                 <Text style={styles.resultText}>Le client est enregistré. Ce code est maintenant invalidé.</Text>
               </>
             ) : result.success && result.alreadyUsed ? (
               <>
-                <XCircle size={40} color="#854F0B" />
-                <Text style={[styles.resultTitle, { color: '#854F0B' }]}>⚠️ Ticket déjà utilisé</Text>
+                <XCircle size={40} color={colors.warning} />
+                <Text style={[styles.resultTitle, { color: colors.warning }]}>⚠️ Ticket déjà utilisé</Text>
                 <Text style={styles.resultText}>
                   Ce code a déjà été scanné.
                   {result.usedAt ? `\n(${new Date(result.usedAt).toLocaleString('fr-FR')})` : ''}
@@ -202,8 +206,8 @@ export default function ScanScreen() {
               </>
             ) : (
               <>
-                <XCircle size={40} color="#C0392B" />
-                <Text style={[styles.resultTitle, { color: '#C0392B' }]}>
+                <XCircle size={40} color={colors.danger} />
+                <Text style={[styles.resultTitle, { color: colors.danger }]}>
                   {result.failure === 'wrong_establishment'
                     ? '⛔ Autre établissement'
                     : result.failure === 'unknown'
@@ -240,65 +244,74 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.lave,
     paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 20,
+    paddingBottom: 16,
   },
-  headerTitle: { fontSize: 20, fontWeight: '500', color: '#FAF8F4' },
-  headerSub: { fontSize: 13, color: 'rgba(250,248,244,0.7)', marginTop: 4 },
+  headerInner: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 20,
+  },
+  headerTitle: { ...typography.titleLg, color: colors.cream, },
+  headerSub: { ...typography.bodySm, color: 'rgba(250,248,244,0.7)', marginTop: 4, },
+  // Le filet de séparation court sur toute la largeur ; les deux boutons, eux,
+  // s'alignent sur l'en-tête et sur la carte du dessous. Sans cela, la barre
+  // était le seul élément de l'écran à s'étirer d'un bord à l'autre.
   modeSwitch: {
-    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#FAF8F4', borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: 12,
+    backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  modeSwitchInner: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16,
   },
   modeBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong,
     borderRadius: 10, paddingVertical: 9,
   },
   modeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  modeBtnText: { fontSize: 12.5, color: colors.muted },
-  modeBtnTextActive: { color: '#FAF8F4', fontWeight: '500' },
-  content: { padding: 16, gap: 16 },
+  modeBtnText: { ...typography.bodyXs, color: colors.muted, },
+  modeBtnTextActive: { color: colors.cream, fontWeight: '500' },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: 16, gap: 16 },
   cameraCard: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: 16, overflow: 'hidden',
   },
   cameraWrapper: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: '#000' },
   viewfinder: {
     position: 'absolute', top: '18%', left: '18%', right: '18%', bottom: '18%',
-    borderWidth: 3, borderColor: '#FAF8F4', borderRadius: 20,
+    borderWidth: 3, borderColor: colors.cream, borderRadius: 20,
   },
   cameraLoadingOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
   },
   permissionBox: { alignItems: 'center', gap: 12, padding: 32 },
-  permissionText: { fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 19 },
+  permissionText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   permissionBtn: { backgroundColor: colors.lave, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 11 },
-  permissionBtnText: { fontSize: 13, color: '#FAF8F4', fontWeight: '500' },
-  codeCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 20 },
-  codeLabel: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 8 },
-  codeInput: {
-    borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 14, fontSize: 22, fontWeight: '500',
-    color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: 8,
-  },
-  codeHint: { fontSize: 11, color: colors.faint, textAlign: 'center', marginBottom: 16 },
+  permissionBtnText: { ...typography.pillLabel, color: colors.cream, },
+  codeCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 20 },
+  codeLabel: { ...typography.pillLabel, color: colors.ink, marginBottom: 8, },
+  codeInput: { ...typography.titleLg, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: 8, },
+  codeHint: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginBottom: 16, },
   validateBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14,
   },
   validateBtnDisabled: { opacity: 0.5 },
-  validateBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
+  validateBtnText: { ...typography.sheetOption, color: colors.cream, },
   resultCard: { borderRadius: 16, padding: 24, alignItems: 'center', gap: 10, borderWidth: 1 },
-  resultSuccess: { backgroundColor: '#DCEEE3', borderColor: '#A8D5B5' },
-  resultWarning: { backgroundColor: '#FAEEDA', borderColor: '#F0C070' },
-  resultError: { backgroundColor: '#FFF0F0', borderColor: '#F5B5B5' },
-  resultTitle: { fontSize: 18, fontWeight: '500' },
-  resultText: { fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 20 },
+  resultSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
+  resultWarning: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
+  resultError: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
+  resultTitle: { ...typography.titleSm, },
+  resultText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   resetBtn: {
     marginTop: 6, paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10,
   },
-  resetBtnText: { fontSize: 13, color: colors.ink, fontWeight: '500' },
-  note: { backgroundColor: '#F5F4F0', borderRadius: 12, padding: 14 },
-  noteText: { fontSize: 12, color: colors.muted, lineHeight: 18 },
+  resetBtnText: { ...typography.pillLabel, color: colors.ink, },
+  note: { backgroundColor: colors.surfaceSunken, borderRadius: 12, padding: 14 },
+  noteText: { ...typography.bodyXs, color: colors.muted, },
 });

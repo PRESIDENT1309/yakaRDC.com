@@ -10,8 +10,9 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors } from '../lib/theme';
+import { colors, categoryColors, typography } from '../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../lib/types';
+import ScreenHeader from '../components/ScreenHeader';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
 
@@ -28,11 +29,11 @@ function TypeIcon({ type }: { type: EstablishmentType }) {
 
 function statusInfo(status: Booking['status']) {
   switch (status) {
-    case 'confirmed': return { icon: CheckCircle, color: '#1F4D3A', bg: '#DCEEE3', text: 'a été confirmée' };
-    case 'rejected': return { icon: XCircle, color: '#C0392B', bg: '#FFF0F0', text: 'a été refusée' };
-    case 'checked_in': return { icon: CheckCircle, color: '#085041', bg: '#E1F5EE', text: 'a été utilisée (check-in)' };
-    case 'cancelled': return { icon: XCircle, color: colors.muted, bg: '#F5F4F0', text: 'a été annulée' };
-    default: return { icon: Clock, color: '#854F0B', bg: '#FFF8E6', text: 'est en attente de confirmation' };
+    case 'confirmed': return { icon: CheckCircle, color: colors.success, bg: colors.successSoft, text: 'a été confirmée' };
+    case 'rejected': return { icon: XCircle, color: colors.danger, bg: colors.dangerSoft, text: 'a été refusée' };
+    case 'checked_in': return { icon: CheckCircle, color: colors.fleuveDark, bg: colors.fleuveSoft, text: 'a été utilisée (check-in)' };
+    case 'cancelled': return { icon: XCircle, color: colors.muted, bg: colors.surfaceSunken, text: 'a été annulée' };
+    default: return { icon: Clock, color: colors.warning, bg: colors.warningSoft, text: 'est en attente de confirmation' };
   }
 }
 
@@ -58,13 +59,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={() => goBack('/(tabs)')} hitSlop={8}>
-          <ArrowLeft size={18} color="#FAF8F4" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={{ width: 18 }} />
-      </View>
+      <ScreenHeader title="Notifications" backFallback="/(tabs)" />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
@@ -112,23 +107,16 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16, paddingHorizontal: 18,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerTitle: { fontSize: 17, fontWeight: '500', color: '#FAF8F4' },
   content: { padding: 16 },
   empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { fontSize: 14, fontWeight: '500', color: colors.ink },
-  emptySubtext: { fontSize: 12, color: colors.muted, textAlign: 'center', lineHeight: 18, maxWidth: 260 },
+  emptyText: { ...typography.labelMd, color: colors.ink, },
+  emptySubtext: { ...typography.bodyXs, color: colors.muted, textAlign: 'center', maxWidth: 260, },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: 12, padding: 12,
   },
   iconBox: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  rowText: { fontSize: 12.5, color: colors.ink, lineHeight: 18 },
-  rowDate: { fontSize: 10.5, color: colors.faint, marginTop: 3 },
+  rowText: { ...typography.bodyXs, color: colors.ink, },
+  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: 3, },
 });

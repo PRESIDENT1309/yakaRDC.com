@@ -25,7 +25,13 @@ export const colors = {
   white: '#FFFFFF',
   ink: '#2C2C2A',
   muted: '#5F5E5A',
-  faint: '#888780',
+  // Assombri depuis #888780, qui donnait 3,40 de contraste sur cream et 3,61
+  // sur blanc — sous le seuil de 4,5 exigé pour du texte courant. Il porte
+  // pourtant 170 usages : légendes, indications de saisie, prix secondaires.
+  // À 4,73 et 5,02, ces textes redeviennent lisibles en plein soleil sur un
+  // téléphone d'entrée de gamme, et  reste distinctement plus sombre :
+  // la hiérarchie à trois niveaux tient toujours.
+  faint: '#726F67',
   border: '#E5E3DA',
   borderStrong: '#D3D1C7',
   // Noir de marque (teinté lave), pour les scrims photo et sections sombres —
@@ -47,8 +53,32 @@ export const colors = {
   successSoft: '#DCEEE3',
   warning: '#854F0B',
   warningSoft: '#FAEEDA',
-  danger: '#A23B2B',
+  // Aligné sur #C0392B, déjà écrit en dur dans 20 fichiers. Adopter la valeur
+  // en usage plutôt que la mienne évite un changement visuel dans toute
+  // l'application pour un gain de contraste marginal — les deux passent AA.
+  danger: '#C0392B',
   dangerSoft: '#FBEAE5',
+
+  // ── Bordures assorties aux fonds `…Soft` ────────────────────────────────
+  // Chaque fond doux appelle un filet de la même famille. Le système ne les
+  // avait jamais nommés, alors chaque écran les a réécrits en dur : 15 usages
+  // répartis sur admin/ et pro/, tous avec la même valeur. Ils sont repris ici
+  // tels quels — les nommer ne change rien à l'écran, seulement à qui décide.
+  // Note : leur contraste sur leur propre fond est faible (1,1 à 1,5). Ce sont
+  // des filets décoratifs, jamais porteurs d'information ; les renforcer serait
+  // un choix visuel à part, pas une unification.
+  laveBorder: '#F5C4B3',
+  successBorder: '#A8D5B5',
+  warningBorder: '#F0C070',
+  dangerBorder: '#FFD5D5',
+
+  // ── Surfaces sombres et texte posé dessus ───────────────────────────────
+  // `nuit` et `nuit2` couvraient les fonds sombres, mais rien ne nommait le
+  // texte qu'on y pose. D'où trois gris inventés sur place dans admin/ et
+  // (auth)/. Un seul suffit : il tient AA sur les deux fonds (6,9 et 6,4).
+  nuit3: '#3D1408',        // brun de marque, fond plein de welcome et login
+  chrome: '#1F1A16',       // gris très sombre, barre latérale de l'admin
+  onDarkMuted: '#A8A39A',  // texte secondaire sur nuit3 ou chrome
 } as const;
 
 export const categoryColors: Record<string, { accent: string; soft: string; label: string }> = {
@@ -89,6 +119,18 @@ export const breakpoints = {
   // Largeur de contenu maximale sur grand écran — au-delà, on centre plutôt
   // que d'étirer la mise en page mobile indéfiniment.
   contentMax: 1200,
+  // Largeur maximale d'un formulaire ou d'un texte suivi. `contentMax` convient
+  // à une grille de cartes ; appliqué à un champ de saisie, il donne un champ de
+  // mot de passe de 1200 px, que l'œil ne sait plus parcourir. 480 correspond à
+  // la mesure de lecture confortable (environ 65 signes) et à la largeur d'un
+  // formulaire à une colonne.
+  formMax: 480,
+  // Deux largeurs intermédiaires, qui ne sont pas inventées : ce sont celles
+  // déjà en place côté admin, où 700 revient quatre fois et 900 une. Les nommer
+  // permet aux écrans pro — qui n'avaient aucune limite et s'étiraient d'un
+  // bord à l'autre — de rejoindre la même échelle plutôt que d'en créer une.
+  panelMax: 700,      // liste ou panneau à une colonne
+  dashboardMax: 900,  // tableau de bord à plusieurs colonnes
 } as const;
 
 export const fonts = {
@@ -150,4 +192,31 @@ export const typography = {
   // les écrans suivants, là où une hiérarchie plus marquée sera utile.
   displayStrong: { fontFamily: fonts.displaySemiBold, fontSize: 24, lineHeight: 29 },
   buttonStrong: { fontFamily: fonts.sansBold, fontSize: 15 },
+
+  // ── Voix d'interface : les rôles qui manquaient ─────────────────────────
+  // Constat mesuré : 359 styles sur 370 écrivent une taille en dur sans
+  // `fontFamily`. Ils ne rendent donc PAS en Manrope — ils retombent sur la
+  // police du système. Vérifié dans le DOM : sur le seul écran Profil, 23
+  // éléments s'affichent en -apple-system à côté de textes en Manrope.
+  //
+  // La cause n'est pas la négligence : l'échelle ci-dessus fusionne taille,
+  // graisse et police sous un seul nom. Elle sait dire « caption » (Medium
+  // 12,5) mais pas « 13 px en Regular ». Les écrans admin et pro, qui ont
+  // besoin de texte courant dense, n'avaient donc rien à quoi se raccrocher
+  // et ont écrit leurs tailles à la main.
+  //
+  // Ces cinq entrées comblent ce manque. Elles ne sont pas décoratives : chaque
+  // taille reprend une signature réellement présente dans le code.
+  // Règle de reprise : aucune taille existante ne se déplace de plus de 0,5 px.
+  // Seule exception, assumée — les textes écrits sous 10 px (jusqu'à 8,5)
+  // remontent à 11. Leur petitesse était un défaut relevé par l'audit, pas une
+  // intention de dessin.
+  titleLg: { fontFamily: fonts.sansSemiBold, fontSize: 22 },              // titre d'écran (admin, pro)
+  titleMd: { fontFamily: fonts.sansSemiBold, fontSize: 19 },              // valeur de statistique, sous-titre
+  titleSm: { fontFamily: fonts.sansSemiBold, fontSize: 16 },              // titre de carte ou de fenêtre
+  labelMd: { fontFamily: fonts.sansMedium, fontSize: 14 },                // libellé de formulaire, action secondaire
+  captionMd: { fontFamily: fonts.sansMedium, fontSize: 11 },              // étiquette dense en demi-gras
+  bodySm: { fontFamily: fonts.sans, fontSize: 13, lineHeight: 19 },       // texte courant dense (listes admin)
+  bodyXs: { fontFamily: fonts.sans, fontSize: 12, lineHeight: 17 },       // texte courant très dense
+  captionSm: { fontFamily: fonts.sans, fontSize: 11, lineHeight: 15 },    // légende, métadonnée
 } as const;

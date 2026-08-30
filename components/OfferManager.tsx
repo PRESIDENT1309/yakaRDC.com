@@ -339,7 +339,7 @@ export default function OfferManager({
             const photo = photoOf(o.id);
             return (
               <View key={o.id} style={[styles.row, !o.is_active && styles.rowHidden]}>
-                <Pressable onPress={() => attachPhoto(o.id)} style={styles.thumb}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Changer la photo de l'offre" onPress={() => attachPhoto(o.id)} style={styles.thumb}>
                   {photo ? (
                     <Image source={{ uri: photo.url }} style={styles.thumbImg} />
                   ) : (
@@ -356,15 +356,15 @@ export default function OfferManager({
                   </Text>
                 </View>
 
-                <Pressable onPress={() => toggleActive(o)} hitSlop={8} style={styles.iconBtn}>
+                <Pressable accessibilityRole="button" accessibilityLabel={o.is_active ? 'Masquer cette offre' : 'Afficher cette offre'} onPress={() => toggleActive(o)} hitSlop={8} style={styles.iconBtn}>
                   {o.is_active
                     ? <Eye size={16} color={colors.muted} strokeWidth={1.75} />
                     : <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />}
                 </Pressable>
-                <Pressable onPress={() => openEdit(o)} hitSlop={8} style={styles.iconBtn}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Modifier l'offre" onPress={() => openEdit(o)} hitSlop={8} style={styles.iconBtn}>
                   <Pencil size={15} color={colors.lave} strokeWidth={1.75} />
                 </Pressable>
-                <Pressable onPress={() => remove(o)} hitSlop={8} style={styles.iconBtn}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Supprimer l'offre" onPress={() => remove(o)} hitSlop={8} style={styles.iconBtn}>
                   <Trash2 size={15} color={colors.faint} strokeWidth={1.75} />
                 </Pressable>
               </View>
@@ -500,7 +500,7 @@ export default function OfferManager({
 
 const styles = StyleSheet.create({
   hint: { ...typography.caption, color: colors.faint, lineHeight: 17, marginBottom: spacing.sm },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5, marginTop: spacing.sm },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5, marginTop: spacing.sm, },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm },
   row2: { flexDirection: 'row', gap: spacing.sm },
   row: {

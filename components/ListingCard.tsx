@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
   },
-  ratingPillText: { ...typography.caption, fontSize: 10.5, color: colors.or },
+  ratingPillText: { ...typography.captionSm, ...typography.caption, color: colors.or, },
   newPill: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,

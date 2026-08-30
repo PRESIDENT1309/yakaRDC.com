@@ -7,7 +7,7 @@ import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, Trash2, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 
 // ─────────────────────────────────────────────
 // Emplacement à IMAGE UNIQUE (Accueil & Connexion)
@@ -83,13 +83,13 @@ function SingleImageSlot({ settingKey, title, description }:
 
       <View style={styles.actionsRow}>
         <Pressable style={[styles.uploadBtn, uploading && { opacity: 0.7 }]} onPress={handlePickImage} disabled={uploading || deleting}>
-          {uploading ? <ActivityIndicator color="#FAF8F4" size="small" /> : (
-            <><Upload size={14} color="#FAF8F4" /><Text style={styles.uploadBtnText}>{currentUrl ? 'Changer' : 'Choisir une image'}</Text></>
+          {uploading ? <ActivityIndicator color={colors.cream} size="small" /> : (
+            <><Upload size={14} color={colors.cream} /><Text style={styles.uploadBtnText}>{currentUrl ? 'Changer' : 'Choisir une image'}</Text></>
           )}
         </Pressable>
         {currentUrl && (
-          <Pressable style={[styles.deleteBtn, deleting && { opacity: 0.7 }]} onPress={confirmDelete} disabled={uploading || deleting}>
-            {deleting ? <ActivityIndicator color="#C0392B" size="small" /> : <Trash2 size={14} color="#C0392B" />}
+          <Pressable accessibilityRole="button" accessibilityLabel="Supprimer l'image" style={[styles.deleteBtn, deleting && { opacity: 0.7 }]} onPress={confirmDelete} disabled={uploading || deleting}>
+            {deleting ? <ActivityIndicator color={colors.danger} size="small" /> : <Trash2 size={14} color={colors.danger} />}
           </Pressable>
         )}
       </View>
@@ -179,13 +179,13 @@ function MultiImageSlot({ settingKey, title, description }:
                 <View key={url} style={styles.photoThumbWrap}>
                   <Image source={{ uri: url }} style={styles.photoThumb} />
                   <View style={styles.photoOrderBadge}><Text style={styles.photoOrderText}>{i + 1}</Text></View>
-                  <Pressable style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(url)} hitSlop={6}>
-                    <X size={10} color="#FFFFFF" />
+                  <Pressable accessibilityRole="button" accessibilityLabel="Supprimer la photo" style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(url)} hitSlop={13}>
+                    <X size={10} color={colors.white} />
                   </Pressable>
                 </View>
               ))}
               {photos.length < MAX_PHOTOS && (
-                <Pressable style={styles.addPhotoBtn} onPress={handleAddPhoto} disabled={uploading}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Ajouter une photo" style={styles.addPhotoBtn} onPress={handleAddPhoto} disabled={uploading}>
                   {uploading ? <ActivityIndicator color={colors.faint} size="small" /> : <Upload size={16} color={colors.faint} />}
                 </Pressable>
               )}
@@ -194,8 +194,8 @@ function MultiImageSlot({ settingKey, title, description }:
 
           {photos.length === 0 && (
             <Pressable style={[styles.uploadBtn, uploading && { opacity: 0.7 }]} onPress={handleAddPhoto} disabled={uploading}>
-              {uploading ? <ActivityIndicator color="#FAF8F4" size="small" /> : (
-                <><Upload size={14} color="#FAF8F4" /><Text style={styles.uploadBtnText}>Ajouter une photo</Text></>
+              {uploading ? <ActivityIndicator color={colors.cream} size="small" /> : (
+                <><Upload size={14} color={colors.cream} /><Text style={styles.uploadBtnText}>Ajouter une photo</Text></>
               )}
             </Pressable>
           )}
@@ -270,38 +270,41 @@ export default function AppearanceScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
   header: {
+    maxWidth: 500, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
     paddingHorizontal: 20, paddingBottom: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, gap: 14, maxWidth: 500 },
-  groupLabel: { fontSize: 11, fontWeight: '600', color: colors.faint, letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  cardDescription: { fontSize: 10.5, color: colors.faint, marginTop: 2, marginBottom: 12 },
-  previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 14, aspectRatio: 16 / 10, backgroundColor: '#F5F4F0' },
+  groupLabel: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginTop: 6, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, },
+  cardDescription: { ...typography.captionSm, color: colors.faint, marginTop: 2, marginBottom: 12, },
+  previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 14, aspectRatio: 16 / 10, backgroundColor: colors.surfaceSunken },
   previewImage: { width: '100%', height: '100%' },
   previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  previewEmptyText: { fontSize: 11.5, color: colors.faint, textAlign: 'center', paddingHorizontal: 20 },
+  previewEmptyText: { ...typography.captionSm, color: colors.faint, textAlign: 'center', paddingHorizontal: 20, },
   actionsRow: { flexDirection: 'row', gap: 10 },
   uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.lave, borderRadius: 10, paddingVertical: 11, marginBottom: 8 },
-  uploadBtnText: { fontSize: 12.5, color: '#FAF8F4', fontWeight: '500' },
-  deleteBtn: { width: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#FFD5D5', borderRadius: 10, marginBottom: 8 },
+  uploadBtnText: { ...typography.caption, color: colors.cream, },
+  deleteBtn: { width: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: 10, marginBottom: 8 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   photoThumbWrap: { width: 64, height: 64, borderRadius: 10, position: 'relative' },
-  photoThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F5F4F0' },
+  photoThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: colors.surfaceSunken },
   photoOrderBadge: { position: 'absolute', bottom: 3, left: 3, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
-  photoOrderText: { fontSize: 8.5, color: '#FFFFFF', fontWeight: '600' },
+  photoOrderText: { ...typography.badgeSm, color: colors.white, },
   photoDeleteBtn: {
     position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 9,
-    backgroundColor: '#C0392B', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#FAF8F4',
+    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.cream,
   },
   addPhotoBtn: { width: 64, height: 64, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
-  hint: { fontSize: 10.5, color: colors.faint },
-  infoCard: { backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
-  infoText: { fontSize: 11.5, color: colors.muted, lineHeight: 17 },
+  hint: { ...typography.captionSm, color: colors.faint, },
+  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
+  infoText: { ...typography.captionSm, color: colors.muted, },
 });

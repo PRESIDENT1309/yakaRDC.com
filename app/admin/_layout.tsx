@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -78,18 +78,18 @@ export default function AdminLayout() {
       <>
         <View style={styles.brand}>
           <Svg width="26" height="26" viewBox="0 0 120 120">
-            <Rect width="120" height="120" rx="20" fill="#712B13" />
-            <Circle cx="60" cy="48" r="22" fill="#FAC775" />
-            <Polygon points="34,80 60,38 86,80" fill="#712B13" />
-            <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
+            <Rect width="120" height="120" rx="20" fill={colors.lave} />
+            <Circle cx="60" cy="48" r="22" fill={colors.amber} />
+            <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
+            <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
           </Svg>
           <View>
             <Text style={styles.brandTitle}>YakaRDC</Text>
             <Text style={styles.brandSub}>Administration</Text>
           </View>
           {isMobile && (
-            <Pressable style={styles.closeDrawerBtn} onPress={onNavigate} hitSlop={8}>
-              <X size={18} color="#FAF8F4" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Fermer le menu" style={styles.closeDrawerBtn} onPress={onNavigate} hitSlop={8}>
+              <X size={18} color={colors.cream} />
             </Pressable>
           )}
         </View>
@@ -109,7 +109,7 @@ export default function AdminLayout() {
                   onNavigate?.();
                 }}
               >
-                {item.icon(active ? '#FAF8F4' : '#A8A39A')}
+                {item.icon(active ? colors.cream : colors.onDarkMuted)}
                 <Text style={[styles.navLabel, active && styles.navLabelActive]}>{item.label}</Text>
                 {item.ready && badgeValue > 0 && (
                   <View style={styles.navBadge}><Text style={styles.navBadgeText}>{badgeValue}</Text></View>
@@ -129,8 +129,8 @@ export default function AdminLayout() {
               <Text style={styles.profileName} numberOfLines={1}>{profile?.full_name ?? 'Admin'}</Text>
               <Text style={styles.profileRole}>Super-utilisateur</Text>
             </View>
-            <Pressable onPress={handleSignOut} hitSlop={8}>
-              <LogOut size={15} color="#A8A39A" />
+            <Pressable accessibilityRole="button" accessibilityLabel="Se déconnecter" onPress={handleSignOut} hitSlop={8}>
+              <LogOut size={15} color={colors.onDarkMuted} />
             </Pressable>
           </View>
         </View>
@@ -156,7 +156,7 @@ export default function AdminLayout() {
   return (
     <View style={styles.screenMobile}>
       <View style={styles.topBar}>
-        <Pressable style={styles.hamburgerBtn} onPress={() => setDrawerOpen(true)} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Ouvrir le menu" style={styles.hamburgerBtn} onPress={() => setDrawerOpen(true)} hitSlop={8}>
           <Menu size={20} color={colors.ink} />
         </Pressable>
         <Text style={styles.topBarTitle} numberOfLines={1}>
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
 
   // Desktop
   screen: { flex: 1, flexDirection: 'row', backgroundColor: colors.cream },
-  sidebar: { width: 220, backgroundColor: '#1F1A16', paddingTop: 20, flexDirection: 'column' },
+  sidebar: { width: 220, backgroundColor: colors.chrome, paddingTop: 20, flexDirection: 'column' },
   main: { flex: 1, backgroundColor: colors.cream },
 
   // Mobile
@@ -195,10 +195,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 54 : 20,
     paddingHorizontal: 14, paddingBottom: 12,
-    backgroundColor: '#FAF8F4', borderBottomWidth: 1, borderBottomColor: colors.border,
+    backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   hamburgerBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '500', color: colors.ink },
+  topBarTitle: { ...typography.labelMd, flex: 1, textAlign: 'center', color: colors.ink, },
   mainMobile: { flex: 1 },
   backdrop: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -206,26 +206,26 @@ const styles = StyleSheet.create({
   },
   drawer: {
     position: 'absolute', top: 0, left: 0, bottom: 0, width: '78%', maxWidth: 280,
-    backgroundColor: '#1F1A16', zIndex: 100, paddingTop: Platform.OS === 'ios' ? 54 : 30,
+    backgroundColor: colors.chrome, zIndex: 100, paddingTop: Platform.OS === 'ios' ? 54 : 30,
   },
   closeDrawerBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
 
   // Partagé sidebar/drawer
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingBottom: 18 },
-  brandTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: '#FAF8F4' },
-  brandSub: { fontSize: 10, color: '#A8A39A' },
+  brandTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: colors.cream },
+  brandSub: { ...typography.captionSm, color: colors.onDarkMuted, },
   navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
   navItemActive: { backgroundColor: 'rgba(255,255,255,0.1)' },
   navItemDisabled: { opacity: 0.45 },
-  navLabel: { fontSize: 12.5, color: '#A8A39A', flex: 1 },
-  navLabelActive: { color: '#FAF8F4', fontWeight: '500' },
+  navLabel: { ...typography.bodyXs, color: colors.onDarkMuted, flex: 1, },
+  navLabelActive: { color: colors.cream, fontWeight: '500' },
   navBadge: { backgroundColor: colors.lave, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1.5, minWidth: 18, alignItems: 'center' },
-  navBadgeText: { fontSize: 10, color: '#FAF8F4', fontWeight: '500' },
-  soonTag: { fontSize: 8.5, color: '#6B665E' },
+  navBadgeText: { ...typography.captionMd, color: colors.cream, },
+  soonTag: { ...typography.captionSm, color: colors.onDarkMuted, },
   sidebarFooter: { padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   avatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 13, fontWeight: '500', color: '#FAF8F4' },
-  profileName: { fontSize: 11.5, color: '#FAF8F4', fontWeight: '500' },
-  profileRole: { fontSize: 9.5, color: '#A8A39A' },
+  avatarText: { ...typography.pillLabel, color: colors.cream, },
+  profileName: { ...typography.captionMd, color: colors.cream, },
+  profileRole: { ...typography.captionSm, color: colors.onDarkMuted, },
 });

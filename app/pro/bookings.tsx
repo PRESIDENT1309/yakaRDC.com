@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { bookingItemsSummary } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors } from '../../lib/theme';
+import { colors, categoryColors, typography, breakpoints } from '../../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
@@ -23,11 +23,13 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  pending:    { label: 'En attente', bg: '#FFF8E6', color: '#854F0B' },
-  confirmed:  { label: 'Confirmée',  bg: '#DCEEE3', color: '#1F4D3A' },
-  checked_in: { label: 'Utilisée',   bg: '#E1F5EE', color: '#085041' },
-  rejected:   { label: 'Refusée',    bg: '#FFF0F0', color: '#C0392B' },
-  cancelled:  { label: 'Annulée',    bg: '#F5F4F0', color: '#888780' },
+  pending:    { label: 'En attente', bg: colors.warningSoft, color: colors.warning },
+  confirmed:  { label: 'Confirmée',  bg: colors.successSoft, color: colors.success },
+  checked_in: { label: 'Utilisée',   bg: colors.fleuveSoft, color: colors.fleuveDark },
+  rejected:   { label: 'Refusée',    bg: colors.dangerSoft, color: colors.danger },
+  // `faint` sur `surfaceSunken` ne donne que 4,30 : c'est la seule paire du
+  // tableau qui n'atteint pas AA. `muted` est le gris prevu pour ce fond.
+  cancelled:  { label: 'Annulée',    bg: colors.surfaceSunken, color: colors.muted },
 };
 
 function TypeIcon({ type }: { type: EstablishmentType }) {
@@ -102,6 +104,7 @@ export default function PartnerBookingsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
+        <View style={styles.headerInner}>
         <Text style={styles.headerTitle}>Réservations</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
           {FILTERS.map(f => (
@@ -112,6 +115,7 @@ export default function PartnerBookingsScreen() {
           ))}
         </ScrollView>
         <Text style={styles.count}>{filtered.length} réservation{filtered.length !== 1 ? 's' : ''}</Text>
+        </View>
       </View>
 
       {loading ? (
@@ -131,7 +135,7 @@ export default function PartnerBookingsScreen() {
             filtered.map(b => {
               const status = STATUS_CONFIG[b.status] ?? STATUS_CONFIG.pending;
               const cat = categoryColors[b.establishment?.type];
-              const soft = cat?.soft ?? '#FAECE7';
+              const soft = cat?.soft ?? colors.laveSoft;
               return (
                 <View key={b.id} style={styles.card}>
                   <View style={styles.cardTop}>
@@ -201,38 +205,42 @@ export default function PartnerBookingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
-    backgroundColor: '#FAF8F4', paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingHorizontal: 18, paddingBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border, gap: 10,
+    backgroundColor: colors.cream, paddingTop: Platform.OS === 'ios' ? 56 : 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 20, fontWeight: '500', color: colors.ink },
+  headerInner: {
+    maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 18, gap: 10,
+  },
+  headerTitle: { ...typography.titleLg, color: colors.ink, },
   pill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999,
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   pillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  pillText: { fontSize: 12, color: colors.muted },
-  pillTextActive: { color: '#FAF8F4', fontWeight: '500' },
-  count: { fontSize: 11, color: colors.faint },
-  list: { padding: 14, gap: 10, paddingBottom: 100 },
-  empty: { fontSize: 13, color: colors.muted, textAlign: 'center', paddingTop: 40 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  pillText: { ...typography.bodyXs, color: colors.muted, },
+  pillTextActive: { color: colors.cream, fontWeight: '500' },
+  count: { ...typography.captionSm, color: colors.faint, },
+  list: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: 14, gap: 10, paddingBottom: 100 },
+  empty: { ...typography.bodySm, color: colors.muted, textAlign: 'center', paddingTop: 40, },
+  card: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', gap: 10, padding: 12 },
   cardIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cardInfo: { flex: 1 },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  cardName: { fontSize: 13, fontWeight: '500', color: colors.ink, flex: 1, marginRight: 6 },
-  cardEstab: { fontSize: 11, color: colors.lave, fontWeight: '500', marginBottom: 2 },
-  cardDate: { fontSize: 11, color: colors.muted },
-  cardOffer: { fontSize: 11, color: colors.ink, fontWeight: '500', marginTop: 2 },
+  cardName: { ...typography.pillLabel, color: colors.ink, flex: 1, marginRight: 6, },
+  cardEstab: { ...typography.captionMd, color: colors.lave, marginBottom: 2, },
+  cardDate: { ...typography.captionSm, color: colors.muted, },
+  cardOffer: { ...typography.captionMd, color: colors.ink, marginTop: 2, },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  phoneText: { fontSize: 11, color: colors.muted },
+  phoneText: { ...typography.captionSm, color: colors.muted, },
   statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
-  statusText: { fontSize: 10, fontWeight: '500' },
+  statusText: { ...typography.captionMd, },
   cardActions: { flexDirection: 'row', gap: 8, padding: 10, paddingTop: 0 },
-  confirmBtn: { flex: 1, backgroundColor: '#1F4D3A', borderRadius: 8, padding: 8, alignItems: 'center' },
-  confirmBtnText: { fontSize: 12, color: '#FAF8F4', fontWeight: '500' },
-  rejectBtn: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, padding: 8, alignItems: 'center' },
-  rejectBtnText: { fontSize: 12, color: '#C0392B' },
+  confirmBtn: { flex: 1, backgroundColor: colors.success, borderRadius: 8, padding: 8, alignItems: 'center' },
+  confirmBtnText: { ...typography.caption, color: colors.cream, },
+  rejectBtn: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, padding: 8, alignItems: 'center' },
+  rejectBtnText: { ...typography.bodyXs, color: colors.danger, },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, paddingTop: 0 },
-  codeLabel: { fontSize: 11, color: colors.muted },
-  codeValue: { fontSize: 12, fontWeight: '500', color: colors.ink, letterSpacing: 1 },
+  codeLabel: { ...typography.captionSm, color: colors.muted, },
+  codeValue: { ...typography.caption, color: colors.ink, letterSpacing: 1, },
 });

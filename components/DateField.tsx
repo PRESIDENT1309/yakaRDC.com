@@ -79,7 +79,7 @@ export default function DateField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
+  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { colors } from '../lib/theme';
+import { colors, typography } from '../lib/theme';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MONTHS = [
@@ -82,13 +82,13 @@ export default function Calendar({
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <Pressable onPress={goPrev} hitSlop={10} style={styles.navBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Mois précédent" onPress={goPrev} hitSlop={10} style={styles.navBtn}>
           <ChevronLeft size={17} color={colors.ink} />
         </Pressable>
         <Text style={styles.monthLabel}>
           {MONTHS[viewMonth]} {viewYear}
         </Text>
-        <Pressable onPress={goNext} hitSlop={10} style={styles.navBtn}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Mois suivant" onPress={goNext} hitSlop={10} style={styles.navBtn}>
           <ChevronRight size={17} color={colors.ink} />
         </Pressable>
       </View>
@@ -160,7 +160,7 @@ export default function Calendar({
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
@@ -178,22 +178,14 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F4F0',
+    backgroundColor: colors.surfaceSunken,
   },
-  monthLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.ink,
-    textTransform: 'capitalize',
-  },
+  monthLabel: { ...typography.labelMd, color: colors.ink,
+    textTransform: 'capitalize', },
   weekRow: { flexDirection: 'row', marginBottom: 4 },
-  weekday: {
-    flex: 1,
+  weekday: { ...typography.captionMd, flex: 1,
     textAlign: 'center',
-    fontSize: 10.5,
-    color: colors.faint,
-    fontWeight: '500',
-  },
+    color: colors.faint, },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: {
     width: `${100 / 7}%`,
@@ -209,16 +201,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayTextClosed: { color: colors.faint, textDecorationLine: 'line-through' },
-  dayFull: { backgroundColor: '#FFF0F0' },
-  dayText: { fontSize: 13, color: colors.ink },
-  dayTextPast: { color: '#D8D6CE' },
-  dayTextFull: { color: '#C0392B', textDecorationLine: 'line-through' },
-  dayTextSelected: { color: '#FAF8F4', fontWeight: '600' },
+  dayFull: { backgroundColor: colors.dangerSoft },
+  dayText: { ...typography.bodySm, color: colors.ink, },
+  dayTextPast: { color: colors.borderStrong },
+  dayTextFull: { color: colors.danger, textDecorationLine: 'line-through' },
+  dayTextSelected: { color: colors.cream, fontWeight: '600' },
   fullDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#C0392B',
+    backgroundColor: colors.danger,
     marginTop: 1,
   },
   legend: {
@@ -228,7 +220,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F4F0',
+    borderTopColor: colors.surfaceSunken,
   },
-  legendText: { fontSize: 10.5, color: colors.muted },
+  legendText: { ...typography.captionSm, color: colors.muted, },
 });

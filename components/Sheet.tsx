@@ -30,7 +30,7 @@ export default function Sheet({ visible, onClose, title, subtitle, children, avo
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={onClose} hitSlop={8}>
           <X size={20} color={colors.muted} />
         </Pressable>
       </View>

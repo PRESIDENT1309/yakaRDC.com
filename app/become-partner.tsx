@@ -13,7 +13,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { uuidv4 } from '../lib/uuid';
-import { colors, categoryColors } from '../lib/theme';
+import { colors, categoryColors, typography } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
 import type { EstablishmentType } from '../lib/types';
@@ -175,7 +175,7 @@ export default function BecomePartnerScreen() {
     return (
       <View style={styles.successScreen}>
         <View style={styles.successIcon}>
-          <CheckCircle size={44} color="#1F4D3A" />
+          <CheckCircle size={44} color={colors.success} />
         </View>
         <Text style={styles.successTitle}>Demande envoyée !</Text>
         <Text style={styles.successText}>
@@ -196,15 +196,15 @@ export default function BecomePartnerScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8} style={styles.backBtn}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => goBack('/(tabs)/profile')} hitSlop={8} style={styles.backBtn}>
             <ArrowLeft size={18} color={colors.ink} />
           </Pressable>
           <View style={styles.logoRow}>
             <Svg width="28" height="28" viewBox="0 0 120 120">
-              <Rect width="120" height="120" rx="26" fill="#712B13" />
-              <Circle cx="60" cy="48" r="22" fill="#FAC775" />
-              <Polygon points="34,80 60,38 86,80" fill="#712B13" />
-              <Path d="M28,96 Q60,88 92,96" stroke="#FAC775" strokeWidth="5" fill="none" strokeLinecap="round" />
+              <Rect width="120" height="120" rx="26" fill={colors.lave} />
+              <Circle cx="60" cy="48" r="22" fill={colors.amber} />
+              <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
+              <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
             </Svg>
             <Text style={styles.logoText}>YakaRDC</Text>
           </View>
@@ -315,7 +315,7 @@ export default function BecomePartnerScreen() {
             disabled={submitting}
           >
             {submitting
-              ? <ActivityIndicator color="#FAF8F4" />
+              ? <ActivityIndicator color={colors.cream} />
               : <Text style={styles.submitBtnText}>Envoyer ma candidature</Text>
             }
           </Pressable>
@@ -336,47 +336,44 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 24,
     paddingHorizontal: 18, paddingBottom: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
-    backgroundColor: '#FAF8F4',
+    backgroundColor: colors.cream,
   },
   backBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, color: colors.ink },
   content: { padding: 20, paddingBottom: 50, maxWidth: 480, width: '100%', alignSelf: 'center' },
-  title: { fontSize: 20, fontWeight: '500', color: colors.ink, marginBottom: 6 },
-  subtitle: { fontSize: 13, color: colors.muted, lineHeight: 19, marginBottom: 22 },
-  sectionLabel: { fontSize: 11, fontWeight: '500', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10, marginTop: 4 },
+  title: { ...typography.titleLg, color: colors.ink, marginBottom: 6, },
+  subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: 22, },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10, marginTop: 4, },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   typeCard: {
     flex: 1, minWidth: 130, alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
     borderRadius: 12, paddingVertical: 14,
   },
-  typeLabel: { fontSize: 12, color: colors.muted },
+  typeLabel: { ...typography.bodyXs, color: colors.muted, },
   cityChip: {
     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
   },
   cityChipActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
-  cityChipText: { fontSize: 12.5, color: colors.muted },
+  cityChipText: { ...typography.bodyXs, color: colors.muted, },
   cityChipTextActive: { color: colors.lave, fontWeight: '500' },
   row: { flexDirection: 'row', gap: 10 },
   fieldWrap: { marginBottom: 12 },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.ink, marginBottom: 5 },
-  fieldInput: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11,
-    fontSize: 14, color: colors.ink,
-  },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5, },
+  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: colors.ink, },
   fieldInputMulti: { height: 76, textAlignVertical: 'top' },
-  fieldErrorText: { fontSize: 11.5, color: '#C0392B', marginTop: -2, marginBottom: 14 },
-  errorText: { fontSize: 12, color: '#C0392B', backgroundColor: '#FFF0F0', borderRadius: 8, padding: 10, marginBottom: 14, textAlign: 'center' },
+  fieldErrorText: { ...typography.captionSm, color: colors.danger, marginTop: -2, marginBottom: 14, },
+  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 10, marginBottom: 14, textAlign: 'center', },
   submitBtn: { backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 6 },
-  submitBtnText: { fontSize: 15, fontWeight: '500', color: '#FAF8F4' },
-  note: { fontSize: 11.5, color: colors.faint, textAlign: 'center', marginTop: 14, lineHeight: 17 },
+  submitBtnText: { ...typography.sheetOption, color: colors.cream, },
+  note: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginTop: 14, },
   successScreen: { flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
-  successIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#DCEEE3', alignItems: 'center', justifyContent: 'center' },
-  successTitle: { fontSize: 20, fontWeight: '500', color: colors.ink },
-  successText: { fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 21, maxWidth: 340 },
+  successIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
+  successTitle: { ...typography.titleLg, color: colors.ink, },
+  successText: { ...typography.body, color: colors.muted, textAlign: 'center', maxWidth: 340, },
   successBtn: { backgroundColor: colors.lave, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 13, marginTop: 8 },
-  successBtnText: { fontSize: 14, fontWeight: '500', color: '#FAF8F4' },
+  successBtnText: { ...typography.labelMd, color: colors.cream, },
 });

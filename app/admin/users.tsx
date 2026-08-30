@@ -6,13 +6,13 @@ import { Alert } from '../../lib/alert';
 import { Search, ChevronRight, X, Check } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 import type { Profile, UserRole } from '../../lib/types';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; bg: string; color: string }> = {
-  traveler: { label: 'Voyageur', bg: '#E1F5EE', color: '#085041' },
-  partner:  { label: 'Partenaire', bg: '#FAECE7', color: '#712B13' },
-  admin:    { label: 'Admin', bg: '#1F1A16', color: '#FAF8F4' },
+  traveler: { label: 'Voyageur', bg: colors.fleuveSoft, color: colors.fleuveDark },
+  partner:  { label: 'Partenaire', bg: colors.laveSoft, color: colors.lave },
+  admin:    { label: 'Admin', bg: colors.chrome, color: colors.cream },
 };
 
 export default function UsersScreen() {
@@ -122,7 +122,7 @@ export default function UsersScreen() {
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Fiche utilisateur</Text>
-                  <Pressable onPress={() => setSelected(null)} hitSlop={8}><X size={18} color={colors.muted} /></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Fermer la fiche" onPress={() => setSelected(null)} hitSlop={8}><X size={18} color={colors.muted} /></Pressable>
                 </View>
 
                 <View style={styles.modalProfileRow}>
@@ -176,35 +176,37 @@ export default function UsersScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 10 },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 11, paddingVertical: 8, maxWidth: 360 },
-  searchInput: { flex: 1, fontSize: 12, color: colors.ink },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 10 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 11, paddingVertical: 8, maxWidth: 360 },
+  searchInput: { ...typography.bodyXs, flex: 1, color: colors.ink, },
   list: { padding: 20, gap: 8, maxWidth: 700 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12 },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { fontSize: 14, fontWeight: '500', color: colors.lave },
-  rowName: { fontSize: 13, fontWeight: '500', color: colors.ink },
-  rowMeta: { fontSize: 11, color: colors.muted, marginTop: 1 },
+  avatarText: { ...typography.labelMd, color: colors.lave, },
+  rowName: { ...typography.pillLabel, color: colors.ink, },
+  rowMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
   roleBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
-  roleBadgeText: { fontSize: 10.5, fontWeight: '500' },
+  roleBadgeText: { ...typography.captionMd, },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  modalBox: { backgroundColor: '#FAF8F4', borderRadius: 16, padding: 20, width: '100%', maxWidth: 380 },
+  modalBox: { backgroundColor: colors.cream, borderRadius: 16, padding: 20, width: '100%', maxWidth: 380 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  modalTitle: { fontSize: 15, fontWeight: '500', color: colors.ink },
+  modalTitle: { ...typography.sheetOption, color: colors.ink, },
   modalProfileRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  modalName: { fontSize: 15, fontWeight: '500', color: colors.ink },
-  modalEmail: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  modalName: { ...typography.sheetOption, color: colors.ink, },
+  modalEmail: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   infoGrid: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  infoBox: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 9 },
-  infoLabel: { fontSize: 9.5, color: colors.faint },
-  infoValue: { fontSize: 12, color: colors.ink, marginTop: 2 },
-  sectionLabel: { fontSize: 10.5, fontWeight: '500', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+  infoBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 9 },
+  infoLabel: { ...typography.captionSm, color: colors.faint, },
+  infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: 2, },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, },
   roleOptions: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  roleOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingVertical: 9 },
+  roleOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingVertical: 9 },
   roleOptionActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
-  roleOptionText: { fontSize: 11.5, color: colors.muted },
-  suspendBtn: { backgroundColor: '#FFF0F0', borderWidth: 1, borderColor: '#FFD5D5', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
-  suspendBtnText: { fontSize: 12.5, color: '#C0392B', fontWeight: '500' },
+  roleOptionText: { ...typography.captionSm, color: colors.muted, },
+  suspendBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  suspendBtnText: { ...typography.caption, color: colors.danger, },
 });

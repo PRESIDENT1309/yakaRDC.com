@@ -8,8 +8,9 @@ import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/alert';
 import { goBack } from '../lib/navigation';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
 import Button from '../components/Button';
+import ScreenHeader from '../components/ScreenHeader';
 
 /** Longueur minimale — alignée sur le réglage par défaut de Supabase Auth. */
 const MIN_LENGTH = 8;
@@ -96,17 +97,13 @@ export default function ChangePasswordScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          {isForced ? (
-            <View style={{ width: 34 }} />
-          ) : (
-            <Pressable onPress={() => goBack('/(tabs)/profile')} hitSlop={8} style={styles.backBtn}>
-              <ArrowLeft size={18} color={colors.ink} />
-            </Pressable>
-          )}
-          <Text style={styles.headerTitle}>Mot de passe</Text>
-          <View style={{ width: 34 }} />
-        </View>
+        <ScreenHeader
+            title="Mot de passe"
+            variant="plain"
+            showBack={!isForced}
+            backFallback="/(tabs)/profile"
+            contentMaxWidth={breakpoints.formMax}
+          />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {isForced && (
@@ -149,7 +146,7 @@ export default function ChangePasswordScreen() {
               autoCapitalize="none"
               autoComplete="new-password"
             />
-            <Pressable onPress={() => setVisible(v => !v)} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setVisible(v => !v)} hitSlop={8}>
               {visible
                 ? <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />
                 : <Eye size={16} color={colors.faint} strokeWidth={1.75} />}
@@ -187,16 +184,7 @@ export default function ChangePasswordScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.gutter, paddingTop: 52, paddingBottom: spacing.md,
-  },
-  backBtn: {
-    width: 34, height: 34, borderRadius: radii.pill,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white,
-  },
-  headerTitle: { ...typography.cardTitle, color: colors.ink },
-  content: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl, gap: 4 },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl, gap: 4 },
   notice: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
     backgroundColor: colors.warningSoft, borderRadius: radii.md,

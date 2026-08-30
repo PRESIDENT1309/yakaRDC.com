@@ -3,7 +3,7 @@ import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { Tabs, router } from 'expo-router';
 import { LayoutDashboard, CalendarCheck, QrCode, Building2, MoreHorizontal } from 'lucide-react-native';
 import { useAuth } from '../../lib/auth-context';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 
 export default function PartnerLayout() {
   const { profile, loading } = useAuth();
@@ -37,7 +37,7 @@ export default function PartnerLayout() {
           backgroundColor: colors.cream,
           height: Platform.OS === 'web' ? 60 : undefined,
         },
-        tabBarLabelStyle: { fontSize: 10 },
+        tabBarLabelStyle: { ...typography.captionSm, },
       }}
     >
       <Tabs.Screen
@@ -75,6 +75,14 @@ export default function PartnerLayout() {
           tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} />,
         }}
       />
+      {/*
+        `pro-reviews` est une route atteinte depuis « Plus », pas un onglet.
+        Faute d'être déclarée ici, Expo Router l'ajoutait d'office à la barre —
+        elle s'y affichait sous son nom de fichier, « pro-reviews », avec
+        l'icône par défaut. `href: null` la retire de la barre sans toucher à
+        la navigation : le lien depuis « Plus » continue de fonctionner.
+      */}
+      <Tabs.Screen name="pro-reviews" options={{ href: null }} />
     </Tabs>
   );
 }

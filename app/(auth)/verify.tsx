@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { colors, radii } from '../../lib/theme';
+import { colors, fonts, radii, typography, breakpoints } from '../../lib/theme';
 
 export default function VerifyScreen() {
   const { method, identifier } = useLocalSearchParams<{ method: 'phone' | 'email'; identifier: string }>();
@@ -29,45 +29,53 @@ export default function VerifyScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Entre le code reçu</Text>
-      <Text style={styles.subtitle}>Envoyé à {identifier}</Text>
+      <View style={styles.inner}>
+        <Text style={styles.title}>Entre le code reçu</Text>
+        <Text style={styles.subtitle}>Envoyé à {identifier}</Text>
 
-      <TextInput
-        style={styles.input}
-        value={code}
-        onChangeText={setCode}
-        placeholder="000000"
-        keyboardType="number-pad"
-        maxLength={6}
-        autoFocus
-      />
+        <TextInput
+          style={styles.input}
+          value={code}
+          onChangeText={setCode}
+          placeholder="000000"
+          keyboardType="number-pad"
+          maxLength={6}
+          autoFocus
+        />
 
-      {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error}>{error}</Text>}
 
-      <Pressable style={styles.button} onPress={handleVerify} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Vérification...' : 'Confirmer'}</Text>
-      </Pressable>
+        <Pressable style={styles.button} onPress={handleVerify} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Vérification...' : 'Confirmer'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 20, fontWeight: '500', color: colors.ink, marginBottom: 6 },
-  subtitle: { fontSize: 13, color: colors.muted, marginBottom: 24 },
+  // Le champ de code et son bouton n'ont rien à gagner à s'étirer : on les
+  // ramène à la largeur des autres formulaires. Sans effet sous 480 px.
+  inner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
+  title: { ...typography.titleLg, color: colors.ink, marginBottom: 6, },
+  subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: 24, },
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
     padding: 14,
+    // Saisie de code : l'espacement de 6 separe visuellement les chiffres.
+    // Aucune entree de l'echelle ne porte cet ecart, propre a ce seul champ.
+    fontFamily: fonts.sansMedium,
     fontSize: 20,
     letterSpacing: 6,
     textAlign: 'center',
     color: colors.ink,
     marginBottom: 16,
   },
-  error: { color: colors.lave, fontSize: 12, marginBottom: 12 },
+  error: { ...typography.bodyXs, color: colors.lave, marginBottom: 12, },
   button: { backgroundColor: colors.lave, borderRadius: radii.lg, padding: 16, alignItems: 'center' },
-  buttonText: { color: colors.white, fontWeight: '500', fontSize: 15 },
+  buttonText: { ...typography.sheetOption, color: colors.white, },
 });

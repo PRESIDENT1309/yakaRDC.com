@@ -5,7 +5,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { MapPin, Plus, Check, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors } from '../../lib/theme';
+import { colors, typography } from '../../lib/theme';
 import type { City, OfferCategory, EstablishmentType } from '../../lib/types';
 
 const TYPE_LABELS: { key: EstablishmentType; label: string }[] = [
@@ -159,8 +159,8 @@ export default function CitiesScreen() {
               disabled={!newCity.trim() || adding}
             >
               {adding
-                ? <ActivityIndicator color="#FAF8F4" size="small" />
-                : <><Plus size={14} color="#FAF8F4" /><Text style={styles.addBtnText}>Ajouter</Text></>
+                ? <ActivityIndicator color={colors.cream} size="small" />
+                : <><Plus size={14} color={colors.cream} /><Text style={styles.addBtnText}>Ajouter</Text></>
               }
             </Pressable>
           </View>
@@ -180,7 +180,7 @@ export default function CitiesScreen() {
             <View style={{ marginTop: 10, gap: 0 }}>
               {cities.map((city, i) => (
                 <View key={city.id} style={[styles.cityRow, i !== cities.length - 1 && styles.cityRowBorder]}>
-                  <View style={[styles.cityDot, { backgroundColor: city.is_active ? '#1F4D3A' : colors.borderStrong }]} />
+                  <View style={[styles.cityDot, { backgroundColor: city.is_active ? colors.success : colors.borderStrong }]} />
                   <Text style={[styles.cityName, !city.is_active && styles.cityNameInactive]}>{city.name}</Text>
                   <View style={styles.cityActions}>
                     <Pressable
@@ -188,12 +188,12 @@ export default function CitiesScreen() {
                       onPress={() => toggleCity(city)}
                     >
                       {city.is_active
-                        ? <><Check size={11} color="#1F4D3A" /><Text style={[styles.toggleText, { color: '#1F4D3A' }]}>Active</Text></>
+                        ? <><Check size={11} color={colors.success} /><Text style={[styles.toggleText, { color: colors.success }]}>Active</Text></>
                         : <Text style={[styles.toggleText, { color: colors.muted }]}>Inactive</Text>
                       }
                     </Pressable>
-                    <Pressable style={styles.deleteBtn} onPress={() => deleteCity(city)} hitSlop={8}>
-                      <X size={13} color="#C0392B" />
+                    <Pressable accessibilityRole="button" accessibilityLabel={'Supprimer ' + city.name} style={styles.deleteBtn} onPress={() => deleteCity(city)} hitSlop={9}>
+                      <X size={13} color={colors.danger} />
                     </Pressable>
                   </View>
                 </View>
@@ -242,15 +242,15 @@ export default function CitiesScreen() {
                   disabled={!newCatLabel.trim() || addingCat}
                 >
                   {addingCat
-                    ? <ActivityIndicator color="#FAF8F4" size="small" />
-                    : <><Plus size={14} color="#FAF8F4" /><Text style={styles.addBtnText}>Ajouter</Text></>}
+                    ? <ActivityIndicator color={colors.cream} size="small" />
+                    : <><Plus size={14} color={colors.cream} /><Text style={styles.addBtnText}>Ajouter</Text></>}
                 </Pressable>
               </View>
 
               <View style={{ marginTop: 10 }}>
                 {categories.filter(c => c.establishment_type === newCatType).map((c, i, arr) => (
                   <View key={c.id} style={[styles.cityRow, i !== arr.length - 1 && styles.cityRowBorder]}>
-                    <View style={[styles.cityDot, { backgroundColor: c.is_active ? '#1F4D3A' : colors.borderStrong }]} />
+                    <View style={[styles.cityDot, { backgroundColor: c.is_active ? colors.success : colors.borderStrong }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.cityName, !c.is_active && styles.cityNameInactive]}>{c.label}</Text>
                       {!!c.description_hint && <Text style={styles.hintText}>{c.description_hint}</Text>}
@@ -259,7 +259,7 @@ export default function CitiesScreen() {
                       style={[styles.toggleBtn, c.is_active ? styles.toggleBtnActive : styles.toggleBtnInactive]}
                       onPress={() => toggleCategory(c)}
                     >
-                      <Text style={[styles.toggleText, { color: c.is_active ? '#1F4D3A' : colors.muted }]}>
+                      <Text style={[styles.toggleText, { color: c.is_active ? colors.success : colors.muted }]}>
                         {c.is_active ? 'Active' : 'Inactive'}
                       </Text>
                     </Pressable>
@@ -282,10 +282,10 @@ export default function CitiesScreen() {
           </Text>
           <View style={styles.categoriesList}>
             {[
-              { label: 'Hôtels', color: '#712B13', bg: '#FAECE7' },
-              { label: 'Maisons meublées', color: '#085041', bg: '#E1F5EE' },
-              { label: 'Restaurants', color: '#854F0B', bg: '#FAEEDA' },
-              { label: 'Sites touristiques', color: '#1F4D3A', bg: '#DCEEE3' },
+              { label: 'Hôtels', color: colors.lave, bg: colors.laveSoft },
+              { label: 'Maisons meublées', color: colors.fleuveDark, bg: colors.fleuveSoft },
+              { label: 'Restaurants', color: colors.warning, bg: colors.warningSoft },
+              { label: 'Sites touristiques', color: colors.success, bg: colors.successSoft },
             ].map(cat => (
               <View key={cat.label} style={[styles.catChip, { backgroundColor: cat.bg }]}>
                 <Text style={[styles.catChipText, { color: cat.color }]}>{cat.label}</Text>
@@ -300,58 +300,61 @@ export default function CitiesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  // Meme largeur que le contenu : sans cela, le filet du bas et les actions
+  // de droite depassaient la colonne de plusieurs centaines de pixels.
   header: {
+    maxWidth: 600, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
     paddingHorizontal: 20, paddingBottom: 14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 16, fontWeight: '500', color: colors.ink },
-  headerSub: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  headerTitle: { ...typography.titleSm, color: colors.ink, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, gap: 12, maxWidth: 600 },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
-  cardTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 12 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 12, },
   addRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   addInput: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border,
     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
   },
-  input: { flex: 1, fontSize: 13, color: colors.ink },
+  input: { ...typography.bodySm, flex: 1, color: colors.ink, },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: colors.lave, borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 10,
   },
-  addBtnText: { fontSize: 12, color: '#FAF8F4', fontWeight: '500' },
+  addBtnText: { ...typography.caption, color: colors.cream, },
   empty: { alignItems: 'center', paddingVertical: 20, gap: 8 },
-  emptyText: { fontSize: 12, color: colors.muted },
+  emptyText: { ...typography.bodyXs, color: colors.muted, },
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
-  cityRowBorder: { borderBottomWidth: 1, borderBottomColor: '#F5F4F0' },
+  cityRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
   cityDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
-  cityName: { flex: 1, fontSize: 13, color: colors.ink },
+  cityName: { ...typography.bodySm, flex: 1, color: colors.ink, },
   cityNameInactive: { color: colors.muted, textDecorationLine: 'line-through' },
-  hintText: { fontSize: 11, color: colors.faint, lineHeight: 16, marginTop: 4 },
+  hintText: { ...typography.captionSm, color: colors.faint, marginTop: 4, },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, marginBottom: 10 },
-  typeBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.borderStrong },
+  typeBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   typeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
-  typeBtnText: { fontSize: 12, color: colors.muted },
-  typeBtnTextActive: { color: '#FAF8F4', fontWeight: '500' },
+  typeBtnText: { ...typography.bodyXs, color: colors.muted, },
+  typeBtnTextActive: { color: colors.cream, fontWeight: '500' },
   cityActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   toggleBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1,
   },
-  toggleBtnActive: { backgroundColor: '#DCEEE3', borderColor: '#A8D5B5' },
-  toggleBtnInactive: { backgroundColor: '#F5F4F0', borderColor: colors.borderStrong },
-  toggleText: { fontSize: 10.5, fontWeight: '500' },
+  toggleBtnActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
+  toggleBtnInactive: { backgroundColor: colors.surfaceSunken, borderColor: colors.borderStrong },
+  toggleText: { ...typography.captionMd, },
   deleteBtn: {
     width: 26, height: 26, borderRadius: 6,
-    backgroundColor: '#FFF0F0', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center',
   },
-  infoCard: { backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
-  infoTitle: { fontSize: 13, fontWeight: '500', color: colors.ink, marginBottom: 8 },
-  infoText: { fontSize: 12, color: colors.muted, lineHeight: 18, marginBottom: 12 },
+  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  infoTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 8, },
+  infoText: { ...typography.bodyXs, color: colors.muted, marginBottom: 12, },
   categoriesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  catChipText: { fontSize: 11, fontWeight: '500' },
+  catChipText: { ...typography.captionMd, },
 });
