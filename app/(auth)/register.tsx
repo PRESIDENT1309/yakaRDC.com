@@ -83,9 +83,10 @@ export default function RegisterScreen() {
     });
 
     if (authError) {
-      // Trace complète : le message affiché est volontairement court, mais on
-      // garde de quoi diagnostiquer si le serveur répond d'une façon inattendue.
-      console.error('[inscription] échec de signUp', authError);
+      // Trace complète, en `log` et non en `error` : en développement, Expo
+      // affiche un bandeau rouge plein écran pour tout `console.error`, qui
+      // recouvrait précisément le message que cet écran vient de composer.
+      console.log('[inscription] échec de signUp', authError);
       setLoading(false);
       setError(
         authError.message === 'User already registered'
@@ -136,7 +137,7 @@ export default function RegisterScreen() {
         .from('profiles').select('id').eq('id', data.user!.id).maybeSingle();
 
       if (!profil) {
-        console.error('[inscription] profil non créé', profileError);
+        console.log('[inscription] profil non créé', profileError);
         setLoading(false);
         setError(
           "Votre compte d'accès a été créé, mais son profil n'a pas pu être "

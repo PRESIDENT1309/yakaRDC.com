@@ -11,6 +11,24 @@ export interface SendResult {
   error: string | null;
 }
 
+/**
+ * Adresse publique de l'application, telle qu'elle apparaît dans les liens
+ * envoyés par email.
+ *
+ * Cette valeur était lue séparément dans chaque fonction, avec des replis
+ * DIFFÉRENTS : `https://yakardc.app` pour l'approbation partenaire,
+ * `https://www.yakardc.com` pour la réinitialisation de mot de passe. Une
+ * variable, deux vérités — et rien pour signaler la divergence. Si `APP_URL`
+ * n'est pas défini dans les secrets, chaque partenaire approuvé reçoit donc un
+ * lien de connexion vers un domaine qui n'est pas celui du site.
+ *
+ * Un seul endroit décide désormais. Le repli suit le domaine réellement
+ * exploité ; `APP_URL` reste prioritaire pour les environnements de test.
+ */
+export function appUrl(): string {
+  return (Deno.env.get('APP_URL') ?? 'https://www.yakardc.com').replace(/\/+$/, '');
+}
+
 /** Gabarit commun — bandeau lave, corps blanc, pied discret. */
 export function layout(params: { title: string; body: string }): string {
   return `

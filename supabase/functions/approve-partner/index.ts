@@ -21,7 +21,7 @@
 // métadonnées du compte : l'app impose son remplacement à la connexion.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { sendEmail, layout, button, notice } from '../_shared/email.ts';
+import { sendEmail, layout, button, notice, appUrl as adressePublique } from '../_shared/email.ts';
 import { keyKind, firstEnv, secretKey, publishableKey } from '../_shared/keys.ts';
 
 const CORS = {
@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
   // endroit ou la cle est manipulee.
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
   const MAIL_FROM = Deno.env.get('MAIL_FROM') ?? 'YakaRDC <onboarding@resend.dev>';
-  const APP_URL = Deno.env.get('APP_URL') ?? 'https://yakardc.app';
+  const APP_URL = adressePublique();
 
   // Une clé manquante donnait un client cassé, puis un 401 muet qui laissait
   // croire à un problème d'authentification. On le dit franchement, en

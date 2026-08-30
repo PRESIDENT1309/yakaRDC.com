@@ -15,7 +15,7 @@
 //   * aucune trace du lien dans les journaux — il vaut connexion.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { sendEmail, layout, button, notice } from '../_shared/email.ts';
+import { sendEmail, layout, button, notice, appUrl as adressePublique } from '../_shared/email.ts';
 import { keyKind, firstEnv, secretKey, publishableKey } from '../_shared/keys.ts';
 
 const CORS = {
@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
   const SUPABASE_URL = firstEnv('SUPABASE_URL');
   const secret = secretKey();
   const SECRET = secret.value;
-  const APP_URL = Deno.env.get('APP_URL') ?? 'https://www.yakardc.com';
+  const APP_URL = adressePublique();
 
   if (!SUPABASE_URL || !SECRET) {
     return json({
