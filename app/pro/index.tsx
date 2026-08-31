@@ -285,7 +285,14 @@ export default function PartnerDashboard() {
                     styles.barFill,
                     {
                       height: `${(count / maxCount) * 100}%`,
-                      backgroundColor: i === bestDayIdx ? colors.lave : colors.surfaceSunken,
+                      // Les barres secondaires étaient en `surfaceSunken`, soit
+                      // 1,17 de contraste sur le blanc : un lundi à une
+                      // réservation s'affichait sur 21 px que l'œil ne
+                      // distinguait pas d'un jour vide. `laveBorder` (1,56) les
+                      // rend lisibles tout en restant de la famille de la barre
+                      // mise en avant — une version atténuée, pas une autre
+                      // couleur.
+                      backgroundColor: i === bestDayIdx ? colors.lave : colors.laveBorder,
                     },
                   ]} />
                 </View>
