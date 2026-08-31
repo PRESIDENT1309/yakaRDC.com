@@ -104,6 +104,21 @@ export default function BecomePartnerScreen() {
       setError('Veuillez indiquer votre nom et votre téléphone.');
       return;
     }
+    // L'email était facultatif ici, et stocké en `null`. Une demande sans
+    // adresse est pourtant INAPPROUVABLE : `approve-partner` a besoin d'une
+    // adresse pour créer le compte du partenaire et lui transmettre ses accès.
+    // Elle restait donc en attente pour toujours, sans que personne ne sache
+    // pourquoi — trois demandes du 29/08 étaient dans ce cas.
+    // Mieux vaut refuser à la saisie, où l'on peut encore corriger, qu'à
+    // l'approbation, où il n'y a plus de recours.
+    if (!contactEmail.trim()) {
+      setError("Veuillez indiquer votre adresse email : c'est par elle que vous recevrez vos accès une fois la demande approuvée.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())) {
+      setError('Cette adresse email ne semble pas valide.');
+      return;
+    }
     if (!cityName) {
       setError('Veuillez choisir une ville.');
       return;
