@@ -309,14 +309,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── Bande éditoriale ── */}
-        <View style={styles.introBand}>
-          <Text style={[styles.introText, isWide && { fontSize: 20, lineHeight: 30, maxWidth: 620 }]}>
-            YakaRDC réunit les adresses qui font la richesse de la RDC — hôtels, tables,
-            maisons meublées et lieux à découvrir, sélectionnés avec exigence.
-          </Text>
-        </View>
-
         {/* ── Catégories ── */}
         <View style={styles.section}>
           <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
@@ -465,6 +457,18 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         )}
+
+        {/* ── Bande éditoriale ──
+            Placée en fin de parcours plutôt qu'en tête : elle dit ce qu'est
+            YakaRDC, ce qui intéresse le visiteur une fois qu'il a vu les
+            adresses — pas avant d'avoir rien vu. Elle ferme la page au lieu
+            de retarder son contenu. */}
+        <View style={styles.introBand}>
+          <Text style={[styles.introText, isWide && { fontSize: 20, lineHeight: 30, maxWidth: 620 }]}>
+            YakaRDC réunit les adresses qui font la richesse de la RDC — hôtels, tables,
+            maisons meublées et lieux à découvrir, sélectionnés avec exigence.
+          </Text>
+        </View>
 
         {hasMultipleCities && (
           <BottomSheet

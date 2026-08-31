@@ -6,12 +6,13 @@ import { Alert } from '../../lib/alert';
 import { router } from 'expo-router';
 import {
   CalendarCheck, Users, Wallet, Star, Bell,
-  MessageCircle, Tag,
+  MessageCircle, Tag, ChevronRight,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { bookingTotal } from '../../lib/offers';
+import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, breakpoints } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints } from '../../lib/theme';
 import type { Establishment, Booking, Review } from '../../lib/types';
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -32,7 +33,15 @@ export default function PartnerDashboard() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
-  const [todayCount, setTodayCount] = useState(0);
+  // « Réservations aujourd'hui » comptait les demandes REÇUES aujourd'hui
+  // (`created_at`), pas les clients ATTENDUS aujourd'hui. Un restaurateur qui
+  // lisait « 3 » préparait trois tables, alors que ces trois-là pouvaient être
+  // pour le mois suivant. Le nombre devient donc « ce mois », et la question
+  // « qui vient aujourd'hui ? » reçoit ce qu'elle mérite : une liste, pas un
+  // compteur.
+  const [monthCount, setMonthCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
   const [revenue, setRevenue] = useState(0);
   const [avgRating, setAvgRating] = useState<number | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
@@ -56,7 +65,11 @@ export default function PartnerDashboard() {
     weekAgo.setDate(weekAgo.getDate() - 6);
     const weekAgoIso = weekAgo.toISOString().slice(0, 10);
 
-    const [{ data: bookings }, { data: reviews }] = await Promise.all([
+    const moisDebut = new Date();
+    moisDebut.setDate(1);
+    const moisDebutIso = moisDebut.toISOString().slice(0, 10);
+
+    const [{ data: bookings }, { data: reviews }, { data: attente }, { data: duJour }] = await Promise.all([
       // Les lignes portent le prix gelé : le chiffre d'affaires se calcule
       // dessus, jamais sur le tarif courant de l'établissement — sinon une
       // hausse de prix réécrirait rétroactivement les recettes passées.
@@ -65,11 +78,35 @@ export default function PartnerDashboard() {
         .gte('created_at', weekAgoIso),
       supabase.from('reviews').select('*').eq('establishment_id', e.id)
         .order('created_at', { ascending: false }),
+
+      // Ce qui attend une réponse. Sans fenêtre de temps : une demande vieille
+      // de trois semaines attend toujours, et c'est bien le problème.
+      supabase.from('bookings').select('id')
+        .eq('establishment_id', e.id).eq('status', 'pending'),
+
+      // Qui vient aujourd'hui. Requête distincte, et c'est nécessaire : une
+      // table réservée le mois dernier pour ce soir n'apparaît dans aucune
+      // fenêtre fondée sur `created_at`.
+      supabase.from('bookings')
+        .select('id, first_name, last_name, guests, visit_time, status, check_in')
+        .eq('establishment_id', e.id)
+        .in('status', ['pending', 'confirmed', 'checked_in'])
+        .or(`visit_date.eq.${todayIso},check_in.eq.${todayIso}`)
+        .order('visit_time', { ascending: true, nullsFirst: false }),
     ]);
 
+    setPendingCount((attente ?? []).length);
+    setTodayBookings((duJour as Booking[]) ?? []);
+
+    // Volume du mois. Compté sur `created_at`, donc « demandes reçues » — et
+    // l'étiquette le dira, plutôt que de laisser le partenaire deviner.
+    const { count: moisCount } = await supabase.from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('establishment_id', e.id)
+      .gte('created_at', moisDebutIso);
+    setMonthCount(moisCount ?? 0);
+
     const allBookings = (bookings as Booking[]) ?? [];
-    const todays = allBookings.filter(b => b.created_at.slice(0, 10) === todayIso);
-    setTodayCount(todays.length);
 
     const confirmedOrBetter = allBookings.filter(b => ['confirmed', 'checked_in'].includes(b.status));
     // Un séjour se facture à la nuit : deux chambres trois nuits, c'est six
@@ -125,7 +162,11 @@ export default function PartnerDashboard() {
   }
 
   const maxCount = Math.max(...weekCounts, 1);
-  const bestDayIdx = weekCounts.some(c => c > 0)
+  // « Samedi est votre meilleur jour » sur une seule barre n'est pas une
+  // observation, c'est une affirmation sans fondement. On ne la formule qu'à
+  // partir de deux jours ayant reçu des réservations.
+  const joursActifs = weekCounts.filter(c => c > 0).length;
+  const bestDayIdx = joursActifs >= 2
     ? weekCounts.indexOf(Math.max(...weekCounts))
     : null;
 
@@ -144,13 +185,68 @@ export default function PartnerDashboard() {
           </Pressable>
         </View>
 
+        {/* ── Ce qui attend une réponse ──
+            Placé avant les chiffres : c'est la seule chose de cet écran sur
+            laquelle le partenaire peut agir, et une demande sans réponse fait
+            perdre un client. Rien ne s'affiche quand il n'y a rien à traiter. */}
+        {pendingCount > 0 && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${pendingCount} demande${pendingCount > 1 ? 's' : ''} à traiter`}
+            style={styles.actionBand}
+            onPress={() => router.push('/pro/bookings')}
+          >
+            <View style={styles.actionIcon}>
+              <CalendarCheck size={16} color={colors.warning} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionTitle}>
+                {pendingCount} demande{pendingCount > 1 ? 's' : ''} en attente
+              </Text>
+              <Text style={styles.actionSub}>
+                Sans réponse de votre part, le voyageur ne sait pas s'il est attendu.
+              </Text>
+            </View>
+            <ChevronRight size={16} color={colors.warning} />
+          </Pressable>
+        )}
+
+        {/* ── Aujourd'hui ──
+            La question « qui vient aujourd'hui ? » appelait une liste, pas un
+            compteur : pour préparer un service, il faut des heures et des noms. */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Aujourd'hui</Text>
+          {todayBookings.length === 0 ? (
+            <Text style={styles.emptyText}>Aucune réservation prévue aujourd'hui.</Text>
+          ) : (
+            <View style={styles.todayCard}>
+              {todayBookings.map((b: any, i) => (
+                <View key={b.id} style={[styles.todayRow, i > 0 && styles.todayRowBorder]}>
+                  <Text style={styles.todayHour}>
+                    {b.visit_time ? timeToSlot(b.visit_time) : 'Séjour'}
+                  </Text>
+                  <Text style={styles.todayName} numberOfLines={1}>
+                    {[b.first_name, b.last_name].filter(Boolean).join(' ') || 'Client'}
+                  </Text>
+                  <Text style={styles.todayGuests}>{b.guests ?? 1} pers.</Text>
+                  {b.status === 'pending' && (
+                    <View style={styles.todayPending}>
+                      <Text style={styles.todayPendingText}>à confirmer</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* 4 cartes couleur pleine */}
         <View style={styles.statsGrid}>
           <StatCard
             icon={<CalendarCheck size={16} color={colors.white} />}
-            value={String(todayCount)}
-            label="Réservations"
-            sub="aujourd'hui"
+            value={String(monthCount)}
+            label="Demandes reçues"
+            sub="ce mois-ci"
             bg={colors.lave}
           />
           <StatCard
@@ -211,7 +307,7 @@ export default function PartnerDashboard() {
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Avis récents</Text>
             {reviewCount > 2 && (
-              <Pressable onPress={() => router.push('/pro/reviews')}>
+              <Pressable onPress={() => router.push('/pro/pro-reviews')}>
                 <Text style={styles.seeAll}>Voir tout</Text>
               </Pressable>
             )}
@@ -299,6 +395,44 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
+  // ── Bandeau « à traiter » ──
+  // Le seul bloc de l'écran sur lequel on peut agir. Il emprunte la famille
+  // `warning` — assez présente pour se remarquer, sans l'alarme du rouge :
+  // une demande en attente est un travail à faire, pas une erreur.
+  // Contraste vérifié : warning sur warningSoft donne 5,87.
+  actionBand: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1, borderColor: colors.warningBorder,
+    borderRadius: 14, padding: 14, marginBottom: 16,
+  },
+  actionIcon: {
+    width: 34, height: 34, borderRadius: 10, backgroundColor: colors.white,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionTitle: { ...typography.titleSm, color: colors.warning },
+  actionSub: { ...typography.captionSm, color: colors.warning, marginTop: 2 },
+
+  // ── Le service du jour ──
+  // Une heure, un nom, un nombre de couverts : ce qu'il faut pour préparer.
+  todayCard: {
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: 14, marginTop: 10, overflow: 'hidden',
+  },
+  todayRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  todayRowBorder: { borderTopWidth: 1, borderTopColor: colors.surfaceSunken },
+  todayHour: { ...typography.pillLabel, color: colors.lave, minWidth: 54 },
+  todayName: { ...typography.bodySm, color: colors.ink, flex: 1 },
+  todayGuests: { ...typography.captionSm, color: colors.muted },
+  todayPending: {
+    backgroundColor: colors.warningSoft, borderRadius: 999,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  todayPendingText: { ...typography.captionSm, color: colors.warning },
+
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   statCard: { width: '47.5%', borderRadius: 16, padding: 14, gap: 3 },
   statIconBadge: {
@@ -322,7 +456,7 @@ const styles = StyleSheet.create({
   chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: 12, fontStyle: 'italic', },
   section: { marginBottom: 20 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: colors.ink },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 16, color: colors.ink },
   seeAll: { ...typography.caption, color: colors.lave, },
   reviewCard: {
     flexDirection: 'row', gap: 8, backgroundColor: colors.white, borderRadius: 14, padding: 14,
