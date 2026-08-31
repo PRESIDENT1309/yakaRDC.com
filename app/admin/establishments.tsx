@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography } from '../../lib/theme';
 import type { Establishment, EstablishmentType, EstablishmentWarning, Profile } from '../../lib/types';
+import { useAdminResponsive } from '../../lib/responsive';
 
 type CategoryFilter = EstablishmentType | 'all';
 type StatusFilter = 'all' | 'active' | 'suspended';
@@ -47,8 +48,9 @@ interface Stats {
 
 export default function EstablishmentsScreen() {
   const { profile: currentAdmin } = useAuth();
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
+  // Largeur utile, barre laterale de l'admin deduite : la fenetre seule
+  // faisait croire a une vue bureau alors que le detail etait ecrase.
+  const { isMobile } = useAdminResponsive();
   const [establishments, setEstablishments] = useState<Establishment[]>([]);
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');

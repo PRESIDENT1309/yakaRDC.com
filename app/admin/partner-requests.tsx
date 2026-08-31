@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography } from '../../lib/theme';
 import type { PartnerRequest, EstablishmentType, PartnerRequestStatus } from '../../lib/types';
+import { useAdminResponsive } from '../../lib/responsive';
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all';
 
@@ -57,8 +58,9 @@ function StatusBadge({ status }: { status: PartnerRequestStatus }) {
 
 export default function PartnerRequestsScreen() {
   const { profile } = useAuth();
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
+  // Largeur utile, barre laterale de l'admin deduite : la fenetre seule
+  // faisait croire a une vue bureau alors que le detail etait ecrase.
+  const { isMobile } = useAdminResponsive();
   const [requests, setRequests] = useState<PartnerRequest[]>([]);
   const [filter, setFilter] = useState<Filter>('pending');
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,10 @@ export default function PartnerRequestsScreen() {
   const [rejectReason, setRejectReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [resending, setResending] = useState(false);
+  // Compté sur toute la table, indépendamment du filtre affiché : c'est
+  // justement parce que ce chiffre était masqué par le filtre « en attente »
+  // qu'un partenaire sans accès pouvait passer inaperçu.
+  const [sansAcces, setSansAcces] = useState(0);
 
   /**
    * Renvoi des accès à un partenaire dont l'email d'approbation n'est jamais
@@ -86,13 +92,30 @@ export default function PartnerRequestsScreen() {
     });
     setResending(false);
 
-    if (error) {
-      Alert.alert('Renvoi impossible', error.message ?? "La fonction n'a pas répondu.");
+    // `request-password-reset` répond TOUJOURS 200, délibérément : révéler
+    // qu'une adresse est inconnue permettrait d'énumérer les comptes. L'échec
+    // d'envoi vit donc dans le corps, sous `email_error` — pas dans `error`,
+    // qui ne signale que les pannes de transport.
+    //
+    // Ne regarder que `error` revenait à annoncer « Lien envoyé » et à marquer
+    // la demande résolue alors que le service d'envoi avait refusé : une panne
+    // déguisée en succès, exactement ce que cette trace existe pour empêcher.
+    const echec = error?.message
+      ?? (data as { email_error?: string; error?: string } | null)?.email_error
+      ?? (data as { error?: string } | null)?.error;
+
+    if (echec) {
+      await supabase.from('partner_requests').update({
+        credentials_sent: false,
+        credentials_error: echec,
+        credentials_sent_at: new Date().toISOString(),
+      }).eq('id', selected.id);
+
+      Alert.alert('Renvoi refusé', echec);
+      fetchRequests();
       return;
     }
 
-    // La trace est mise à jour : sans cela, la demande resterait marquée
-    // « non envoyés » alors que le partenaire vient de recevoir son lien.
     await supabase.from('partner_requests').update({
       credentials_sent: true,
       credentials_error: null,
@@ -113,6 +136,17 @@ export default function PartnerRequestsScreen() {
     if (filter !== 'all') q = q.eq('status', filter);
     const { data } = await q;
     setRequests((data as PartnerRequest[]) ?? []);
+
+    // Requête séparée, sur toute la table : le bandeau d'alerte ne doit pas
+    // dépendre du filtre affiché. `credentials_sent is not true` couvre les
+    // deux cas qui comptent — l'envoi refusé (false) et l'approbation
+    // antérieure au suivi (null), dont on ignore le sort.
+    const { count } = await supabase.from('partner_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'approved')
+      .or('credentials_sent.is.null,credentials_sent.is.false');
+    setSansAcces(count ?? 0);
+
     setLoading(false);
   }, [filter]);
 
@@ -238,6 +272,33 @@ export default function PartnerRequestsScreen() {
           <Text style={styles.headerSub}>{requests.length} demande{requests.length !== 1 ? 's' : ''}</Text>
         </View>
       </View>
+
+      {/* ── Partenaires approuvés sans accès ──
+          L'alerte posée sur les fiches ne servait à rien : elle vivait dans la
+          liste des demandes APPROUVÉES, alors que l'écran s'ouvre sur les
+          demandes EN ATTENTE. Un partenaire injoignable restait donc invisible
+          derrière un filtre qu'on n'a aucune raison de changer.
+          Ce bandeau est indépendant du filtre courant : il compte sur toute la
+          table, et mène directement aux concernés. */}
+      {sansAcces > 0 && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${sansAcces} partenaire${sansAcces > 1 ? 's' : ''} sans accès`}
+          style={styles.alerteBand}
+          onPress={() => setFilter('approved')}
+        >
+          <Text style={styles.alerteTitle}>
+            {sansAcces > 1
+              ? `${sansAcces} partenaires approuvés n'ont pas reçu leurs identifiants`
+              : "1 partenaire approuvé n'a pas reçu ses identifiants"}
+          </Text>
+          <Text style={styles.alerteSub}>
+            {sansAcces > 1
+              ? 'Leur établissement est en ligne, mais ils ne peuvent pas y accéder. Toucher pour les voir.'
+              : 'Son établissement est en ligne, mais il ne peut pas y accéder. Toucher pour le voir.'}
+          </Text>
+        </Pressable>
+      )}
 
       <View style={styles.filterRow}>
         {FILTERS.map(f => (
@@ -536,6 +597,17 @@ const styles = StyleSheet.create({
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
   listAlerte: { ...typography.captionSm, color: colors.warning, marginTop: 2 },
+
+  // Bandeau au-dessus des filtres : le seul endroit où un partenaire sans
+  // accès reste visible quel que soit le filtre choisi.
+  alerteBand: {
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1, borderColor: colors.warningBorder,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    marginHorizontal: 20, marginTop: 12, gap: 3,
+  },
+  alerteTitle: { ...typography.titleSm, color: colors.warning },
+  alerteSub: { ...typography.captionSm, color: colors.warning },
 
   // ── Bloc « identifiants non parvenus » ──
   // Famille `warning` : un partenaire injoignable est un travail à reprendre,
