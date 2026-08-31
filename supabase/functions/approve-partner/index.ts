@@ -96,6 +96,50 @@ ${button(`${appUrl}/login`, 'Accéder à mon espace')}
   };
 }
 
+/**
+ * Variante pour un demandeur qui possédait déjà un compte.
+ *
+ * On ne touche pas à son mot de passe — le réinitialiser sans qu'il l'ait
+ * demandé serait abusif, et c'est bien pour cela que la fonction ne le fait
+ * pas. Mais jusqu'ici elle n'envoyait alors RIEN : l'établissement passait en
+ * ligne et son propriétaire ne l'apprenait jamais.
+ *
+ * Il reçoit donc la nouvelle, avec un lien de définition de mot de passe pour
+ * le cas où il n'aurait jamais eu l'occasion d'en choisir un.
+ */
+function welcomeExistingEmail(params: {
+  establishmentName: string;
+  contactName: string;
+  email: string;
+  appUrl: string;
+  recoveryLink: string | null;
+}) {
+  const { establishmentName, contactName, email, appUrl, recoveryLink } = params;
+  return {
+    subject: `Félicitations — ${establishmentName} est approuvé sur YakaRDC`,
+    html: layout({
+      title: 'Félicitations !',
+      body: `
+<p>Bonjour ${contactName},</p>
+<p>
+  Votre établissement <strong>${establishmentName}</strong> vient d'être approuvé.
+  Il est désormais visible par les voyageurs sur YakaRDC.
+</p>
+<p>
+  Vous avez déjà un compte YakaRDC (<strong>${email}</strong>) : connectez-vous
+  avec vos identifiants habituels, votre espace partenaire s'y trouve.
+</p>
+${recoveryLink
+  ? notice("Vous ne vous souvenez plus de votre mot de passe ? Le bouton ci-dessous vous permet d'en définir un nouveau. Ce lien expire dans une heure.")
+    + button(recoveryLink, 'Définir mon mot de passe')
+  : button(`${appUrl}/login`, 'Accéder à mon espace')}
+<p style="font-size:12px;color:#8A857D">
+  Vous n'êtes pas à l'origine de cette demande ? Répondez à cet email, nous la retirerons.
+</p>`.trim(),
+    }),
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -276,7 +320,34 @@ Deno.serve(async (req: Request) => {
     let emailError: string | null = null;
 
     if (!password) {
-      emailError = "Le partenaire avait déjà un compte : aucun mot de passe n'a été envoyé.";
+      // Compte préexistant : rien à communiquer comme mot de passe, mais il
+      // faut tout de même prévenir. On joint un lien de définition, au cas où
+      // le compte n'ait jamais servi.
+      let recoveryLink: string | null = null;
+      try {
+        const { data: lien } = await admin.auth.admin.generateLink({
+          type: 'recovery',
+          email,
+          options: { redirectTo: `${APP_URL}/reset-password` },
+        });
+        recoveryLink = lien?.properties?.action_link ?? null;
+      } catch (_) {
+        // Sans lien, l'email part quand même : la nouvelle vaut plus que le
+        // bouton. L'échec du lien ne doit pas faire échouer l'information.
+        recoveryLink = null;
+      }
+
+      const mail = welcomeExistingEmail({
+        establishmentName: request.establishment_name,
+        contactName: request.contact_name,
+        email,
+        appUrl: APP_URL,
+        recoveryLink,
+      });
+      const result = await sendEmail({ to: email, subject: mail.subject, html: mail.html });
+      emailSent = result.sent;
+      emailError = result.error;
+      log(result.sent ? 'email (compte existant) envoye a' : 'envoi refuse', result.sent ? email : result.error);
     } else {
       const mail = welcomeEmail({
         establishmentName: request.establishment_name,
@@ -290,6 +361,22 @@ Deno.serve(async (req: Request) => {
       emailError = result.error;
       log(result.sent ? 'email envoye a' : 'envoi refuse', result.sent ? email : result.error);
     }
+
+    // ── 6. La trace ──────────────────────────────────────────────────────
+    // Jusqu'ici, `emailSent` et `emailError` ne vivaient que dans la réponse
+    // ci-dessous : une fois la boîte de dialogue de l'admin fermée, savoir si
+    // un partenaire avait reçu ses accès devenait impossible. Un établissement
+    // approuvé dont le propriétaire ne peut pas entrer est un état qui doit se
+    // lire dans la base, pas se déduire de journaux tiers.
+    //
+    // L'écriture est volontairement non bloquante : elle ne doit pas faire
+    // échouer une approbation qui, elle, a abouti.
+    const { error: traceError } = await admin.from('partner_requests').update({
+      credentials_sent: emailSent,
+      credentials_error: emailError,
+      credentials_sent_at: new Date().toISOString(),
+    }).eq('id', request_id);
+    if (traceError) log('trace non enregistree', traceError.message);
 
     return json({
       establishment_id: establishmentId,

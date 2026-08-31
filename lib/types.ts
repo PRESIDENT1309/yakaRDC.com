@@ -241,6 +241,15 @@ export interface PartnerRequest {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_establishment_id: string | null;
+  // Envoi des identifiants à l'approbation (migration 0019). Ces champs
+  // existent parce que l'information ne vivait auparavant que dans une boîte
+  // de dialogue : une fois fermée, savoir si un partenaire avait reçu ses
+  // accès devenait impossible.
+  /** true = accepté par le service d'envoi, false = refusé, null = jamais approuvé */
+  credentials_sent: boolean | null;
+  /** Motif exact du refus, tel que renvoyé par le service d'envoi */
+  credentials_error: string | null;
+  credentials_sent_at: string | null;
   created_at: string;
 }
 

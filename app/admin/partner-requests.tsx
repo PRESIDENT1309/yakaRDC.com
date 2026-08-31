@@ -66,6 +66,46 @@ export default function PartnerRequestsScreen() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  /**
+   * Renvoi des accès à un partenaire dont l'email d'approbation n'est jamais
+   * parti.
+   *
+   * On passe par `request-password-reset` plutôt que par un nouveau mot de
+   * passe : la fonction existe, elle est éprouvée, et elle envoie un lien à
+   * usage unique. Cela couvre aussi le cas du compte préexistant, où il n'y a
+   * aucun mot de passe à communiquer.
+   */
+  async function handleResendCredentials() {
+    if (!selected?.contact_email) return;
+    setResending(true);
+
+    const { data, error } = await supabase.functions.invoke('request-password-reset', {
+      body: { email: selected.contact_email },
+    });
+    setResending(false);
+
+    if (error) {
+      Alert.alert('Renvoi impossible', error.message ?? "La fonction n'a pas répondu.");
+      return;
+    }
+
+    // La trace est mise à jour : sans cela, la demande resterait marquée
+    // « non envoyés » alors que le partenaire vient de recevoir son lien.
+    await supabase.from('partner_requests').update({
+      credentials_sent: true,
+      credentials_error: null,
+      credentials_sent_at: new Date().toISOString(),
+    }).eq('id', selected.id);
+
+    Alert.alert(
+      'Lien envoyé',
+      `${selected.contact_email} peut désormais définir son mot de passe et accéder à son espace.`,
+    );
+    setSelected(null);
+    fetchRequests();
+  }
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -238,6 +278,16 @@ export default function PartnerRequestsScreen() {
                       <Text style={styles.listMeta}>
                         {TYPE_LABELS[r.establishment_type]} · {new Date(r.created_at).toLocaleDateString('fr-FR')}
                       </Text>
+                      {/* Un établissement approuvé dont le propriétaire n'a
+                          jamais reçu ses accès est en ligne et injoignable.
+                          Cet état doit se voir dans la liste, pas se déduire. */}
+                      {r.status === 'approved' && r.credentials_sent !== true && (
+                        <Text style={styles.listAlerte} numberOfLines={1}>
+                          {r.credentials_sent === false
+                            ? 'Identifiants non envoyés'
+                            : 'Envoi non tracé'}
+                        </Text>
+                      )}
                     </View>
                     <StatusBadge status={r.status} />
                   </Pressable>
@@ -355,6 +405,53 @@ export default function PartnerRequestsScreen() {
                 </View>
               )}
 
+              {/* ── Identifiants non parvenus ──
+                  L'établissement est en ligne, son propriétaire ne peut pas y
+                  accéder, et jusqu'ici rien ne le signalait passé la boîte de
+                  dialogue de l'approbation. Le renvoi passe par le lien de
+                  définition de mot de passe : plus sûr qu'un mot de passe en
+                  clair, et cela fonctionne aussi quand le compte préexistait. */}
+              {/* `!== true` et non `=== false` : les demandes approuvées avant
+                  la migration 0019 ont `credentials_sent` à null. Ce sont
+                  précisément celles dont on ignore le sort — donc celles qui
+                  ont le plus besoin d'un renvoi. Les exclure aurait vidé cette
+                  fonctionnalité de son objet. */}
+              {selected.status === 'approved' && selected.credentials_sent !== true && (
+                <View style={styles.credsBox}>
+                  <Text style={styles.credsTitle}>
+                    {selected.credentials_sent === false
+                      ? 'Identifiants non envoyés'
+                      : 'Envoi des identifiants non tracé'}
+                  </Text>
+                  {selected.credentials_error ? (
+                    <Text style={styles.credsError}>{selected.credentials_error}</Text>
+                  ) : selected.credentials_sent === null ? (
+                    <Text style={styles.credsError}>
+                      Cette approbation est antérieure au suivi des envois : impossible de
+                      savoir si le partenaire a reçu ses accès.
+                    </Text>
+                  ) : null}
+                  <Text style={styles.credsHint}>
+                    {selected.contact_email
+                      ? `Dans le doute, ${selected.contact_email} peut recevoir un nouveau lien.`
+                      : "Aucune adresse de contact sur cette demande : le renvoi est impossible."}
+                  </Text>
+                  {!!selected.contact_email && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Renvoyer les identifiants"
+                      style={[styles.credsBtn, resending && { opacity: 0.6 }]}
+                      onPress={handleResendCredentials}
+                      disabled={resending}
+                    >
+                      {resending
+                        ? <ActivityIndicator color={colors.cream} size="small" />
+                        : <Text style={styles.credsBtnText}>Renvoyer un lien de connexion</Text>}
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               {/* Actions */}
               {selected.status === 'pending' && (
                 <>
@@ -438,6 +535,24 @@ const styles = StyleSheet.create({
   listIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
+  listAlerte: { ...typography.captionSm, color: colors.warning, marginTop: 2 },
+
+  // ── Bloc « identifiants non parvenus » ──
+  // Famille `warning` : un partenaire injoignable est un travail à reprendre,
+  // pas une erreur du système. Contraste warning sur warningSoft : 5,87.
+  credsBox: {
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1, borderColor: colors.warningBorder,
+    borderRadius: 12, padding: 14, marginTop: 14, gap: 6,
+  },
+  credsTitle: { ...typography.titleSm, color: colors.warning },
+  credsError: { ...typography.bodyXs, color: colors.warning },
+  credsHint: { ...typography.captionSm, color: colors.muted },
+  credsBtn: {
+    backgroundColor: colors.warning, borderRadius: 10,
+    paddingVertical: 11, alignItems: 'center', marginTop: 4,
+  },
+  credsBtnText: { ...typography.pillLabel, color: colors.cream },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   statusBadgeText: { ...typography.captionMd, },
   detail: { flex: 1 },
