@@ -96,14 +96,26 @@ export default function RegisterScreen() {
       return;
     }
 
-    // 2. Sans session, l'inscription attend une confirmation par email. Entrer
-    //    dans l'application maintenant mènerait à un écran vide : on le dit.
+    // 2. Sans session, deux situations très différentes se ressemblent.
+    //
+    //    Quand la confirmation par email est active, Supabase renvoie la MÊME
+    //    réponse — pas d'erreur, pas de session — que le compte vienne d'être
+    //    créé ou que l'adresse soit déjà inscrite. C'est délibéré : distinguer
+    //    les deux permettrait d'énumérer les comptes en testant des adresses.
+    //
+    //    Le seul signe est `identities` : vide quand rien n'a été créé.
+    //
+    //    Ce code annonçait « Compte créé » dans les deux cas. Il affirmait donc
+    //    une création qu'il n'avait pas vérifiée — et l'utilisateur cherchait
+    //    ensuite un compte qui n'existait pas.
     if (!data.session) {
       setLoading(false);
-      setError(
-        "Compte créé. Ouvrez l'email de confirmation que nous venons de vous "
-        + 'envoyer, puis connectez-vous.',
-      );
+      const rienDeCree = !data.user || (data.user.identities?.length ?? 0) === 0;
+      setError(rienDeCree
+        ? 'Un compte existe déjà avec cet email. Connectez-vous, ou utilisez '
+          + '« Mot de passe oublié » si vous ne vous en souvenez plus.'
+        : "Compte créé. Ouvrez l'email de confirmation que nous venons de vous "
+          + 'envoyer, puis connectez-vous.');
       return;
     }
 
