@@ -2,14 +2,20 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   Platform, ImageBackground, StatusBar, KeyboardAvoidingView,
-  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, radii, spacing, breakpoints } from '../../lib/theme';
-import LandscapeIllustration from '../../components/LandscapeIllustration';
+import LogoYaka from '../../components/LogoYaka';
+
+// Photo de fond livrée avec l'application : des pirogues au crépuscule, dans
+// la palette même de la marque. Elle dormait dans `assets/images` sous une
+// double extension (`login-bg.jpg.jpg`) et aucun écran ne la référençait —
+// l'écran de connexion retombait donc sur une illustration dessinée.
+const FOND_PAR_DEFAUT = require('../../assets/images/login-bg.jpg');
 
 // Destination d'après connexion. N'accepte qu'un chemin interne : doit commencer
 // par un seul '/' — ce qui écarte les URL absolues ('https://…') et les URL
@@ -22,7 +28,8 @@ function safeRedirect(target?: string): string {
 }
 
 export default function LoginScreen() {
-  const { width, height } = useWindowDimensions();
+  // Zone sûre réelle : la marque monte en haut de l'écran, donc sous l'encoche.
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ redirect?: string; reason?: string }>();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -74,6 +81,20 @@ export default function LoginScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
       <View style={styles.veil} pointerEvents="none" />
+
+      {/* La marque tient le haut de l'écran, pas le bas. Empilée juste au-dessus
+          de « C'est parti, », elle s'ajoutait à un bloc déjà dense — titre,
+          sous-titre, deux champs, deux boutons, deux liens — et se lisait comme
+          une quatrième ligne de texte plutôt que comme une signature.
+          En absolu, elle ne touche pas à la composition du bas ; sa rangée
+          reprend la largeur et la gouttière du formulaire, donc les bords
+          gauches restent alignés sur grand écran. */}
+      <View style={[styles.marque, { paddingTop: Math.max(insets.top, 20) }]} pointerEvents="none">
+        <View style={styles.marqueRangee}>
+          <LogoYaka size={34} />
+          <Text style={styles.logoText}>YakaRDC</Text>
+        </View>
+      </View>
 
       <View style={styles.headerZone}>
         <Text style={styles.headline}>C'est parti,</Text>
@@ -153,21 +174,17 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 
-  if (bgUrl) {
-    return (
-      <ImageBackground source={{ uri: bgUrl }} style={styles.screen} resizeMode="cover">
-        {content}
-      </ImageBackground>
-    );
-  }
-
+  // Le fond choisi par l'admin dans l'écran Apparence l'emporte ; à défaut,
+  // la photo livrée avec l'application. L'illustration dessinée ne sert plus
+  // ici — elle reste le fond de l'écran Welcome, où elle a été conçue.
   return (
-    <View style={styles.screen}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <LandscapeIllustration width={width} height={height} />
-      </View>
+    <ImageBackground
+      source={bgUrl ? { uri: bgUrl } : FOND_PAR_DEFAUT}
+      style={styles.screen}
+      resizeMode="cover"
+    >
       {content}
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -191,6 +208,15 @@ const styles = StyleSheet.create({
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
     paddingHorizontal: 32, paddingBottom: 24,
   },
+  marque: { position: 'absolute', top: 0, left: 0, right: 0 },
+  marqueRangee: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: 32,
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+  },
+  // Cream et même ombre portée que le titre : le nom est posé sur une photo,
+  // dont la luminosité varie d'un fond à l'autre.
+  logoText: { fontFamily: fonts.display, fontSize: 24, color: colors.cream, ...shadow },
   // Playfair, comme partout ailleurs. Ces deux titres tombaient sur `serif` :
   // du Times New Roman sur le web. La fonte étant déjà italique, on retire le
   // `fontStyle`, qui superposait une inclinaison simulée à la vraie.

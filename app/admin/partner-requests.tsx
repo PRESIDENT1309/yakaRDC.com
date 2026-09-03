@@ -10,6 +10,7 @@ import {
   Check, X, Camera, Phone, User as UserIcon, MapPin, Clock,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography } from '../../lib/theme';
 import type { PartnerRequest, EstablishmentType, PartnerRequestStatus } from '../../lib/types';
@@ -242,12 +243,19 @@ export default function PartnerRequestsScreen() {
     if (!selected || !profile?.id) return;
     setProcessing(true);
 
-    await supabase.from('partner_requests').update({
-      status: 'rejected',
-      rejection_reason: rejectReason || 'Non précisé',
-      reviewed_by: profile.id,
-      reviewed_at: new Date().toISOString(),
-    }).eq('id', selected.id);
+    // Un refus non enregistré laisse la demande en attente : la fermer à
+    // l'écran et la journaliser ferait croire le dossier traité alors qu'il
+    // resterait dans la file, sans que personne n'y revienne.
+    const refuse = await ecrire(
+      supabase.from('partner_requests').update({
+        status: 'rejected',
+        rejection_reason: rejectReason || 'Non précisé',
+        reviewed_by: profile.id,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', selected.id),
+      'Refus de la demande',
+    );
+    if (!refuse) { setProcessing(false); return; }
 
     await supabase.from('admin_activity_log').insert({
       actor_id: profile.id,

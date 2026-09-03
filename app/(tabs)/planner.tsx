@@ -8,6 +8,7 @@ import {
   Check, Edit3,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, fonts, typography } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
@@ -215,7 +216,13 @@ export default function PlannerScreen() {
       destructive: true,
     });
     if (!ok) return;
-    await supabase.from('trip_plans').delete().eq('id', plan.id);
+    // Vider l'écran alors que le voyage existe encore donnerait au voyageur
+    // la certitude d'avoir tout perdu — puis tout réapparaîtrait au retour.
+    const supprime = await ecrire(
+      supabase.from('trip_plans').delete().eq('id', plan.id),
+      'Suppression du voyage',
+    );
+    if (!supprime) return;
     setPlan(null); setItems([]); setPackingItems([]); setBookings([]);
   }
 
@@ -237,12 +244,22 @@ export default function PlannerScreen() {
   }
 
   async function toggleVisited(item: TripPlanItem) {
-    await supabase.from('trip_plan_items').update({ visited: !item.visited }).eq('id', item.id);
+    // La coche ne bascule que si la base l'a suivie : une case cochée qui se
+    // décoche au retour sur l'écran est pire qu'un refus annoncé tout de suite.
+    const bascule = await ecrire(
+      supabase.from('trip_plan_items').update({ visited: !item.visited }).eq('id', item.id),
+      'Mise à jour de l’étape',
+    );
+    if (!bascule) return;
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, visited: !i.visited } : i));
   }
 
   async function deleteItem(id: string) {
-    await supabase.from('trip_plan_items').delete().eq('id', id);
+    const supprime = await ecrire(
+      supabase.from('trip_plan_items').delete().eq('id', id),
+      'Suppression de l’étape',
+    );
+    if (!supprime) return;
     setItems(prev => prev.filter(i => i.id !== id));
   }
 
@@ -260,19 +277,33 @@ export default function PlannerScreen() {
   }
 
   async function togglePacking(item: TripPackingItem) {
-    await supabase.from('trip_packing_items').update({ is_checked: !item.is_checked }).eq('id', item.id);
+    const bascule = await ecrire(
+      supabase.from('trip_packing_items').update({ is_checked: !item.is_checked }).eq('id', item.id),
+      'Mise à jour de la valise',
+    );
+    if (!bascule) return;
     setPackingItems(prev => prev.map(p => p.id === item.id ? { ...p, is_checked: !p.is_checked } : p));
   }
 
   async function deletePacking(id: string) {
-    await supabase.from('trip_packing_items').delete().eq('id', id);
+    const supprime = await ecrire(
+      supabase.from('trip_packing_items').delete().eq('id', id),
+      'Suppression de l’article',
+    );
+    if (!supprime) return;
     setPackingItems(prev => prev.filter(p => p.id !== id));
   }
 
   async function handleSaveNotes() {
     if (!plan) return;
     setSavingNotes(true);
-    await supabase.from('trip_plans').update({ notes: notesDraft.trim() || null }).eq('id', plan.id);
+    // Le cas le plus coûteux du planificateur : le voyageur a écrit du texte,
+    // l'indicateur d'enregistrement s'éteint, et les notes n'ont jamais quitté
+    // l'appareil. Un échec silencieux ici, c'est de la saisie perdue.
+    await ecrire(
+      supabase.from('trip_plans').update({ notes: notesDraft.trim() || null }).eq('id', plan.id),
+      'Enregistrement des notes',
+    );
     setSavingNotes(false);
   }
 

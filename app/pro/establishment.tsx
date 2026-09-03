@@ -13,8 +13,9 @@ import {
   Images, Info, Contact, MapPin, Sparkles, Tag, DollarSign,
   UtensilsCrossed, Ticket, Clock, Users, AlertTriangle,
 } from 'lucide-react-native';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
+import LogoYaka from '../../components/LogoYaka';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, typography, spacing, radii, breakpoints } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
@@ -239,8 +240,14 @@ export default function EstablishmentScreen() {
     const path = `${establishment.id}/logo-${Date.now()}.jpg`;
     const publicUrl = await uploadToStorage(uri, path);
     if (publicUrl) {
-      await supabase.from('establishments').update({ logo_url: publicUrl }).eq('id', establishment.id);
-      setLogoUrl(publicUrl);
+      // L'image est déjà dans le stockage, mais tant que cette ligne n'est pas
+      // écrite elle n'est rattachée à rien. Afficher le nouveau logo sans
+      // l'avoir enregistré ferait croire au partenaire que c'est fait.
+      const enregistre = await ecrire(
+        supabase.from('establishments').update({ logo_url: publicUrl }).eq('id', establishment.id),
+        'Enregistrement du logo',
+      );
+      if (enregistre) setLogoUrl(publicUrl);
     }
     setUploadingLogo(false);
   }
@@ -274,9 +281,18 @@ export default function EstablishmentScreen() {
       destructive: true,
     });
     if (!ok) return;
-    await supabase.from('listing_photos').delete().eq('id', photo.id);
+    // La ligne d'abord, le fichier ensuite : si la base refuse, la photo doit
+    // rester intacte des deux côtés plutôt que de disparaître de la grille
+    // pour réapparaître au prochain chargement.
+    const supprimee = await ecrire(
+      supabase.from('listing_photos').delete().eq('id', photo.id),
+      'Suppression de la photo',
+    );
+    if (!supprimee) return;
     const storagePath = photo.url.split('/establishment-photos/')[1];
     if (storagePath) {
+      // Un fichier orphelin dans le stockage n'est plus visible nulle part :
+      // inutile d'alarmer le partenaire si seul ce nettoyage échoue.
       await supabase.storage.from('establishment-photos').remove([storagePath]);
     }
     setPhotos(prev => prev.filter(p => p.id !== photo.id));
@@ -316,7 +332,11 @@ export default function EstablishmentScreen() {
       destructive: true,
     });
     if (!ok) return;
-    await supabase.from('listing_photos').delete().eq('id', photo.id);
+    const supprimee = await ecrire(
+      supabase.from('listing_photos').delete().eq('id', photo.id),
+      'Suppression de la photo',
+    );
+    if (!supprimee) return;
     const storagePath = photo.url.split('/establishment-photos/')[1];
     if (storagePath) {
       await supabase.storage.from('establishment-photos').remove([storagePath]);
@@ -560,12 +580,11 @@ export default function EstablishmentScreen() {
                   ) : logoUrl ? (
                     <Image source={{ uri: logoUrl }} style={styles.logoImage} />
                   ) : (
-                    <Svg width="40" height="40" viewBox="0 0 120 120">
-                      <Rect width="120" height="120" rx="20" fill="#993C1D" />
-                      <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-                      <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-                      <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-                    </Svg>
+                    // La plaque était peinte `#993C1D`, un brun plus clair que
+                    // le jeton de marque, hérité de la recopie du logo. Alignée
+                    // sur `colors.lave` (#712B13) : ce logo d'attente suit
+                    // désormais la charte comme les quatre autres.
+                    <LogoYaka size={40} plateRadius={20} />
                   )}
                   <Text style={{ fontSize: 9, color: colors.lave, marginTop: 4 }}>Changer</Text>
                 </Pressable>

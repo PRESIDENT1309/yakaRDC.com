@@ -4,16 +4,16 @@ import {
   TextInput, Platform, KeyboardAvoidingView, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { goBack } from '../lib/navigation';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
 import {
-  ArrowLeft, Building2, Home, UtensilsCrossed, Mountain,
+  Building2, Home, UtensilsCrossed, Mountain,
   CheckCircle, User, Phone, Mail,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { uuidv4 } from '../lib/uuid';
-import { colors, categoryColors, typography } from '../lib/theme';
+import ScreenHeader from '../components/ScreenHeader';
+import LogoYaka from '../components/LogoYaka';
+import { colors, categoryColors, typography, breakpoints } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
 import type { EstablishmentType } from '../lib/types';
@@ -210,21 +210,23 @@ export default function BecomePartnerScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => goBack('/(tabs)/profile')} hitSlop={8} style={styles.backBtn}>
-            <ArrowLeft size={18} color={colors.ink} />
-          </Pressable>
-          <View style={styles.logoRow}>
-            <Svg width="28" height="28" viewBox="0 0 120 120">
-              <Rect width="120" height="120" rx="26" fill={colors.lave} />
-              <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-              <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-              <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-            </Svg>
-            <Text style={styles.logoText}>YakaRDC</Text>
-          </View>
-          <View style={{ width: 34 }} />
-        </View>
+        {/* Dernier en-tête encore écrit à la main. Il souffrait des mêmes
+            défauts que les six déjà repris : cible tactile de 34 px, `hitSlop`
+            sans effet sur le web, et un retrait haut deviné par plateforme au
+            lieu de la zone sûre réelle. Le centre porte la marque et non un
+            intitulé, d'où `center`. */}
+        <ScreenHeader
+          variant="plain"
+          bordered
+          backFallback="/(tabs)/profile"
+          contentMaxWidth={breakpoints.formMax}
+          center={
+            <View style={styles.logoRow}>
+              <LogoYaka size={28} />
+              <Text style={styles.logoText}>YakaRDC</Text>
+            </View>
+          }
+        />
 
         <ScrollView
           contentContainerStyle={styles.content}
@@ -346,17 +348,9 @@ export default function BecomePartnerScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingHorizontal: 18, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-    backgroundColor: colors.cream,
-  },
-  backBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, color: colors.ink },
-  content: { padding: 20, paddingBottom: 50, maxWidth: 480, width: '100%', alignSelf: 'center' },
+  content: { padding: 20, paddingBottom: 50, maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
   title: { ...typography.titleLg, color: colors.ink, marginBottom: 6, },
   subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: 22, },
   sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10, marginTop: 4, },

@@ -7,6 +7,7 @@ import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, RotateCcw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { colors, typography } from '../../lib/theme';
 
 const SETTING_KEY = 'auth_background_url';
@@ -45,10 +46,14 @@ export default function AppearanceScreen() {
 
       const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
 
-      await supabase.from('app_settings')
-        .upsert({ key: SETTING_KEY, value: data.publicUrl, updated_at: new Date().toISOString() });
-
-      setCurrentUrl(data.publicUrl);
+      // C'est cette ligne, et non l'envoi du fichier, qui décide du fond
+      // affiché à l'écran de connexion.
+      const enregistre = await ecrire(
+        supabase.from('app_settings')
+          .upsert({ key: SETTING_KEY, value: data.publicUrl, updated_at: new Date().toISOString() }),
+        "Enregistrement de l'image",
+      );
+      if (enregistre) setCurrentUrl(data.publicUrl);
     } catch {
       Alert.alert('Erreur', "L'envoi de l'image a échoué. Réessayez.");
     }
@@ -62,9 +67,12 @@ export default function AppearanceScreen() {
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Confirmer', onPress: async () => {
-          await supabase.from('app_settings')
-            .upsert({ key: SETTING_KEY, value: null, updated_at: new Date().toISOString() });
-          setCurrentUrl(null);
+          const remis = await ecrire(
+            supabase.from('app_settings')
+              .upsert({ key: SETTING_KEY, value: null, updated_at: new Date().toISOString() }),
+            "Retour à l'illustration par défaut",
+          );
+          if (remis) setCurrentUrl(null);
         }},
       ]
     );

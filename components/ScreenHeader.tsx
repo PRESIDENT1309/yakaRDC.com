@@ -38,8 +38,26 @@ const COTE = 44;
 const CREAM_ATTENUE = 'rgba(250,248,244,0.7)';
 
 type Props = {
-  title: string;
+  /**
+   * Titre centré. Facultatif seulement parce que `center` peut le remplacer :
+   * un en-tête sans l'un ni l'autre n'a pas de sens.
+   */
+  title?: string;
   subtitle?: string;
+  /**
+   * Contenu libre au centre, à la place du titre. Sert au seul écran qui
+   * affiche la marque plutôt qu'un intitulé (« Devenir partenaire »).
+   *
+   * Il occupe la même colonne centrale que le titre, donc il hérite du même
+   * centrage géométrique : c'est tout l'intérêt de passer par ici plutôt que
+   * de réécrire un en-tête à la main, comme c'était le cas.
+   */
+  center?: ReactNode;
+  /**
+   * Filet de séparation sous l'en-tête. Utile quand le contenu qui suit défile
+   * sur le même fond et que rien d'autre ne marque la limite.
+   */
+  bordered?: boolean;
   /**
    * `brand` — bandeau lave, texte cream. Écrans internes au parcours.
    * `plain` — fond transparent, texte encre, flèche en pastille blanche.
@@ -67,6 +85,8 @@ type Props = {
 export default function ScreenHeader({
   title,
   subtitle,
+  center,
+  bordered = false,
   variant = 'brand',
   backFallback = '/(tabs)',
   showBack = true,
@@ -88,6 +108,7 @@ export default function ScreenHeader({
       style={[
         marque ? styles.headerMarque : styles.headerClair,
         { paddingTop, paddingBottom: spacing.md },
+        bordered ? styles.filet : null,
       ]}
     >
       <View
@@ -117,17 +138,21 @@ export default function ScreenHeader({
         </View>
 
         <View style={styles.centre}>
-          <Text
-            numberOfLines={1}
-            style={[styles.titre, { color: marque ? colors.cream : colors.ink }]}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text numberOfLines={1} style={styles.sousTitre}>
-              {subtitle}
-            </Text>
-          ) : null}
+          {center ?? (
+            <>
+              <Text
+                numberOfLines={1}
+                style={[styles.titre, { color: marque ? colors.cream : colors.ink }]}
+              >
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text numberOfLines={1} style={styles.sousTitre}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={[styles.cote, styles.coteDroite]}>{right}</View>
@@ -144,6 +169,7 @@ const styles = StyleSheet.create({
   },
   headerMarque: { backgroundColor: colors.lave },
   headerClair: { backgroundColor: 'transparent' },
+  filet: { borderBottomWidth: 1, borderBottomColor: colors.border },
 
   // Les deux colonnes partagent la même largeur : le centre est géométrique.
   cote: { width: COTE, alignItems: 'flex-start', justifyContent: 'center' },

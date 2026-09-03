@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndica
 import { Alert } from '../../lib/alert';
 import { Star, Trash2, Building2, Home, UtensilsCrossed, Mountain } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography } from '../../lib/theme';
 import type { Review, Establishment, EstablishmentType } from '../../lib/types';
@@ -45,7 +46,14 @@ export default function ReviewsScreen() {
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Supprimer', style: 'destructive', onPress: async () => {
-          await supabase.from('reviews').delete().eq('id', review.id);
+          // La liste se corrigerait d'elle-même au rechargement, mais le
+          // journal d'audit, lui, garderait la trace d'une suppression qui
+          // n'a pas eu lieu.
+          const supprime = await ecrire(
+            supabase.from('reviews').delete().eq('id', review.id),
+            "Suppression de l'avis",
+          );
+          if (!supprime) return;
           if (profile?.id) {
             await supabase.from('admin_activity_log').insert({
               actor_id: profile.id,

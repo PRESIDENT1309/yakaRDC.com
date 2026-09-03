@@ -9,6 +9,7 @@ import {
   ArrowLeft, Heart, Building2, Home, UtensilsCrossed, Mountain, MapPin,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { ecrire } from '../lib/db';
 import { useAuth } from '../lib/auth-context';
 import { colors, categoryColors, typography } from '../lib/theme';
 import type { Favorite, Establishment, EstablishmentType } from '../lib/types';
@@ -47,7 +48,12 @@ export default function FavoritesScreen() {
   useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
 
   async function handleRemove(favoriteId: string) {
-    await supabase.from('favorites').delete().eq('id', favoriteId);
+    // La fiche ne quitte la liste que si la base l'a réellement retirée.
+    const retire = await ecrire(
+      supabase.from('favorites').delete().eq('id', favoriteId),
+      'Retrait du favori',
+    );
+    if (!retire) return;
     setFavorites(prev => prev.filter(f => f.id !== favoriteId));
   }
 

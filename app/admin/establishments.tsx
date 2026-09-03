@@ -9,6 +9,7 @@ import {
   Star, AlertTriangle, Ban, CheckCircle, Phone, Mail, User as UserIcon, ArrowLeft,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, categoryColors, typography } from '../../lib/theme';
 import type { Establishment, EstablishmentType, EstablishmentWarning, Profile } from '../../lib/types';
@@ -119,11 +120,20 @@ export default function EstablishmentsScreen() {
     if (!selected || !currentAdmin?.id || !warningReason.trim()) return;
     setProcessing(true);
 
-    await supabase.from('establishment_warnings').insert({
-      establishment_id: selected.id,
-      issued_by: currentAdmin.id,
-      reason: warningReason.trim(),
-    });
+    // Une décision de modération non enregistrée ne doit ni être journalisée
+    // ni s'afficher comme prise : l'admin croirait le partenaire averti.
+    const emis = await ecrire(
+      supabase.from('establishment_warnings').insert({
+        establishment_id: selected.id,
+        issued_by: currentAdmin.id,
+        reason: warningReason.trim(),
+      }),
+      "Envoi de l'avertissement",
+    );
+    if (!emis) { setProcessing(false); return; }
+    // Résultat volontairement ignoré : l'avertissement lui-même est déjà
+    // enregistré, et fetchList() plus bas relit le compteur depuis la base.
+    // Un échec ici se corrige donc tout seul à l'affichage suivant.
     await supabase.from('establishments')
       .update({ warning_count: selected.warning_count + 1 })
       .eq('id', selected.id);
@@ -148,10 +158,16 @@ export default function EstablishmentsScreen() {
     if (!selected || !currentAdmin?.id) return;
     setProcessing(true);
 
-    await supabase.from('establishments').update({
-      suspended_at: new Date().toISOString(),
-      suspension_reason: suspendReason.trim() || 'Non précisé',
-    }).eq('id', selected.id);
+    // Un établissement cru suspendu mais toujours visible dans l'app est la
+    // pire issue possible ici : on ne poursuit que si la base a suivi.
+    const suspendu = await ecrire(
+      supabase.from('establishments').update({
+        suspended_at: new Date().toISOString(),
+        suspension_reason: suspendReason.trim() || 'Non précisé',
+      }).eq('id', selected.id),
+      'Suspension',
+    );
+    if (!suspendu) { setProcessing(false); return; }
     await supabase.from('admin_activity_log').insert({
       actor_id: currentAdmin.id,
       action: 'establishment_suspended',
@@ -173,7 +189,11 @@ export default function EstablishmentsScreen() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Réactiver', onPress: async () => {
         setProcessing(true);
-        await supabase.from('establishments').update({ suspended_at: null, suspension_reason: null }).eq('id', selected.id);
+        const reactive = await ecrire(
+          supabase.from('establishments').update({ suspended_at: null, suspension_reason: null }).eq('id', selected.id),
+          'Réactivation',
+        );
+        if (!reactive) { setProcessing(false); return; }
         await supabase.from('admin_activity_log').insert({
           actor_id: currentAdmin.id,
           action: 'establishment_reactivated',

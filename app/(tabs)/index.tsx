@@ -11,7 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
-import Svg, { Circle, Polygon, Path } from 'react-native-svg';
+import LogoYaka from '../../components/LogoYaka';
 import {
   Search,
   Bell,
@@ -60,11 +60,8 @@ const SLIDE_DURATION = 650; // durée du défilement entre deux photos
 function LogoLockup() {
   return (
     <View style={styles.logoRow}>
-      <Svg width="22" height="22" viewBox="0 0 120 120">
-        <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-        <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-        <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-      </Svg>
+      {/* Seule occurrence sans plaque : le motif est posé à même le bandeau. */}
+      <LogoYaka size={22} plate={false} />
       <Text style={styles.logoText}>YakaRDC</Text>
     </View>
   );

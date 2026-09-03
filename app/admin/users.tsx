@@ -5,6 +5,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { Search, ChevronRight, X, Check } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
 import { colors, typography } from '../../lib/theme';
 import type { Profile, UserRole } from '../../lib/types';
@@ -47,7 +48,14 @@ export default function UsersScreen() {
 
   async function changeRole(newRole: UserRole) {
     if (!selected || !currentAdmin?.id) return;
-    await supabase.from('profiles').update({ role: newRole }).eq('id', selected.id);
+    // Le journal d'audit ne doit consigner que des changements réels : si la
+    // base refuse la promotion, l'enregistrer laisserait une trace mensongère
+    // dans l'historique, et l'écran afficherait un rôle que l'utilisateur n'a pas.
+    const applique = await ecrire(
+      supabase.from('profiles').update({ role: newRole }).eq('id', selected.id),
+      'Changement de rôle',
+    );
+    if (!applique) return;
     await supabase.from('admin_activity_log').insert({
       actor_id: currentAdmin.id,
       action: 'role_changed',

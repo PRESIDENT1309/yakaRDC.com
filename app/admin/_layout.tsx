@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Platform, useWindowDimensions,
 } from 'react-native';
 import { Slot, router, usePathname } from 'expo-router';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
+import LogoYaka from '../../components/LogoYaka';
 import {
   LayoutDashboard, ChartBar, Users, Store, History,
   Star, MapPin, LogOut, Building2, Menu, X, Image as ImageIcon,
@@ -77,12 +77,7 @@ export default function AdminLayout() {
     return (
       <>
         <View style={styles.brand}>
-          <Svg width="26" height="26" viewBox="0 0 120 120">
-            <Rect width="120" height="120" rx="20" fill={colors.lave} />
-            <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-            <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-            <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-          </Svg>
+          <LogoYaka size={26} plateRadius={20} />
           <View>
             <Text style={styles.brandTitle}>YakaRDC</Text>
             <Text style={styles.brandSub}>Administration</Text>

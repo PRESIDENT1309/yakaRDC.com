@@ -7,6 +7,7 @@ import { Alert } from '../../lib/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, Trash2, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { colors, typography } from '../../lib/theme';
 
 // ─────────────────────────────────────────────
@@ -40,8 +41,14 @@ function SingleImageSlot({ settingKey, title, description }:
       if (uploadError) { Alert.alert('Erreur', uploadError.message); setUploading(false); return; }
 
       const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
-      await supabase.from('app_settings').upsert({ key: settingKey, value: data.publicUrl, updated_at: new Date().toISOString() });
-      setCurrentUrl(data.publicUrl);
+      // Le fichier est envoyé, mais c'est cette ligne qui décide de ce que
+      // l'app affiche. Sans elle, l'aperçu montrerait une image que personne
+      // d'autre ne verra.
+      const enregistre = await ecrire(
+        supabase.from('app_settings').upsert({ key: settingKey, value: data.publicUrl, updated_at: new Date().toISOString() }),
+        "Enregistrement de l'image",
+      );
+      if (enregistre) setCurrentUrl(data.publicUrl);
     } catch (e: any) {
       Alert.alert('Erreur', e?.message ?? "L'envoi de l'image a échoué.");
     }
@@ -56,8 +63,11 @@ function SingleImageSlot({ settingKey, title, description }:
         setDeleting(true);
         const storagePath = currentUrl.split('/establishment-photos/')[1];
         if (storagePath) await supabase.storage.from('establishment-photos').remove([storagePath]);
-        await supabase.from('app_settings').upsert({ key: settingKey, value: null, updated_at: new Date().toISOString() });
-        setCurrentUrl(null);
+        const efface = await ecrire(
+          supabase.from('app_settings').upsert({ key: settingKey, value: null, updated_at: new Date().toISOString() }),
+          "Suppression de l'image",
+        );
+        if (efface) setCurrentUrl(null);
         setDeleting(false);
       }},
     ]);
@@ -118,12 +128,20 @@ function MultiImageSlot({ settingKey, title, description }:
   }, [settingKey]);
 
   async function savePhotos(next: string[]) {
+    // On écrit avant d'afficher, et non l'inverse : le carrousel de l'accueil
+    // doit montrer ce qui est réellement en base. L'ordre initial affichait
+    // la nouvelle liste puis tentait de l'enregistrer, si bien qu'un refus
+    // laissait l'écran en avance sur la réalité jusqu'au rechargement.
+    const enregistre = await ecrire(
+      supabase.from('app_settings').upsert({
+        key: settingKey,
+        value: next.length > 0 ? JSON.stringify(next) : null,
+        updated_at: new Date().toISOString(),
+      }),
+      'Enregistrement des photos',
+    );
+    if (!enregistre) return;
     setPhotos(next);
-    await supabase.from('app_settings').upsert({
-      key: settingKey,
-      value: next.length > 0 ? JSON.stringify(next) : null,
-      updated_at: new Date().toISOString(),
-    });
   }
 
   async function handleAddPhoto() {

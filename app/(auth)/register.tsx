@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import Svg, { Rect, Circle, Polygon, Path } from 'react-native-svg';
+import LogoYaka from '../../components/LogoYaka';
 import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, typography, breakpoints } from '../../lib/theme';
@@ -176,12 +176,7 @@ export default function RegisterScreen() {
       >
         {/* Logo */}
         <View style={styles.logoRow}>
-          <Svg width="48" height="48" viewBox="0 0 120 120">
-            <Rect width="120" height="120" rx="26" fill={colors.lave} />
-            <Circle cx="60" cy="48" r="22" fill={colors.amber} />
-            <Polygon points="34,80 60,38 86,80" fill={colors.lave} />
-            <Path d="M28,96 Q60,88 92,96" stroke={colors.amber} strokeWidth="5" fill="none" strokeLinecap="round" />
-          </Svg>
+          <LogoYaka size={48} />
         </View>
 
         <Text style={styles.title}>Créer un compte</Text>

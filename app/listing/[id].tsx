@@ -15,6 +15,7 @@ import {
   ChevronLeft, ChevronRight, MessageCircle, BadgeCheck, Pencil, Images, BookOpen, ChevronRight as ChevronRightSm,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { ecrire } from '../../lib/db';
 import { cheapestActiveOffer } from '../../lib/offers';
 import { slotToTime, timeToSlot } from '../../lib/slots';
 import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/menu';
@@ -443,16 +444,24 @@ export default function ListingDetailScreen() {
     if (!requireAuth('Connectez-vous pour enregistrer cet établissement dans vos favoris.')) return;
     if (!session?.user || favoriteLoading) return;
     setFavoriteLoading(true);
+    // Le cœur ne bascule que si la base a suivi : sinon le voyageur croit
+    // avoir enregistré la fiche et ne la retrouve pas dans ses favoris.
     if (isFavorited) {
-      await supabase.from('favorites').delete()
-        .eq('traveler_id', session.user.id).eq('establishment_id', id);
-      setIsFavorited(false);
+      const retire = await ecrire(
+        supabase.from('favorites').delete()
+          .eq('traveler_id', session.user.id).eq('establishment_id', id),
+        'Retrait des favoris',
+      );
+      if (retire) setIsFavorited(false);
     } else {
-      await supabase.from('favorites').insert({
-        traveler_id: session.user.id,
-        establishment_id: id,
-      });
-      setIsFavorited(true);
+      const ajoute = await ecrire(
+        supabase.from('favorites').insert({
+          traveler_id: session.user.id,
+          establishment_id: id,
+        }),
+        'Ajout aux favoris',
+      );
+      if (ajoute) setIsFavorited(true);
     }
     setFavoriteLoading(false);
   }
@@ -484,16 +493,22 @@ export default function ListingDetailScreen() {
       .select('id', { count: 'exact', head: true })
       .eq('trip_plan_id', activeTrip.id).eq('item_type', 'wishlist');
 
-    await supabase.from('trip_plan_items').insert({
-      trip_plan_id: activeTrip.id,
-      establishment_id: establishment.id,
-      item_type: 'wishlist',
-      title: establishment.name,
-      estimated_cost: offers[0]?.price ?? 0,
-      position: count ?? 0,
-    });
+    const ajoute = await ecrire(
+      supabase.from('trip_plan_items').insert({
+        trip_plan_id: activeTrip.id,
+        establishment_id: establishment.id,
+        item_type: 'wishlist',
+        title: establishment.name,
+        estimated_cost: offers[0]?.price ?? 0,
+        position: count ?? 0,
+      }),
+      'Ajout au planning',
+    );
 
     setAddingToPlan(false);
+    // « Ajouté ! » n'a de sens que si l'ajout a eu lieu : l'échec a déjà été
+    // annoncé par ecrire(), inutile d'affirmer le contraire par-dessus.
+    if (!ajoute) return;
     Alert.alert('Ajouté !', `${establishment.name} a été ajouté à votre planning, dans "Lieux à visiter".`);
   }
 
@@ -633,6 +648,10 @@ export default function ListingDetailScreen() {
         // La réservation existe mais sans ligne : on l'annule plutôt que de
         // laisser une demande sans contenu, que le partenaire ne saurait pas
         // honorer. Le message porte la cause réelle (souvent : offre complète).
+        // Résultat volontairement ignoré : le voyageur voit déjà « Réservation
+        // impossible » juste en dessous, avec la cause réelle. Une seconde
+        // alerte sur l'échec du nettoyage ne lui apprendrait rien d'actionnable.
+        // Le seul risque résiduel est une réservation sans ligne côté partenaire.
         await supabase.from('bookings').delete().eq('id', created.id);
         setSubmitting(false);
         Alert.alert(
