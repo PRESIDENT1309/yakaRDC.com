@@ -93,6 +93,24 @@ export const radii = {
   md: 12,
   lg: 20,
   pill: 999,
+
+  // ── Graduations intermédiaires ──────────────────────────────────────────
+  // Nommées par leur valeur, faute de rôle sémantique : ce ne sont pas des
+  // intentions de design, ce sont les pas que le produit emploie réellement.
+  //
+  // Les nommer ne rend pas le dessin meilleur — cela ferme l'ensemble. Tant
+  // que la seule façon d'écrire 10 était `borderRadius: 10`, rien ne
+  // distinguait une valeur voulue d'une valeur tapée au hasard. Désormais,
+  // écrire 13 se voit : aucun jeton ne le porte.
+  //
+  // Constat au passage : `v10` est le rayon le plus fréquent du produit (62
+  // occurrences), devant `sm` et `md`. L'échelle sémantique ne décrivait donc
+  // même pas son propre défaut le plus courant.
+  v4: 4,
+  v6: 6,
+  v10: 10,
+  v14: 14,
+  v16: 16,
 } as const;
 
 // Rapports d'image — direction photographique.
@@ -128,6 +146,31 @@ export const spacing = {
   // se propager en littéral. Ne pas l'utiliser pour autre chose qu'une
   // gouttière horizontale d'écran.
   gutter: 18,
+
+  // ── Graduations intermédiaires ──────────────────────────────────────────
+  // Même principe que pour `radii`, et même constat, en plus net : l'échelle
+  // ci-dessus progresse par doublement (4, 8, 16, 24, 32…) alors que le
+  // produit travaille sur une grille de 2 px. Les six pas ci-dessous couvrent
+  // 545 écarts écrits à la main — soit la majorité de ce qui restait.
+  //
+  // Ils ne portent pas de nom sémantique parce qu'ils n'ont pas de rôle : `v12`
+  // n'est pas « l'espacement de carte », c'est douze points. Prétendre le
+  // contraire inventerait une intention qui n'existe pas dans le code.
+  //
+  // Ce que ces jetons apportent n'est donc pas du sens mais une frontière :
+  // l'ensemble des écarts autorisés devient énumérable. C'est la condition
+  // pour, un jour, le resserrer — un ensemble ouvert ne se resserre pas.
+  //
+  // Restent volontairement sans jeton les valeurs impaires (3, 5, 7, 9, 11 —
+  // une centaine d'occurrences). Elles sortent de la grille de 2 px : les
+  // nommer les légitimerait, alors que leur écriture littérale signale
+  // justement qu'elles sont hors système.
+  v2: 2,
+  v6: 6,
+  v10: 10,
+  v12: 12,
+  v14: 14,
+  v20: 20,
 } as const;
 
 // Points de rupture pour l'adaptation desktop/tablette/mobile (lib/responsive.ts).

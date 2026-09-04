@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors, typography } from '../lib/theme';
+import { colors, categoryColors, typography, radii, spacing } from '../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
 import EmptyState from '../components/EmptyState';
@@ -91,7 +91,7 @@ export default function NotificationsScreen() {
             onAction={() => router.push('/(tabs)/bookings')}
           />
         ) : (
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: spacing.sm }}>
             {bookings.map(b => {
               const info = statusInfo(b.status);
               const Icon = info.icon;
@@ -125,11 +125,11 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: 16 },
+  content: { padding: spacing.md },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 12, padding: 12,
+    borderRadius: radii.md, padding: spacing.v12,
   },
   iconBox: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   rowText: { ...typography.bodyXs, color: colors.ink, },

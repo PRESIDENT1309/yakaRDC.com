@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { colors, typography, radii } from '../lib/theme';
+import { colors, typography, radii, spacing } from '../lib/theme';
 
 export interface ChipProps {
   label: string;
@@ -49,12 +49,12 @@ export default function Chip({ label, onPress, active = false, icon, variant = '
 
 const styles = StyleSheet.create({
   base: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
     borderRadius: radii.pill, backgroundColor: colors.white,
     borderWidth: 1, borderColor: colors.border,
   },
-  selectablePad: { paddingHorizontal: 16, paddingVertical: 9 },
-  filterPad: { paddingHorizontal: 12, paddingVertical: 7, gap: 4 },
+  selectablePad: { paddingHorizontal: spacing.md, paddingVertical: 9 },
+  filterPad: { paddingHorizontal: spacing.v12, paddingVertical: 7, gap: spacing.xs },
   label: { ...typography.pillLabel, color: colors.ink },
   labelFilter: { ...typography.bodyXs, },
   selectableActive: { backgroundColor: colors.lave, borderColor: colors.lave },

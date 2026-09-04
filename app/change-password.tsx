@@ -184,18 +184,18 @@ export default function ChangePasswordScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl, gap: 4 },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl, gap: spacing.xs },
   notice: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
     backgroundColor: colors.warningSoft, borderRadius: radii.md,
     padding: spacing.md, marginBottom: spacing.lg,
   },
   noticeText: { flex: 1, ...typography.caption, color: colors.warning, lineHeight: 18 },
-  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.md, marginBottom: 6 },
+  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.md, marginBottom: spacing.v6 },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: 12,
+    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   input: { flex: 1, ...typography.body, color: colors.ink },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },

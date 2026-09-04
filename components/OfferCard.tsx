@@ -101,10 +101,10 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
   title: { ...typography.cardTitle, color: colors.ink, flex: 1 },
   description: { ...typography.caption, color: colors.muted, lineHeight: 17 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.v2 },
   meta: { ...typography.caption, color: colors.faint },
   metaSep: { ...typography.caption, color: colors.faint },
   price: { ...typography.caption, fontWeight: '600' },
-  availability: { ...typography.badgeSm, color: colors.success, marginTop: 2 },
+  availability: { ...typography.badgeSm, color: colors.success, marginTop: spacing.v2 },
   availabilityFull: { color: colors.danger },
 });

@@ -5,7 +5,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { MapPin, Plus, Check, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography } from '../../lib/theme';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 import type { City, OfferCategory, EstablishmentType } from '../../lib/types';
 
 const TYPE_LABELS: { key: EstablishmentType; label: string }[] = [
@@ -170,14 +170,14 @@ export default function CitiesScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Villes configurées</Text>
           {loading ? (
-            <ActivityIndicator color={colors.lave} style={{ marginTop: 14 }} />
+            <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.v14 }} />
           ) : cities.length === 0 ? (
             <View style={styles.empty}>
               <MapPin size={28} color={colors.borderStrong} />
               <Text style={styles.emptyText}>Aucune ville configurée.</Text>
             </View>
           ) : (
-            <View style={{ marginTop: 10, gap: 0 }}>
+            <View style={{ marginTop: spacing.v10, gap: 0 }}>
               {cities.map((city, i) => (
                 <View key={city.id} style={[styles.cityRow, i !== cities.length - 1 && styles.cityRowBorder]}>
                   <View style={[styles.cityDot, { backgroundColor: city.is_active ? colors.success : colors.borderStrong }]} />
@@ -247,7 +247,7 @@ export default function CitiesScreen() {
                 </Pressable>
               </View>
 
-              <View style={{ marginTop: 10 }}>
+              <View style={{ marginTop: spacing.v10 }}>
                 {categories.filter(c => c.establishment_type === newCatType).map((c, i, arr) => (
                   <View key={c.id} style={[styles.cityRow, i !== arr.length - 1 && styles.cityRowBorder]}>
                     <View style={[styles.cityDot, { backgroundColor: c.is_active ? colors.success : colors.borderStrong }]} />
@@ -305,56 +305,56 @@ const styles = StyleSheet.create({
   header: {
     maxWidth: 600, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
-    paddingHorizontal: 20, paddingBottom: 14,
+    paddingHorizontal: spacing.v20, paddingBottom: spacing.v14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  content: { padding: 20, gap: 12, maxWidth: 600 },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
-  cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 12, },
-  addRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: 600 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.v12, },
+  addRow: { flexDirection: 'row', gap: spacing.v10, alignItems: 'center' },
   addInput: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10,
   },
   input: { ...typography.bodySm, flex: 1, color: colors.ink, },
   addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.lave, borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
+    backgroundColor: colors.lave, borderRadius: radii.sm,
+    paddingHorizontal: spacing.v14, paddingVertical: spacing.v10,
   },
   addBtnText: { ...typography.caption, color: colors.cream, },
-  empty: { alignItems: 'center', paddingVertical: 20, gap: 8 },
+  empty: { alignItems: 'center', paddingVertical: spacing.v20, gap: spacing.sm },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, paddingVertical: 11 },
   cityRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
-  cityDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  cityDot: { width: 8, height: 8, borderRadius: radii.v4, flexShrink: 0 },
   cityName: { ...typography.bodySm, flex: 1, color: colors.ink, },
   cityNameInactive: { color: colors.muted, textDecorationLine: 'line-through' },
-  hintText: { ...typography.captionSm, color: colors.faint, marginTop: 4, },
-  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, marginBottom: 10 },
-  typeBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  hintText: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v6, marginTop: spacing.v10, marginBottom: spacing.v10 },
+  typeBtn: { paddingHorizontal: spacing.v12, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   typeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   typeBtnText: { ...typography.bodyXs, color: colors.muted, },
   typeBtnTextActive: { color: colors.cream, fontWeight: '500' },
-  cityActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cityActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6 },
   toggleBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    paddingHorizontal: 9, paddingVertical: 5, borderRadius: radii.pill, borderWidth: 1,
   },
   toggleBtnActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   toggleBtnInactive: { backgroundColor: colors.surfaceSunken, borderColor: colors.borderStrong },
   toggleText: { ...typography.captionMd, },
   deleteBtn: {
-    width: 26, height: 26, borderRadius: 6,
+    width: 26, height: 26, borderRadius: radii.v6,
     backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center',
   },
-  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
-  infoTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: 8, },
-  infoText: { ...typography.bodyXs, color: colors.muted, marginBottom: 12, },
+  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
+  infoTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
+  infoText: { ...typography.bodyXs, color: colors.muted, marginBottom: spacing.v12, },
   categoriesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  catChip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.v6, borderRadius: radii.pill },
   catChipText: { ...typography.captionMd, },
 });

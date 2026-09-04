@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { ArrowRight } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import LandscapeIllustration from '../components/LandscapeIllustration';
-import { colors, fonts, typography } from '../lib/theme';
+import { colors, fonts, typography, spacing } from '../lib/theme';
 
 export default function WelcomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   eyebrow: { ...typography.bodyXs, color: 'rgba(255,248,236,0.75)',
-    letterSpacing: 3, marginBottom: 8, ...shadow, },
+    letterSpacing: 3, marginBottom: spacing.sm, ...shadow, },
   title: {
     // Le nom de l'application s'affichait en `serif` générique — soit du Times
     // New Roman sur le web, du Georgia sur iOS. Playfair est pourtant chargée
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     ...shadow,
   },
   bottom: {
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
     paddingBottom: Platform.OS === 'ios' ? 50 : 36,
     alignItems: 'center',
     gap: 22,

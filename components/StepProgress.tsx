@@ -54,9 +54,9 @@ export default function StepProgress({ labels, current, onGoBack, accent = color
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
-  bars: { flexDirection: 'row', gap: 4 },
+  bars: { flexDirection: 'row', gap: spacing.xs },
   bar: { flex: 1, height: 3, borderRadius: radii.pill },
-  labels: { flexDirection: 'row', gap: 4, marginTop: 6 },
+  labels: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.v6 },
   labelSlot: { flex: 1 },
   label: { ...typography.badgeSm, color: colors.faint },
   labelDone: { color: colors.muted, textDecorationLine: 'underline' },

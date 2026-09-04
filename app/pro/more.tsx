@@ -7,7 +7,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, breakpoints } from '../../lib/theme';
+import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
 import { Alert } from '../../lib/alert';
 
 type Section = 'menu' | 'stats' | 'settings';
@@ -256,32 +256,32 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: { backgroundColor: colors.lave, paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingBottom: 18 },
   headerInner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: 18 },
-  headerTitle: { ...typography.titleSm, color: colors.cream, marginBottom: 14, },
-  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerTitle: { ...typography.titleSm, color: colors.cream, marginBottom: spacing.v14, },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10 },
   avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { ...typography.titleSm, color: colors.cream, },
   profileName: { ...typography.labelMd, color: colors.cream, },
-  profileEmail: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginTop: 2, },
+  profileEmail: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginTop: spacing.v2, },
   // Comme `header` : le fond reste en pleine largeur, son contenu s'aligne sur
   // le corps. `gap` et `paddingHorizontal` régissent les enfants — ils migrent
   // vers l'enveloppeur, sinon ils n'agiraient plus sur rien.
-  subHeader: { backgroundColor: colors.lave, paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingBottom: 14 },
-  subHeaderInner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: 18, gap: 8 },
+  subHeader: { backgroundColor: colors.lave, paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingBottom: spacing.v14 },
+  subHeaderInner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: 18, gap: spacing.sm },
   backLink: { ...typography.bodySm, color: 'rgba(250,248,244,0.8)', },
   subHeaderTitle: { ...typography.titleSm, color: colors.cream, },
-  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: 16, gap: 14, paddingBottom: 40 },
-  card: { backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
-  menuIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center' },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.md, gap: spacing.v14, paddingBottom: 40 },
+  card: { backgroundColor: colors.white, borderRadius: radii.v14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
+  menuIcon: { width: 30, height: 30, borderRadius: radii.sm, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { ...typography.bodySm, flex: 1, color: colors.ink, },
-  menuBadge: { backgroundColor: colors.surfaceSunken, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  menuBadge: { backgroundColor: colors.surfaceSunken, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.v2 },
   menuBadgeText: { ...typography.captionSm, color: colors.muted, },
-  signOutBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: 12, padding: 14 },
+  signOutBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, padding: spacing.v14 },
   signOutText: { ...typography.pillLabel, color: colors.danger, },
   version: { ...typography.captionSm, textAlign: 'center', color: colors.borderStrong, },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  bigStatCard: { width: '47%', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16, alignItems: 'center', gap: 6 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v10 },
+  bigStatCard: { width: '47%', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v14, padding: spacing.md, alignItems: 'center', gap: spacing.v6 },
   bigStatValue: { ...typography.titleLg, color: colors.ink, },
   bigStatLabel: { ...typography.captionSm, color: colors.muted, textAlign: 'center', },
-  statsNote: { ...typography.bodyXs, color: colors.muted, backgroundColor: colors.surfaceSunken, borderRadius: 10, padding: 12, marginTop: 4, },
+  statsNote: { ...typography.bodyXs, color: colors.muted, backgroundColor: colors.surfaceSunken, borderRadius: radii.v10, padding: spacing.v12, marginTop: spacing.xs, },
 });

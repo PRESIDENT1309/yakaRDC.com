@@ -94,21 +94,21 @@ export default function PhoneField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
+  wrap: { marginBottom: spacing.v12 },
   label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   row: { flexDirection: 'row', gap: spacing.sm },
   dialBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10,
   },
   dialText: { ...typography.body, color: colors.ink },
   input: { ...typography.body, flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: colors.ink, },
+    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, color: colors.ink, },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: 12, paddingVertical: 10, marginBottom: spacing.sm,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, marginBottom: spacing.sm,
   },
   searchInput: { ...typography.body, flex: 1, color: colors.ink },
   list: { maxHeight: 320 },

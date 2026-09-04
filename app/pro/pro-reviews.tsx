@@ -8,7 +8,7 @@ import { goBack } from '../../lib/navigation';
 import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, breakpoints } from '../../lib/theme';
+import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
 import type { Establishment, Review } from '../../lib/types';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
@@ -61,7 +61,7 @@ export default function PartnerReviewsScreen() {
         contentMaxWidth={breakpoints.panelMax}
       />
 
-      <ScrollView contentContainerStyle={{ maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: 16 }}>
+      <ScrollView contentContainerStyle={{ maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: spacing.md }}>
         {loading ? (
           <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
         ) : reviews.length === 0 ? (
@@ -75,7 +75,7 @@ export default function PartnerReviewsScreen() {
             description="Les avis de vos clients apparaîtront ici après leur visite."
           />
         ) : (
-          <View style={{ gap: 10 }}>
+          <View style={{ gap: spacing.v10 }}>
             {reviews.map(r => (
               <View key={r.id} style={styles.reviewCard}>
                 <View style={styles.reviewTop}>
@@ -130,16 +130,16 @@ export default function PartnerReviewsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   reviewCard: {
-    backgroundColor: colors.white, borderRadius: 14, padding: 14,
+    backgroundColor: colors.white, borderRadius: radii.v14, padding: spacing.v14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
-  reviewTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  reviewTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   reviewDate: { ...typography.captionSm, color: colors.faint, },
-  reviewComment: { ...typography.bodyXs, color: colors.ink, marginBottom: 10, },
-  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 9 },
-  replyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: 2, },
+  reviewComment: { ...typography.bodyXs, color: colors.ink, marginBottom: spacing.v10, },
+  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: 9 },
+  replyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: spacing.v2, },
   replyText: { ...typography.captionSm, color: colors.ink, },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 9 },
-  replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, paddingVertical: 4, },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 9 },
+  replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
   replyBtnText: { ...typography.caption, color: colors.lave, },
 });

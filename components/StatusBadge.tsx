@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radii, typography } from '../lib/theme';
+import { colors, radii, typography, spacing } from '../lib/theme';
 import type { Booking } from '../lib/types';
 
 export interface StatusBadgeProps {
@@ -29,6 +29,6 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
 }
 
 const styles = StyleSheet.create({
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
+  badge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
   badgeText: { ...typography.captionMd, },
 });

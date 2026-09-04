@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { colors, typography } from '../lib/theme';
+import { colors, typography, spacing } from '../lib/theme';
 
 interface Props {
   kicker?: string;
@@ -44,19 +44,19 @@ export default function SectionHeading({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.v12 },
   rowCenter: { justifyContent: 'center' },
   kicker: {
     ...typography.overline,
     textTransform: 'uppercase',
     color: colors.fleuveDark,
-    marginBottom: 6,
+    marginBottom: spacing.v6,
   },
   kickerLight: { color: 'rgba(250,248,244,0.72)' },
   title: { ...typography.displayLg, color: colors.ink },
   titleLight: { color: colors.cream },
   titleCenter: { textAlign: 'center' },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingBottom: 5 },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2, paddingBottom: 5 },
   seeAllText: { ...typography.caption, color: colors.lave, fontWeight: '600' },
   seeAllTextLight: { color: colors.cream },
 });

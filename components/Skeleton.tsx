@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import type { DimensionValue, ViewStyle, StyleProp } from 'react-native';
-import { colors, radii, ratios } from '../lib/theme';
+import { colors, radii, ratios, spacing } from '../lib/theme';
 import { courbe, useMouvementReduit } from '../lib/motion';
 
 /**
@@ -105,5 +105,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  carteTexte: { padding: 12, gap: 8 },
+  carteTexte: { padding: spacing.v12, gap: spacing.sm },
 });

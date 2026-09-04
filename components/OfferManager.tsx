@@ -501,7 +501,7 @@ export default function OfferManager({
 const styles = StyleSheet.create({
   hint: { ...typography.caption, color: colors.faint, lineHeight: 17, marginBottom: spacing.sm },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5, marginTop: spacing.sm, },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v6, marginBottom: spacing.sm },
   row2: { flexDirection: 'row', gap: spacing.sm },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
@@ -515,6 +515,6 @@ const styles = StyleSheet.create({
   },
   thumbImg: { width: '100%', height: '100%' },
   rowTitle: { ...typography.cardTitle, color: colors.ink },
-  rowMeta: { ...typography.caption, color: colors.muted, marginTop: 2 },
-  iconBtn: { padding: 4 },
+  rowMeta: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
+  iconBtn: { padding: spacing.xs },
 });

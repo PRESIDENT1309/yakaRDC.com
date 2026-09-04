@@ -32,7 +32,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useConfirm } from '../../lib/confirm-context';
-import { colors, fonts, typography, breakpoints } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints, radii, spacing } from '../../lib/theme';
 
 function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -323,13 +323,13 @@ const styles = StyleSheet.create({
     right: 18,
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radii.v16,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarWrapper: {
-    marginBottom: 12,
+    marginBottom: spacing.v12,
     position: 'relative',
   },
   avatar: {
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     right: 2,
     width: 27,
     height: 27,
-    borderRadius: 14,
+    borderRadius: radii.v14,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   contact: {
     ...typography.captionSm,
     color: 'rgba(250,248,244,0.7)',
-    marginBottom: 20,
+    marginBottom: spacing.v20,
   },
   statsRow: {
     flexDirection: 'row',
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.captionSm,
     color: 'rgba(250,248,244,0.65)',
-    marginTop: 2,
+    marginTop: spacing.v2,
   },
   statDivider: {
     width: 1,
@@ -400,18 +400,18 @@ const styles = StyleSheet.create({
     maxWidth: breakpoints.formMax,
     width: '100%',
     alignSelf: 'center',
-    padding: 16,
-    gap: 16,
+    padding: spacing.md,
+    gap: spacing.md,
   },
   section: { gap: 7 },
   sectionLabel: {
     ...typography.overlineXs,
     color: colors.faint,
-    paddingHorizontal: 6,
+    paddingHorizontal: spacing.v6,
   },
   sectionCard: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: radii.v16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -422,8 +422,8 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
+    gap: spacing.v12,
+    paddingHorizontal: spacing.v14,
     paddingVertical: 13,
   },
   menuItemBorder: {
@@ -445,17 +445,17 @@ const styles = StyleSheet.create({
   menuValue: {
     ...typography.captionSm,
     color: colors.faint,
-    marginRight: 2,
+    marginRight: spacing.v2,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginTop: 2,
+    borderRadius: radii.v14,
+    paddingVertical: spacing.v14,
+    marginTop: spacing.v2,
   },
   logoutText: { ...typography.pillLabel, color: colors.danger },
   modalOverlay: {
@@ -463,11 +463,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.lg,
   },
   modalBox: {
     backgroundColor: colors.cream,
-    borderRadius: 20,
+    borderRadius: radii.lg,
     padding: 22,
     width: '100%',
     maxWidth: 340,
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.v10,
   },
   modalTitle: {
     ...typography.titleSm,
@@ -485,16 +485,16 @@ const styles = StyleSheet.create({
   modalText: {
     ...typography.bodySm,
     color: colors.muted,
-    marginBottom: 20,
+    marginBottom: spacing.v20,
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.v10,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: spacing.v12,
+    borderRadius: radii.v10,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -506,8 +506,8 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: spacing.v12,
+    borderRadius: radii.v10,
     backgroundColor: colors.danger,
     alignItems: 'center',
   },

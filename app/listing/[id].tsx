@@ -1134,7 +1134,7 @@ export default function ListingDetailScreen() {
                 description="Soyez le premier à partager votre expérience."
               />
             ) : (
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: spacing.v10 }}>
                 {reviews.slice(0, 3).map(r => (
                   <View key={r.id} style={styles.reviewCard}>
                     <View style={styles.reviewTopRow}>
@@ -1382,7 +1382,7 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
-  errorBackLink: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.sm },
+  errorBackLink: { alignItems: 'center', paddingVertical: spacing.v12, marginTop: spacing.sm },
   errorBackText: { ...typography.caption, color: colors.muted, textDecorationLine: 'underline' },
   hero: { height: 220, position: 'relative', overflow: 'hidden' },
   // Même gouttière que le corps de la fiche, pour que les traits d'attente
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
   attenteCorps: { padding: spacing.gutter, gap: spacing.sm },
   photoDots: {
     position: 'absolute', bottom: 14, alignSelf: 'center',
-    flexDirection: 'row', gap: 6, zIndex: 2,
+    flexDirection: 'row', gap: spacing.v6, zIndex: 2,
   },
   // borderRadius 3 sur 6px, 16 sur 32px : géométrie de cercle, pas un choix
   // esthétique — hors échelle à dessein (§04).
@@ -1403,22 +1403,22 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 12, right: spacing.md, zIndex: 3,
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2,
     backgroundColor: colors.nuit + 'A6', borderRadius: radii.pill,
-    paddingHorizontal: 11, paddingVertical: 6,
+    paddingHorizontal: 11, paddingVertical: spacing.v6,
   },
   galleryBtnText: { ...typography.badgeSm, color: colors.cream },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: spacing.md,
-    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
+    width: 32, height: 32, borderRadius: radii.v16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   heroActions: {
     position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, right: spacing.md,
     flexDirection: 'row', gap: spacing.sm, zIndex: 3,
   },
   heroActionBtn: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.white + 'CC',
+    width: 32, height: 32, borderRadius: radii.v16, backgroundColor: colors.white + 'CC',
     alignItems: 'center', justifyContent: 'center',
   },
   heroFooter: { position: 'absolute', bottom: 14, left: spacing.md, right: spacing.md },
-  heroCategory: { ...typography.overlineXs, color: colors.cream, textTransform: 'uppercase', marginBottom: 4, opacity: 0.9 },
+  heroCategory: { ...typography.overlineXs, color: colors.cream, textTransform: 'uppercase', marginBottom: spacing.xs, opacity: 0.9 },
   // displayStrong (Playfair 600) — première utilisation dans l'app. Rôle
   // attribué ici : nom d'entité sur un hero photo. displayHero reste réservé
   // au titre de hero éditorial (un par page, déjà pris par la Homepage).
@@ -1438,7 +1438,7 @@ const styles = StyleSheet.create({
   desktopMain: { flex: 1, minWidth: 0 },
   desktopSidebar: { width: 320 },
   priceCardSticky: Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {},
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12, flexWrap: 'wrap' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: spacing.v12, flexWrap: 'wrap' },
   metaText: { ...typography.caption, color: colors.muted },
   metaStrong: { ...typography.caption, color: colors.ink },
   metaSeparator: { ...typography.caption, color: colors.faint },
@@ -1446,18 +1446,18 @@ const styles = StyleSheet.create({
   // bordée de plus (anti-pattern §10).
   // Contact — rangée segmentée, un seul conteneur, séparateurs fins.
   contactRow: {
-    flexDirection: 'row', alignItems: 'stretch', marginBottom: 12,
+    flexDirection: 'row', alignItems: 'stretch', marginBottom: spacing.v12,
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.white,
   },
-  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11 },
+  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, paddingVertical: 11 },
   contactDivider: { width: 1, backgroundColor: colors.border },
   contactLabel: { ...typography.caption, color: colors.ink },
-  followRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6, marginBottom: spacing.md },
   followLabel: { ...typography.caption, color: colors.faint },
   followLink: { ...typography.caption, textDecorationLine: 'underline' },
   amenitiesRow: { marginBottom: spacing.md },
   amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.white,
-    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: 10, paddingVertical: 6, marginRight: spacing.sm },
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v10, paddingVertical: spacing.v6, marginRight: spacing.sm },
   amenityText: { ...typography.caption, color: colors.ink },
   section: { marginBottom: spacing.md },
   sectionKicker: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginBottom: spacing.sm },
@@ -1474,31 +1474,31 @@ const styles = StyleSheet.create({
   menuRowTitle: { ...typography.cardTitle, color: colors.ink },
   menuRowMeta: { ...typography.caption, color: colors.muted, marginTop: 1 },
   // Adresse — hiérarchie typographique + filet, pas de carte blanche bordée.
-  addressBlock: { gap: 3, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: 12 },
+  addressBlock: { gap: 3, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: spacing.v12 },
   addressStreet: { ...typography.cardTitle, color: colors.ink },
   addressArea: { ...typography.caption, color: colors.muted },
   addressReference: { ...typography.caption, color: colors.faint },
-  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.v6 },
   directionsText: { ...typography.caption, textDecorationLine: 'underline' },
   reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   writeReviewText: { ...typography.caption },
-  reviewCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: 12 },
+  reviewCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 7 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.fleuveSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: 2 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.fleuveSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: spacing.v2 },
   verifiedText: { ...typography.badgeSm, color: colors.fleuve },
   reviewDate: { ...typography.badgeSm, color: colors.faint, marginLeft: 'auto' },
   reviewComment: { ...typography.caption, color: colors.ink, lineHeight: 18 },
   partnerReplyBox: { flexDirection: 'row', gap: 7, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: 9, marginTop: 9 },
-  partnerReplyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: 2 },
+  partnerReplyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: spacing.v2 },
   partnerReplyText: { ...typography.caption, color: colors.ink, lineHeight: 16 },
-  moreReviewsText: { ...typography.caption, color: colors.muted, textAlign: 'center', paddingTop: 2 },
+  moreReviewsText: { ...typography.caption, color: colors.muted, textAlign: 'center', paddingTop: spacing.v2 },
   similarSection: { marginTop: spacing.lg },
-  similarRow: { gap: 12, paddingBottom: spacing.xs },
-  reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: spacing.sm },
+  similarRow: { gap: spacing.v12, paddingBottom: spacing.xs },
+  reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, paddingVertical: spacing.md, marginTop: spacing.sm },
   reportText: { ...typography.caption, color: colors.faint, textDecorationLine: 'underline' },
   starPicker: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm + 2, marginBottom: spacing.md, marginTop: spacing.xs },
-  deleteReviewBtn: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.xs },
+  deleteReviewBtn: { alignItems: 'center', paddingVertical: spacing.v12, marginTop: spacing.xs },
   deleteReviewText: { ...typography.caption, color: colors.danger },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
@@ -1510,29 +1510,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md,
     backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border,
     paddingHorizontal: spacing.gutter,
-    paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+    paddingTop: spacing.v12, paddingBottom: Platform.OS === 'ios' ? 30 : 12,
   },
   bookingBarPrice: { flex: 1 },
   successBanner: { position: 'absolute', bottom: 96, left: spacing.md, right: spacing.md,
-    backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: 6 },
+    backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: spacing.v6 },
   successText: { ...typography.caption, color: colors.cream },
   successLink: { ...typography.caption, color: colors.amber },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5 },
   fieldInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 10, ...typography.body, color: colors.ink },
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, ...typography.body, color: colors.ink },
   // 26px carré, rayon 8 (radii.sm) : pas un cercle, valeur d'échelle.
 
   // Visionneuse plein écran (galerie + menu)
   viewerOverlay: { flex: 1, backgroundColor: colors.nuit + 'F0' },
   viewerHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg, paddingHorizontal: spacing.gutter, paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg, paddingHorizontal: spacing.gutter, paddingBottom: spacing.v12,
   },
   viewerCounter: { ...typography.caption, color: colors.white },
-  viewerImageWrap: { flex: 1, paddingHorizontal: 10 },
+  viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v10 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: 12,
+    paddingHorizontal: spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: spacing.v12,
   },
   viewerNavBtn: {
     width: 44, height: 44, borderRadius: 22,

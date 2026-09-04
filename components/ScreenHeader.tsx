@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   sousTitre: {
     ...typography.captionSm,
     color: CREAM_ATTENUE,
-    marginTop: 2,
+    marginTop: spacing.v2,
     textAlign: 'center',
   },
 

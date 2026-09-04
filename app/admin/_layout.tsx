@@ -11,7 +11,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography } from '../../lib/theme';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
 
   // Desktop
   screen: { flex: 1, flexDirection: 'row', backgroundColor: colors.cream },
-  sidebar: { width: 220, backgroundColor: colors.chrome, paddingTop: 20, flexDirection: 'column' },
+  sidebar: { width: 220, backgroundColor: colors.chrome, paddingTop: spacing.v20, flexDirection: 'column' },
   main: { flex: 1, backgroundColor: colors.cream },
 
   // Mobile
@@ -189,10 +189,10 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 54 : 20,
-    paddingHorizontal: 14, paddingBottom: 12,
+    paddingHorizontal: spacing.v14, paddingBottom: spacing.v12,
     backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  hamburgerBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  hamburgerBtn: { width: 34, height: 34, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   topBarTitle: { ...typography.labelMd, flex: 1, textAlign: 'center', color: colors.ink, },
   mainMobile: { flex: 1 },
   backdrop: {
@@ -206,18 +206,18 @@ const styles = StyleSheet.create({
   closeDrawerBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
 
   // Partagé sidebar/drawer
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingBottom: 18 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, paddingHorizontal: 18, paddingBottom: 18 },
   brandTitle: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 16, color: colors.cream },
   brandSub: { ...typography.captionSm, color: colors.onDarkMuted, },
-  navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
+  navItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, paddingHorizontal: 18, paddingVertical: spacing.v12 },
   navItemActive: { backgroundColor: 'rgba(255,255,255,0.1)' },
   navItemDisabled: { opacity: 0.45 },
   navLabel: { ...typography.bodyXs, color: colors.onDarkMuted, flex: 1, },
   navLabelActive: { color: colors.cream, fontWeight: '500' },
-  navBadge: { backgroundColor: colors.lave, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1.5, minWidth: 18, alignItems: 'center' },
+  navBadge: { backgroundColor: colors.lave, borderRadius: radii.pill, paddingHorizontal: spacing.v6, paddingVertical: 1.5, minWidth: 18, alignItems: 'center' },
   navBadgeText: { ...typography.captionMd, color: colors.cream, },
   soonTag: { ...typography.captionSm, color: colors.onDarkMuted, },
-  sidebarFooter: { padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  sidebarFooter: { padding: spacing.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   avatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center' },
   avatarText: { ...typography.pillLabel, color: colors.cream, },

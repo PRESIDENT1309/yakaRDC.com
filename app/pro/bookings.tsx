@@ -11,7 +11,7 @@ import EmptyState from '../../components/EmptyState';
 import { bookingItemsSummary } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography, breakpoints } from '../../lib/theme';
+import { colors, categoryColors, typography, breakpoints, radii, spacing } from '../../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
@@ -108,7 +108,7 @@ export default function PartnerBookingsScreen() {
       <View style={styles.header}>
         <View style={styles.headerInner}>
         <Text style={styles.headerTitle}>Réservations</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.v6 }}>
           {FILTERS.map(f => (
             <Pressable key={f.key} style={[styles.pill, filter === f.key && styles.pillActive]}
               onPress={() => setFilter(f.key)}>
@@ -217,40 +217,40 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     backgroundColor: colors.cream, paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 10,
+    paddingBottom: spacing.v10,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerInner: {
     maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 18, gap: 10,
+    paddingHorizontal: 18, gap: spacing.v10,
   },
   headerTitle: { ...typography.titleLg, color: colors.ink, },
-  pill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999,
+  pill: { paddingHorizontal: spacing.v14, paddingVertical: spacing.v6, borderRadius: radii.pill,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   pillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   pillText: { ...typography.bodyXs, color: colors.muted, },
   pillTextActive: { color: colors.cream, fontWeight: '500' },
   count: { ...typography.captionSm, color: colors.faint, },
-  list: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: 14, gap: 10, paddingBottom: 100 },
-  card: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  cardTop: { flexDirection: 'row', gap: 10, padding: 12 },
-  cardIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  list: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: spacing.v14, gap: spacing.v10, paddingBottom: 100 },
+  card: { backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  cardTop: { flexDirection: 'row', gap: spacing.v10, padding: spacing.v12 },
+  cardIcon: { width: 40, height: 40, borderRadius: radii.v10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cardInfo: { flex: 1 },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 },
-  cardName: { ...typography.pillLabel, color: colors.ink, flex: 1, marginRight: 6, },
-  cardEstab: { ...typography.captionMd, color: colors.lave, marginBottom: 2, },
+  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.v2 },
+  cardName: { ...typography.pillLabel, color: colors.ink, flex: 1, marginRight: spacing.v6, },
+  cardEstab: { ...typography.captionMd, color: colors.lave, marginBottom: spacing.v2, },
   cardDate: { ...typography.captionSm, color: colors.muted, },
-  cardOffer: { ...typography.captionMd, color: colors.ink, marginTop: 2, },
-  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  cardOffer: { ...typography.captionMd, color: colors.ink, marginTop: spacing.v2, },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.v2 },
   phoneText: { ...typography.captionSm, color: colors.muted, },
-  statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
+  statusBadge: { paddingHorizontal: 7, paddingVertical: spacing.v2, borderRadius: radii.pill },
   statusText: { ...typography.captionMd, },
-  cardActions: { flexDirection: 'row', gap: 8, padding: 10, paddingTop: 0 },
-  confirmBtn: { flex: 1, backgroundColor: colors.success, borderRadius: 8, padding: 8, alignItems: 'center' },
+  cardActions: { flexDirection: 'row', gap: spacing.sm, padding: spacing.v10, paddingTop: 0 },
+  confirmBtn: { flex: 1, backgroundColor: colors.success, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
   confirmBtnText: { ...typography.caption, color: colors.cream, },
-  rejectBtn: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, padding: 8, alignItems: 'center' },
+  rejectBtn: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
   rejectBtnText: { ...typography.bodyXs, color: colors.danger, },
-  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, paddingTop: 0 },
+  codeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6, padding: spacing.v10, paddingTop: 0 },
   codeLabel: { ...typography.captionSm, color: colors.muted, },
   codeValue: { ...typography.caption, color: colors.ink, letterSpacing: 1, },
 });

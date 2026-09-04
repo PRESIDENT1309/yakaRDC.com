@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
   // un champ de saisie. Contraints et centrés, ils redeviennent une colonne.
   headerZone: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 32, paddingBottom: 24,
+    paddingHorizontal: spacing.xl, paddingBottom: spacing.lg,
   },
   marque: { position: 'absolute', top: 0, left: 0, right: 0 },
   marqueRangee: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
     flexDirection: 'row', alignItems: 'center', gap: 9,
   },
   // Cream et même ombre portée que le titre : le nom est posé sur une photo,
@@ -226,40 +226,40 @@ const styles = StyleSheet.create({
   },
   subheadline: {
     fontFamily: fonts.display,
-    fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: 4, ...shadow,
+    fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: spacing.xs, ...shadow,
   },
   form: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 32, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: 12,
+    paddingHorizontal: spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: spacing.v12,
   },
   // Bloc ajouté pour le motif de redirection — en jetons, contrairement au
   // reste de cet écran (non encore repris par le design system).
   reasonNote: {
     backgroundColor: colors.nuit + 'B3', borderRadius: radii.md,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   reasonText: { ...typography.caption, color: colors.cream, textAlign: 'center' },
   pill: {
-    backgroundColor: colors.white, borderRadius: 999,
-    paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: colors.white, borderRadius: radii.pill,
+    paddingHorizontal: spacing.v20, paddingVertical: spacing.v14,
   },
-  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12 },
   pillError: { borderWidth: 1.5, borderColor: colors.danger },
   input: { ...typography.body, color: colors.ink, },
-  forgotRow: { alignSelf: 'flex-end', paddingVertical: 2 },
+  forgotRow: { alignSelf: 'flex-end', paddingVertical: spacing.v2 },
   forgotText: { ...typography.caption, color: colors.amber, ...shadow, },
   errorText: { ...typography.bodyXs, color: '#FFB4A8', textAlign: 'center', ...shadow, },
   primaryBtn: {
-    backgroundColor: colors.amber, borderRadius: 999,
-    paddingVertical: 15, alignItems: 'center', marginTop: 4,
+    backgroundColor: colors.amber, borderRadius: radii.pill,
+    paddingVertical: 15, alignItems: 'center', marginTop: spacing.xs,
   },
   primaryBtnText: { ...typography.titleSm, color: colors.laveDeep, },
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
-    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 999, paddingVertical: 13,
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radii.pill, paddingVertical: 13,
   },
   googleText: { ...typography.pillLabel, color: colors.ink, },
-  linksRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
+  linksRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   linkText: { ...typography.caption, color: 'rgba(255,255,255,0.9)', ...shadow, },
   dot: { ...typography.bodyXs, color: 'rgba(255,255,255,0.5)', },
 });

@@ -169,8 +169,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  sectionTitle: { flex: 1, ...typography.cardTitle, color: colors.ink, paddingVertical: 4 },
-  item: { paddingVertical: spacing.xs, gap: 2 },
+  sectionTitle: { flex: 1, ...typography.cardTitle, color: colors.ink, paddingVertical: spacing.xs },
+  item: { paddingVertical: spacing.xs, gap: spacing.v2 },
   itemTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   itemLabel: { flex: 1, ...typography.body, color: colors.ink, paddingVertical: 3 },
   itemPrice: {
@@ -178,9 +178,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 3,
   },
   currency: { ...typography.caption, color: colors.faint },
-  itemDescription: { ...typography.caption, color: colors.muted, paddingVertical: 2 },
+  itemDescription: { ...typography.caption, color: colors.muted, paddingVertical: spacing.v2 },
   addItem: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: spacing.xs },
   addItemText: { ...typography.caption, fontWeight: '600' },
-  addSectionLabel: { ...typography.badgeSm, color: colors.faint, marginBottom: 6 },
-  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  addSectionLabel: { ...typography.badgeSm, color: colors.faint, marginBottom: spacing.v6 },
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v6 },
 });

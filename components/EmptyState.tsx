@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, typography, radii } from '../lib/theme';
+import { colors, typography, radii, spacing } from '../lib/theme';
 
 export interface EmptyStateProps {
   icon?: ReactNode;
@@ -32,12 +32,12 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 24, gap: 10 },
+  container: { alignItems: 'center', paddingTop: 60, paddingHorizontal: spacing.lg, gap: spacing.v10 },
   // Ce style attendait un jeton qui n'existait pas encore. `titleSm` le porte
   // désormais, avec exactement les mêmes valeurs (sansSemiBold 16) : le rendu
   // ne bouge pas, mais la taille cesse d'être décidée ici.
   title: { ...typography.titleSm, color: colors.ink },
   description: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
-  actionBtn: { marginTop: 6, backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: 20, paddingVertical: 12 },
+  actionBtn: { marginTop: spacing.v6, backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12 },
   actionText: { ...typography.button, color: colors.cream },
 });

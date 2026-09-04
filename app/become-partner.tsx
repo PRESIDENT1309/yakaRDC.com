@@ -13,7 +13,7 @@ import { useAuth } from '../lib/auth-context';
 import { uuidv4 } from '../lib/uuid';
 import ScreenHeader from '../components/ScreenHeader';
 import LogoYaka from '../components/LogoYaka';
-import { colors, categoryColors, typography, breakpoints } from '../lib/theme';
+import { colors, categoryColors, typography, breakpoints, radii, spacing } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
 import type { EstablishmentType } from '../lib/types';
@@ -289,7 +289,7 @@ export default function BecomePartnerScreen() {
           {subdivisions && (
             <>
               <Text style={styles.fieldLabel}>Commune</Text>
-              <View style={[styles.typeGrid, { marginBottom: 4 }]}>
+              <View style={[styles.typeGrid, { marginBottom: spacing.xs }]}>
                 {subdivisions.all.map(c => {
                   const active = commune === c;
                   return (
@@ -350,39 +350,39 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, color: colors.ink },
-  content: { padding: 20, paddingBottom: 50, maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
-  title: { ...typography.titleLg, color: colors.ink, marginBottom: 6, },
+  content: { padding: spacing.v20, paddingBottom: 50, maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
+  title: { ...typography.titleLg, color: colors.ink, marginBottom: spacing.v6, },
   subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: 22, },
-  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10, marginTop: 4, },
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: spacing.v10, marginTop: spacing.xs, },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.v20 },
   typeCard: {
-    flex: 1, minWidth: 130, alignItems: 'center', gap: 6,
+    flex: 1, minWidth: 130, alignItems: 'center', gap: spacing.v6,
     backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
-    borderRadius: 12, paddingVertical: 14,
+    borderRadius: radii.md, paddingVertical: spacing.v14,
   },
   typeLabel: { ...typography.bodyXs, color: colors.muted, },
   cityChip: {
-    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
+    paddingHorizontal: spacing.v14, paddingVertical: 9, borderRadius: radii.pill,
     backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
   },
   cityChipActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   cityChipText: { ...typography.bodyXs, color: colors.muted, },
   cityChipTextActive: { color: colors.lave, fontWeight: '500' },
-  row: { flexDirection: 'row', gap: 10 },
-  fieldWrap: { marginBottom: 12 },
+  row: { flexDirection: 'row', gap: spacing.v10 },
+  fieldWrap: { marginBottom: spacing.v12 },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: colors.ink, },
+    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: 11, color: colors.ink, },
   fieldInputMulti: { height: 76, textAlignVertical: 'top' },
-  fieldErrorText: { ...typography.captionSm, color: colors.danger, marginTop: -2, marginBottom: 14, },
-  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 10, marginBottom: 14, textAlign: 'center', },
-  submitBtn: { backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 6 },
+  fieldErrorText: { ...typography.captionSm, color: colors.danger, marginTop: -2, marginBottom: spacing.v14, },
+  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: radii.sm, padding: spacing.v10, marginBottom: spacing.v14, textAlign: 'center', },
+  submitBtn: { backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: 15, alignItems: 'center', marginTop: spacing.v6 },
   submitBtnText: { ...typography.sheetOption, color: colors.cream, },
-  note: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginTop: 14, },
-  successScreen: { flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
+  note: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginTop: spacing.v14, },
+  successScreen: { flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.v14 },
   successIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
   successTitle: { ...typography.titleLg, color: colors.ink, },
   successText: { ...typography.body, color: colors.muted, textAlign: 'center', maxWidth: 340, },
-  successBtn: { backgroundColor: colors.lave, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 13, marginTop: 8 },
+  successBtn: { backgroundColor: colors.lave, borderRadius: radii.v10, paddingHorizontal: spacing.lg, paddingVertical: 13, marginTop: spacing.sm },
   successBtnText: { ...typography.labelMd, color: colors.cream, },
 });

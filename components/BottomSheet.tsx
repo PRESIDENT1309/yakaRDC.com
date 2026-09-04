@@ -1,6 +1,6 @@
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { colors, typography, radii } from '../lib/theme';
+import { colors, typography, radii, spacing } from '../lib/theme';
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -40,13 +40,13 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    padding: spacing.v20, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   handle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
-  title: { ...typography.sheetTitle, color: colors.ink, marginBottom: 10 },
+  title: { ...typography.sheetTitle, color: colors.ink, marginBottom: spacing.v10 },
   option: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   optionText: { ...typography.sheetOption, color: colors.ink },
   optionTextActive: { color: colors.lave, fontWeight: '600' },

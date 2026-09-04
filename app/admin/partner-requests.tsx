@@ -12,7 +12,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography } from '../../lib/theme';
+import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
 import type { PartnerRequest, EstablishmentType, PartnerRequestStatus } from '../../lib/types';
 import { useAdminResponsive } from '../../lib/responsive';
 
@@ -332,7 +332,7 @@ export default function PartnerRequestsScreen() {
                 <Text style={styles.emptyText}>Aucune demande dans cette catégorie.</Text>
               </View>
             ) : (
-              <View style={{ gap: 8, padding: 14 }}>
+              <View style={{ gap: spacing.sm, padding: spacing.v14 }}>
                 {requests.map(r => (
                   <Pressable
                     key={r.id}
@@ -375,7 +375,7 @@ export default function PartnerRequestsScreen() {
                 <Text style={styles.detailEmptyText}>Sélectionnez une demande pour voir le détail</Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.v20 }}>
                 {isMobile && (
                   <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
                     <ArrowLeft size={15} color={colors.lave} />
@@ -582,12 +582,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     paddingTop: Platform.OS === 'web' ? 16 : 50,
-    paddingHorizontal: 20, paddingBottom: 10,
+    paddingHorizontal: spacing.v20, paddingBottom: spacing.v10,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  filterRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  filterPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  filterRow: { flexDirection: 'row', gap: spacing.v6, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  filterPill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.v6, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   filterPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   filterText: { ...typography.captionSm, color: colors.muted, },
   filterTextActive: { color: colors.cream, fontWeight: '500' },
@@ -595,24 +595,24 @@ const styles = StyleSheet.create({
   bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
   listMobile: { width: '100%', borderRightWidth: 0 },
-  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6, marginBottom: spacing.md },
   backToListText: { ...typography.pillLabel, color: colors.lave, },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
+  empty: { alignItems: 'center', paddingTop: 60, gap: spacing.v10 },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
-  listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  listCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v10 },
   listCardActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
-  listIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  listIcon: { width: 32, height: 32, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
-  listAlerte: { ...typography.captionSm, color: colors.warning, marginTop: 2 },
+  listAlerte: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2 },
 
   // Bandeau au-dessus des filtres : le seul endroit où un partenaire sans
   // accès reste visible quel que soit le filtre choisi.
   alerteBand: {
     backgroundColor: colors.warningSoft,
     borderWidth: 1, borderColor: colors.warningBorder,
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    marginHorizontal: 20, marginTop: 12, gap: 3,
+    borderRadius: radii.md, paddingHorizontal: spacing.v14, paddingVertical: spacing.v12,
+    marginHorizontal: spacing.v20, marginTop: spacing.v12, gap: 3,
   },
   alerteTitle: { ...typography.titleSm, color: colors.warning },
   alerteSub: { ...typography.captionSm, color: colors.warning },
@@ -623,47 +623,47 @@ const styles = StyleSheet.create({
   credsBox: {
     backgroundColor: colors.warningSoft,
     borderWidth: 1, borderColor: colors.warningBorder,
-    borderRadius: 12, padding: 14, marginTop: 14, gap: 6,
+    borderRadius: radii.md, padding: spacing.v14, marginTop: spacing.v14, gap: spacing.v6,
   },
   credsTitle: { ...typography.titleSm, color: colors.warning },
   credsError: { ...typography.bodyXs, color: colors.warning },
   credsHint: { ...typography.captionSm, color: colors.muted },
   credsBtn: {
-    backgroundColor: colors.warning, borderRadius: 10,
-    paddingVertical: 11, alignItems: 'center', marginTop: 4,
+    backgroundColor: colors.warning, borderRadius: radii.v10,
+    paddingVertical: 11, alignItems: 'center', marginTop: spacing.xs,
   },
   credsBtnText: { ...typography.pillLabel, color: colors.cream },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radii.pill },
   statusBadgeText: { ...typography.captionMd, },
   detail: { flex: 1 },
-  detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.v12 },
   detailEmptyText: { ...typography.bodySm, color: colors.muted, },
-  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  detailIcon: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.v14 },
+  detailIcon: { width: 46, height: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   detailName: { ...typography.titleSm, color: colors.ink, },
-  detailDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  typeBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, padding: 11, marginBottom: 16 },
+  detailDate: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  typeBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.v10, padding: 11, marginBottom: spacing.md },
   typeBannerText: { ...typography.bodyXs, },
-  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7, marginTop: 4, },
-  photosRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  photoPlaceholder: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
-  descBox: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, marginBottom: 14 },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7, marginTop: spacing.xs, },
+  photosRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.v14 },
+  photoPlaceholder: { width: 56, height: 56, borderRadius: radii.sm, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  descBox: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v12, marginBottom: spacing.v14 },
   descText: { ...typography.bodyXs, color: colors.ink, },
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  infoBox: { flex: 1, minWidth: 130, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 9 },
+  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.v14 },
+  infoBox: { flex: 1, minWidth: 130, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, padding: 9 },
   infoLabel: { ...typography.captionSm, color: colors.faint, },
-  infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: 2, },
-  rejectionBox: { backgroundColor: colors.dangerSoft, borderRadius: 10, padding: 12, marginBottom: 14 },
-  rejectionLabel: { ...typography.captionMd, color: colors.danger, marginBottom: 4, },
+  infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: spacing.v2, },
+  rejectionBox: { backgroundColor: colors.dangerSoft, borderRadius: radii.v10, padding: spacing.v12, marginBottom: spacing.v14 },
+  rejectionLabel: { ...typography.captionMd, color: colors.danger, marginBottom: spacing.xs, },
   rejectionText: { ...typography.bodyXs, color: colors.danger, },
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.success, borderRadius: 10, paddingVertical: 12 },
+  actionsRow: { flexDirection: 'row', gap: spacing.v10, marginTop: spacing.v6 },
+  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.success, borderRadius: radii.v10, paddingVertical: spacing.v12 },
   approveBtnText: { ...typography.pillLabel, color: colors.cream, },
-  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.v10, paddingVertical: spacing.v12 },
   rejectBtnText: { ...typography.bodySm, color: colors.danger, },
-  rejectForm: { marginTop: 4 },
-  rejectInput: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: 12, },
-  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: 10, paddingVertical: 12 },
-  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
+  rejectForm: { marginTop: spacing.xs },
+  rejectInput: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
+  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.v10, paddingVertical: spacing.v12 },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.v10, paddingVertical: spacing.v12 },
   cancelBtnText: { ...typography.bodySm, color: colors.ink, },
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { colors, typography } from '../lib/theme';
+import { colors, typography, spacing, radii } from '../lib/theme';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const MONTHS = [
@@ -163,14 +163,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: radii.v14,
+    padding: spacing.v12,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: spacing.v10,
   },
   navBtn: {
     width: 30,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   monthLabel: { ...typography.labelMd, color: colors.ink,
     textTransform: 'capitalize', },
-  weekRow: { flexDirection: 'row', marginBottom: 4 },
+  weekRow: { flexDirection: 'row', marginBottom: spacing.xs },
   weekday: { ...typography.captionMd, flex: 1,
     textAlign: 'center',
     color: colors.faint, },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   dayBubble: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radii.v16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -216,9 +216,9 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingTop: 8,
+    gap: spacing.v6,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.surfaceSunken,
   },

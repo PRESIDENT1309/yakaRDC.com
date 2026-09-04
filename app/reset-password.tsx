@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     width: 72, height: 72, borderRadius: radii.pill, backgroundColor: colors.dangerSoft,
     alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md,
   },
-  titre: { ...typography.displaySm, color: colors.ink, textAlign: 'center', marginBottom: 6 },
+  titre: { ...typography.displaySm, color: colors.ink, textAlign: 'center', marginBottom: spacing.v6 },
   texte: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 21 },
   header: {
     alignItems: 'center',
@@ -210,11 +210,11 @@ const styles = StyleSheet.create({
     padding: spacing.md, marginBottom: spacing.lg,
   },
   noticeText: { flex: 1, ...typography.caption, color: colors.success, lineHeight: 18 },
-  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.sm, marginBottom: 6 },
+  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.sm, marginBottom: spacing.v6 },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: 12,
+    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   input: { flex: 1, ...typography.body, color: colors.ink },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },

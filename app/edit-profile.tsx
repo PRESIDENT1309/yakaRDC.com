@@ -8,7 +8,7 @@ import { goBack } from '../lib/navigation';
 import { ArrowLeft, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, typography, breakpoints } from '../lib/theme';
+import { colors, typography, breakpoints, radii, spacing } from '../lib/theme';
 import ScreenHeader from '../components/ScreenHeader';
 
 export default function EditProfileScreen() {
@@ -81,16 +81,16 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: 20 },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 6, marginTop: 14, },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.v20 },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.v6, marginTop: spacing.v14, },
   fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: colors.ink, },
+    borderRadius: radii.v10, paddingHorizontal: spacing.v14, paddingVertical: spacing.v12, color: colors.ink, },
   fieldInputDisabled: { backgroundColor: colors.surfaceSunken },
   disabledText: { ...typography.body, color: colors.muted, },
   hint: { ...typography.captionSm, color: colors.faint, marginTop: 5, },
   saveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 15, marginTop: 28,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: 15, marginTop: 28,
   },
   saveBtnText: { ...typography.sheetOption, color: colors.cream, },
 });

@@ -11,7 +11,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, fonts, typography } from '../../lib/theme';
+import { colors, categoryColors, fonts, typography, radii, spacing } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import { useConfirm } from '../../lib/confirm-context';
 import CategoryIcon from '../../components/CategoryIcon';
@@ -391,7 +391,7 @@ export default function PlannerScreen() {
             <Edit3 size={14} color={colors.lave} />
           </Pressable>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingLeft: 18 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.v6, paddingLeft: 18 }}>
             {TABS.map(t => (
               <Chip
                 key={t.key}
@@ -410,7 +410,7 @@ export default function PlannerScreen() {
         {/* ITINÉRAIRE */}
         {activeTab === 'itineraire' && (
           <View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ paddingHorizontal: 18, gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.v14 }} contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.sm }}>
               {days.map(d => {
                 const { weekday, day } = formatDayLabel(d);
                 const active = d === selectedDay;
@@ -531,7 +531,7 @@ export default function PlannerScreen() {
                 onAction={() => router.push('/(tabs)/search')}
               />
             ) : (
-              <View style={{ gap: 8, paddingHorizontal: 18 }}>
+              <View style={{ gap: spacing.sm, paddingHorizontal: 18 }}>
                 {bookings.map(b => (
                   <View key={b.id} style={styles.reservationCard}>
                     <View style={[styles.reservationIcon, { backgroundColor: categoryColors[b.establishment?.type]?.soft ?? colors.laveSoft }]}>
@@ -557,7 +557,7 @@ export default function PlannerScreen() {
             {wishlistItems.length === 0 ? (
               <Text style={styles.emptyDayText}>Aucun lieu enregistré. Ajoutez les endroits que vous voulez visiter.</Text>
             ) : (
-              <View style={{ gap: 8, paddingHorizontal: 18 }}>
+              <View style={{ gap: spacing.sm, paddingHorizontal: 18 }}>
                 {wishlistItems.map(item => (
                   <View key={item.id} style={styles.wishlistCard}>
                     <Pressable hitSlop={11} accessibilityRole="button" accessibilityLabel={item.visited ? 'Marquer comme non visité' : 'Marquer comme visité'} onPress={() => toggleVisited(item)} style={[styles.checkCircle, item.visited && styles.checkCircleActive]}>
@@ -595,12 +595,12 @@ export default function PlannerScreen() {
             {PACKING_CATEGORIES.map(cat => {
               const catItems = packingItems.filter(p => p.category === cat.key);
               return (
-                <View key={cat.key} style={{ marginBottom: 16 }}>
+                <View key={cat.key} style={{ marginBottom: spacing.md }}>
                   <Text style={styles.sectionTitle2}>{cat.label}</Text>
                   {catItems.length === 0 ? (
                     <Text style={styles.emptyDayText}>Rien pour l'instant.</Text>
                   ) : (
-                    <View style={{ paddingHorizontal: 18, gap: 6 }}>
+                    <View style={{ paddingHorizontal: 18, gap: spacing.v6 }}>
                       {catItems.map(item => (
                         <View key={item.id} style={styles.packingRow}>
                           <Pressable hitSlop={13} accessibilityRole="button" accessibilityLabel={item.is_checked ? 'Décocher ' + item.label : 'Cocher ' + item.label} onPress={() => togglePacking(item)} style={[styles.checkSquare, item.is_checked && styles.checkSquareActive]}>
@@ -645,7 +645,7 @@ export default function PlannerScreen() {
           </View>
         )}
 
-        <Pressable onPress={confirmDeleteTrip} style={{ alignSelf: 'center', marginTop: 20 }}>
+        <Pressable onPress={confirmDeleteTrip} style={{ alignSelf: 'center', marginTop: spacing.v20 }}>
           <Text style={{ fontSize: 11.5, color: colors.faint }}>Supprimer ce voyage</Text>
         </Pressable>
       </ScrollView>
@@ -742,7 +742,7 @@ export default function PlannerScreen() {
             <Text style={styles.modalTitle}>Ajouter un élément</Text>
 
             <Text style={styles.fieldLabel}>Catégorie</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v6, marginBottom: spacing.v12 }}>
               {PACKING_CATEGORIES.map(c => (
                 <Chip
                   key={c.key}
@@ -771,91 +771,91 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
   header: {
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingBottom: 12,
+    paddingBottom: spacing.v12,
     backgroundColor: colors.cream,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  headerInner: { gap: 10 },
+  headerInner: { gap: spacing.v10 },
   headerTitle: { ...typography.titleSm, color: colors.ink, paddingHorizontal: 18, },
   dashboardRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 18, backgroundColor: colors.lave, paddingVertical: 8, marginTop: Platform.OS === 'ios' ? -56 : -20, marginBottom: 4,
+    paddingHorizontal: 18, backgroundColor: colors.lave, paddingVertical: spacing.sm, marginTop: Platform.OS === 'ios' ? -56 : -20, marginBottom: spacing.xs,
     paddingTop: Platform.OS === 'ios' ? 60 : 16,
   },
   dashItem: { ...typography.captionMd, color: colors.cream, },
   tripCard: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 18, backgroundColor: colors.white,
-    borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12,
   },
   tripTitle: { ...typography.labelMd, color: colors.ink, },
-  tripMeta: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  emptyIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  tripMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.v12 },
+  emptyIcon: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.v6 },
   emptyTitle: { ...typography.titleSm, color: colors.ink, },
   emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', maxWidth: 300, },
-  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14, marginTop: 8 },
+  createBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v14, marginTop: spacing.sm },
   createBtnText: { ...typography.labelMd, color: colors.cream, },
-  section: { marginTop: 18, marginBottom: 8 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginBottom: 10 },
+  section: { marginTop: 18, marginBottom: spacing.sm },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginBottom: spacing.v10 },
   sectionTitle: { ...typography.pillLabel, flex: 1, color: colors.ink, textTransform: 'capitalize', },
-  sectionTitle2: { ...typography.caption, color: colors.muted, paddingHorizontal: 18, marginBottom: 8, marginTop: 4, },
+  sectionTitle2: { ...typography.caption, color: colors.muted, paddingHorizontal: 18, marginBottom: spacing.sm, marginTop: spacing.xs, },
   dayTotalText: { ...typography.pillLabel, color: colors.lave, },
-  dayChip: { alignItems: 'center', gap: 2, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, minWidth: 58 },
+  dayChip: { alignItems: 'center', gap: spacing.v2, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, paddingVertical: spacing.sm, paddingHorizontal: spacing.v12, minWidth: 58 },
   dayChipActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   dayWeekday: { ...typography.captionSm, color: colors.faint, textTransform: 'capitalize', },
   dayNumber: { ...typography.caption, color: colors.ink, },
   dayBudget: { ...typography.captionSm, color: colors.faint, },
   dayTextActive: { color: colors.cream },
-  emptyDayText: { ...typography.bodyXs, color: colors.muted, paddingHorizontal: 18, marginBottom: 10, },
-  timelineRow: { flexDirection: 'row', gap: 10 },
+  emptyDayText: { ...typography.bodyXs, color: colors.muted, paddingHorizontal: 18, marginBottom: spacing.v10, },
+  timelineRow: { flexDirection: 'row', gap: spacing.v10 },
   timelineTrack: { alignItems: 'center', width: 14 },
-  timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.lave, marginTop: 4 },
-  timelineLine: { width: 2, flex: 1, backgroundColor: colors.border, marginTop: 2, marginBottom: -2 },
-  itemTime: { ...typography.caption, color: colors.lave, marginBottom: 4, },
-  itemCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 11, marginBottom: 14 },
+  timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.lave, marginTop: spacing.xs },
+  timelineLine: { width: 2, flex: 1, backgroundColor: colors.border, marginTop: spacing.v2, marginBottom: -2 },
+  itemTime: { ...typography.caption, color: colors.lave, marginBottom: spacing.xs, },
+  itemCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: 11, marginBottom: spacing.v14 },
   itemTitle: { ...typography.caption, color: colors.ink, },
   itemTitleDone: { textDecorationLine: 'line-through', color: colors.faint },
-  itemNotes: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  itemNotes: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   itemCost: { ...typography.captionMd, color: colors.ink, },
-  addItemBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginHorizontal: 18, marginTop: 6, backgroundColor: colors.laveSoft, borderRadius: 10, paddingVertical: 11 },
+  addItemBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginHorizontal: 18, marginTop: spacing.v6, backgroundColor: colors.laveSoft, borderRadius: radii.v10, paddingVertical: 11 },
   addItemBtnText: { ...typography.caption, color: colors.lave, },
-  budgetHero: { alignItems: 'center', backgroundColor: colors.lave, marginHorizontal: 18, borderRadius: 16, padding: 20, marginBottom: 14 },
+  budgetHero: { alignItems: 'center', backgroundColor: colors.lave, marginHorizontal: 18, borderRadius: radii.v16, padding: spacing.v20, marginBottom: spacing.v14 },
   budgetHeroLabel: { ...typography.captionSm, color: colors.cream + 'B3', },
   // Montant total du budget : chiffre unique, plus grand que titleLg (22).
-  budgetHeroValue: { fontFamily: fonts.sansSemiBold, fontSize: 30, color: colors.amber, marginTop: 4 },
-  budgetHeroSub: { ...typography.captionSm, color: colors.cream + '99', marginTop: 2, },
-  budgetGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 18, marginBottom: 14 },
-  budgetBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  budgetHeroValue: { fontFamily: fonts.sansSemiBold, fontSize: 30, color: colors.amber, marginTop: spacing.xs },
+  budgetHeroSub: { ...typography.captionSm, color: colors.cream + '99', marginTop: spacing.v2, },
+  budgetGrid: { flexDirection: 'row', gap: spacing.v10, paddingHorizontal: 18, marginBottom: spacing.v14 },
+  budgetBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   budgetBoxLabel: { ...typography.captionSm, color: colors.muted, },
   budgetBoxValue: { ...typography.titleSm, color: colors.ink, marginTop: 3, },
-  progressTrack: { height: 8, backgroundColor: colors.surfaceSunken, borderRadius: 4, marginHorizontal: 18, marginBottom: 18, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 4 },
-  budgetDayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
+  progressTrack: { height: 8, backgroundColor: colors.surfaceSunken, borderRadius: radii.v4, marginHorizontal: 18, marginBottom: 18, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: radii.v4 },
+  budgetDayRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
   budgetDayLabel: { ...typography.bodyXs, color: colors.ink, textTransform: 'capitalize', },
   budgetDayValue: { ...typography.caption, color: colors.lave, },
-  reservationCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  reservationCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   reservationIcon: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   reservationName: { ...typography.caption, color: colors.ink, },
-  reservationDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  wishlistCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  reservationDate: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  wishlistCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   checkCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   checkCircleActive: { backgroundColor: colors.success, borderColor: colors.success },
-  wishlistBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  wishlistBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radii.pill },
   wishlistBadgeText: { ...typography.captionMd, },
-  packingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  packingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v10 },
   checkSquare: { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   checkSquareActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   packingLabel: { ...typography.bodyXs, flex: 1, color: colors.ink, },
   packingLabelDone: { textDecorationLine: 'line-through', color: colors.faint },
-  notesInput: { ...typography.bodySm, minHeight: 160, marginHorizontal: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, color: colors.ink, marginBottom: 14, },
+  notesInput: { ...typography.bodySm, minHeight: 160, marginHorizontal: 18, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v14, color: colors.ink, marginBottom: spacing.v14, },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '85%' },
-  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  modalTitle: { ...typography.titleSm, color: colors.ink, marginBottom: 10, },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 6, marginTop: 10, },
-  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: colors.ink, },
-  row: { flexDirection: 'row', gap: 10 },
-  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: 8, padding: 10, marginTop: 12, textAlign: 'center', },
+  modalSheet: { backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.v20, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '85%' },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.v14 },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v6 },
+  modalTitle: { ...typography.titleSm, color: colors.ink, marginBottom: spacing.v10, },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.v6, marginTop: spacing.v10, },
+  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: 11, color: colors.ink, },
+  row: { flexDirection: 'row', gap: spacing.v10 },
+  errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: radii.sm, padding: spacing.v10, marginTop: spacing.v12, textAlign: 'center', },
 });

@@ -11,7 +11,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { ecrire } from '../lib/db';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors, typography } from '../lib/theme';
+import { colors, categoryColors, typography, radii, spacing } from '../lib/theme';
 import type { Favorite, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
 import EmptyState from '../components/EmptyState';
@@ -98,7 +98,7 @@ export default function FavoritesScreen() {
             onAction={() => router.push('/(tabs)/search')}
           />
         ) : (
-          <View style={{ gap: 8 }}>
+          <View style={{ gap: spacing.sm }}>
             {favorites.map(f => {
               const e = f.establishment;
               const cat = categoryColors[e?.type];
@@ -136,13 +136,13 @@ export default function FavoritesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: 16 },
+  content: { padding: spacing.md },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 12, padding: 12,
+    borderRadius: radii.md, padding: spacing.v12,
   },
-  iconBox: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 40, height: 40, borderRadius: radii.v10, alignItems: 'center', justifyContent: 'center' },
   rowName: { ...typography.pillLabel, color: colors.ink, },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   rowLocation: { ...typography.captionSm, color: colors.faint, },

@@ -21,7 +21,7 @@ import { supabase } from '../../lib/supabase';
 import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, radii, typography } from '../../lib/theme';
+import { colors, categoryColors, radii, typography, spacing } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 import CategoryIcon from '../../components/CategoryIcon';
 import EmptyState from '../../components/EmptyState';
@@ -298,7 +298,7 @@ export default function BookingsScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 6 }}
+            contentContainerStyle={{ gap: spacing.v6 }}
           >
             {STATUS_FILTERS.map((f) => (
               <Chip
@@ -385,13 +385,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingBottom: spacing.v12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerInner: { gap: 12 },
+  headerInner: { gap: spacing.v12 },
   headerTitle: { ...typography.titleLg, color: colors.ink, },
-  list: { padding: 14, gap: 10, paddingBottom: 100 },
+  list: { padding: spacing.v14, gap: spacing.v10, paddingBottom: 100 },
   // Tablette/desktop uniquement : la colonne unique passe en grille 2
   // colonnes (voir cardWidth dans BookingsScreen).
   listGrid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center' },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: radii.v14,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -409,13 +409,13 @@ const styles = StyleSheet.create({
   cardPast: { opacity: 0.7 },
   cardTop: {
     flexDirection: 'row',
-    gap: 10,
-    padding: 12,
+    gap: spacing.v10,
+    padding: spacing.v12,
   },
   cardIcon: {
     width: 42,
     height: 42,
-    borderRadius: 10,
+    borderRadius: radii.v10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -425,18 +425,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 6,
+    gap: spacing.v6,
     marginBottom: 3,
   },
   cardName: { ...typography.pillLabel, flex: 1, color: colors.ink, },
   cardMeta: { ...typography.captionSm, color: colors.muted, },
-  cardDate: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
+  cardDate: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.surfaceSunken,
   },
@@ -447,8 +447,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.v6,
     borderRadius: radii.sm,
   },
   actionBtnText: { ...typography.captionMd, color: colors.cream, },
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.sm,
-    paddingHorizontal: 10,
+    paddingHorizontal: spacing.v10,
     paddingVertical: 5,
   },
   cancelBtnText: { ...typography.captionSm, color: colors.danger, },
@@ -478,30 +478,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.borderStrong,
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: spacing.v12,
+    marginBottom: spacing.md,
   },
   ticketHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: 18,
-    marginHorizontal: 16,
-    borderRadius: 14,
-    marginBottom: 16,
+    marginHorizontal: spacing.md,
+    borderRadius: radii.v14,
+    marginBottom: spacing.md,
   },
   ticketType: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginBottom: 3, },
   ticketName: { ...typography.titleSm, color: colors.cream, },
-  ticketBody: { paddingHorizontal: 20 },
+  ticketBody: { paddingHorizontal: spacing.v20 },
   ticketQrPlaceholder: {
     alignItems: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   qrWrapper: {
-    padding: 14,
+    padding: spacing.v14,
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: radii.v16,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: colors.nuit,
@@ -514,10 +514,10 @@ const styles = StyleSheet.create({
   ticketCode: { ...typography.titleLg, textAlign: 'center',
     letterSpacing: 3,
     color: colors.ink,
-    marginBottom: 16, },
+    marginBottom: spacing.md, },
   ticketDivider: {
     position: 'relative',
-    marginBottom: 14,
+    marginBottom: spacing.v14,
   },
   ticketDividerLine: {
     height: 1,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     top: -8,
     width: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     backgroundColor: colors.cream,
   },
   ticketDividerLeft: { left: -20 },
@@ -538,15 +538,15 @@ const styles = StyleSheet.create({
   ticketDetail: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceSunken,
   },
   ticketDetailLabel: { ...typography.bodySm, color: colors.muted, },
   ticketDetailValue: { ...typography.pillLabel, color: colors.ink, },
   ticketFooter: {
-    marginTop: 16,
-    padding: 10,
+    marginTop: spacing.md,
+    padding: spacing.v10,
     backgroundColor: colors.surfaceSunken,
     borderRadius: radii.sm,
     alignItems: 'center',

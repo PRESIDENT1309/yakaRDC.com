@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   },
   rowText: { flex: 1 },
   label: { ...typography.cardTitle, color: colors.ink },
-  description: { ...typography.caption, color: colors.muted, marginTop: 2, lineHeight: 17 },
+  description: { ...typography.caption, color: colors.muted, marginTop: spacing.v2, lineHeight: 17 },
   price: { ...typography.cardTitle, fontWeight: '600' },
   photo: {
     width: '100%', height: 220,

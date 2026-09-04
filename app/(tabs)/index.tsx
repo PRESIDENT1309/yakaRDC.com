@@ -290,7 +290,7 @@ export default function HomeScreen() {
                 </View>
                 <View>
                   <AvailabilityMarker />
-                  <Text style={[styles.heroTitle, { fontSize: 44, lineHeight: 48, marginTop: 12 }]}>
+                  <Text style={[styles.heroTitle, { fontSize: 44, lineHeight: 48, marginTop: spacing.v12 }]}>
                     Découvrez la RDC{'\n'}autrement.
                   </Text>
                 </View>
@@ -321,7 +321,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.heroContentOverlay}>
               <AvailabilityMarker />
-              <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: 10 }]}>
+              <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: spacing.v10 }]}>
                 Découvrez la RDC{'\n'}autrement.
               </Text>
             </View>
@@ -345,7 +345,7 @@ export default function HomeScreen() {
           <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
             <SectionHeading kicker="Explorez" title="Quatre façons de découvrir la RDC" />
           </View>
-          <View style={{ marginTop: 14 }}>
+          <View style={{ marginTop: spacing.v14 }}>
             {isDesktop ? (
               <View style={[wide, styles.tilesRow]}>
                 {CATEGORIES.map((cat, i) => (
@@ -363,7 +363,7 @@ export default function HomeScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 18, gap: 10 }}
+                contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v10 }}
               >
                 {CATEGORIES.map((cat, i) => (
                   <CategoryTile
@@ -456,7 +456,7 @@ export default function HomeScreen() {
               )}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 18, paddingRight: 8 }}
+              contentContainerStyle={{ paddingLeft: 18, paddingRight: spacing.sm }}
               ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
               scrollEnabled
               nestedScrollEnabled
@@ -504,7 +504,7 @@ export default function HomeScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 18, gap: 10, marginTop: 12 }}
+              contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v10, marginTop: spacing.v12 }}
             >
               {subdivisions.featured.map((c) => (
                 <Chip
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
 
   // Logo & top bar
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   logoText: {
     ...typography.brand, color: colors.cream,
     textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
@@ -575,8 +575,8 @@ const styles = StyleSheet.create({
   heroContentOverlay: {
     position: 'absolute', left: 20, right: 20, bottom: 26, zIndex: 2,
   },
-  searchZone: { backgroundColor: colors.cream, paddingHorizontal: 20, paddingTop: 18 },
-  availabilityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  searchZone: { backgroundColor: colors.cream, paddingHorizontal: spacing.v20, paddingTop: 18 },
+  availabilityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start' },
   locationText: {
     ...typography.overline, color: 'rgba(250,248,244,0.8)', letterSpacing: 0.6, textTransform: 'uppercase',
     textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
@@ -587,20 +587,20 @@ const styles = StyleSheet.create({
   },
 
   // Hero — desktop (deux panneaux)
-  heroDesktopOuter: { paddingTop: 20, paddingHorizontal: 20 },
-  heroDesktopRow: { flexDirection: 'row', gap: 4, height: 560 },
+  heroDesktopOuter: { paddingTop: spacing.v20, paddingHorizontal: spacing.v20 },
+  heroDesktopRow: { flexDirection: 'row', gap: spacing.xs, height: 560 },
   heroPhotoPanel: { flex: 1.6, borderRadius: radii.lg, overflow: 'hidden', backgroundColor: colors.nuit },
   heroContentPanel: {
     flex: 1, backgroundColor: colors.nuit, borderRadius: radii.lg,
-    padding: 32, justifyContent: 'space-between',
+    padding: spacing.xl, justifyContent: 'space-between',
   },
   heroPanelTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
   // Search
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
     backgroundColor: colors.white, borderRadius: radii.md,
-    paddingLeft: 14, paddingRight: 6, paddingVertical: 10,
+    paddingLeft: spacing.v14, paddingRight: spacing.v6, paddingVertical: spacing.v10,
   },
   searchPlaceholder: { flex: 1, ...typography.body, color: colors.faint },
   filterBtn: {
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   // Intro band
   introBand: {
     backgroundColor: colors.surfaceSunken,
-    paddingVertical: 26, paddingHorizontal: 32, alignItems: 'center',
+    paddingVertical: 26, paddingHorizontal: spacing.xl, alignItems: 'center',
   },
   introText: {
     ...typography.displaySm,
@@ -622,35 +622,35 @@ const styles = StyleSheet.create({
   section: { marginTop: 26 },
 
   // Category tiles
-  tilesRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 0 },
+  tilesRow: { flexDirection: 'row', gap: spacing.v12, paddingHorizontal: 0 },
   tile: {
     borderRadius: radii.lg, justifyContent: 'flex-end', overflow: 'hidden', position: 'relative',
   },
   tileActive: { borderWidth: 2, borderColor: colors.cream },
-  tileTextWrap: { padding: 16 },
+  tileTextWrap: { padding: spacing.md },
   tileKicker: {
     ...typography.overlineSm,
-    textTransform: 'uppercase', color: 'rgba(250,248,244,0.75)', marginBottom: 4,
+    textTransform: 'uppercase', color: 'rgba(250,248,244,0.75)', marginBottom: spacing.xs,
   },
   tileLabel: { ...typography.tileTitle, color: colors.cream },
 
-  desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // Reprend la gouttière et l'écart de la file horizontale de cartes, pour
   // que les silhouettes tombent aux mêmes abscisses que les résultats.
-  fileAttente: { flexDirection: 'row', gap: 12, paddingLeft: 18, paddingRight: 8, overflow: 'hidden' },
+  fileAttente: { flexDirection: 'row', gap: spacing.v12, paddingLeft: 18, paddingRight: spacing.sm, overflow: 'hidden' },
 
   emptyState: { paddingHorizontal: 18 },
   emptyText: { ...typography.body, color: colors.muted, paddingHorizontal: 18 },
-  emptySubtext: { ...typography.caption, color: colors.faint, marginTop: 4, paddingHorizontal: 18 },
+  emptySubtext: { ...typography.caption, color: colors.faint, marginTop: spacing.xs, paddingHorizontal: 18 },
 
   // Story band
   storyBand: { marginTop: 30, position: 'relative', overflow: 'hidden' },
-  storyContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  storyContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
   storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase' },
-  storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: 10, marginBottom: 16 },
+  storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: spacing.v10, marginBottom: spacing.md },
   storyTitle: {
     ...typography.editorialTitle,
-    color: colors.cream, textAlign: 'center', marginBottom: 10,
+    color: colors.cream, textAlign: 'center', marginBottom: spacing.v10,
   },
   storySub: {
     ...typography.body, color: 'rgba(250,248,244,0.85)', textAlign: 'center', maxWidth: 420,

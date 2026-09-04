@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Clock } from 'lucide-react-native';
-import { colors, typography, spacing } from '../lib/theme';
+import { colors, typography, spacing, radii } from '../lib/theme';
 import Sheet from './Sheet';
 
 export interface TimeFieldProps {
@@ -76,16 +76,16 @@ export default function TimeField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 12 },
+  wrap: { marginBottom: spacing.v12 },
   label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12,
+    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   value: { ...typography.body, color: colors.ink },
   placeholder: { color: colors.faint },
-  clearBtn: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  clearBtn: { paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   clearText: { ...typography.sheetOption, color: colors.muted },
   list: { maxHeight: 340 },
   option: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border },

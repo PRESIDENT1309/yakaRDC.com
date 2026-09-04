@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { colors, fonts, radii, typography, breakpoints } from '../../lib/theme';
+import { colors, fonts, radii, typography, breakpoints, spacing } from '../../lib/theme';
 
 export default function VerifyScreen() {
   const { method, identifier } = useLocalSearchParams<{ method: 'phone' | 'email'; identifier: string }>();
@@ -54,18 +54,18 @@ export default function VerifyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream, padding: 24, justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: colors.cream, padding: spacing.lg, justifyContent: 'center' },
   // Le champ de code et son bouton n'ont rien à gagner à s'étirer : on les
   // ramène à la largeur des autres formulaires. Sans effet sous 480 px.
   inner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
-  title: { ...typography.titleLg, color: colors.ink, marginBottom: 6, },
-  subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: 24, },
+  title: { ...typography.titleLg, color: colors.ink, marginBottom: spacing.v6, },
+  subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: spacing.lg, },
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
-    padding: 14,
+    padding: spacing.v14,
     // Saisie de code : l'espacement de 6 separe visuellement les chiffres.
     // Aucune entree de l'echelle ne porte cet ecart, propre a ce seul champ.
     fontFamily: fonts.sansMedium,
@@ -73,9 +73,9 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
     textAlign: 'center',
     color: colors.ink,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
-  error: { ...typography.bodyXs, color: colors.lave, marginBottom: 12, },
-  button: { backgroundColor: colors.lave, borderRadius: radii.lg, padding: 16, alignItems: 'center' },
+  error: { ...typography.bodyXs, color: colors.lave, marginBottom: spacing.v12, },
+  button: { backgroundColor: colors.lave, borderRadius: radii.lg, padding: spacing.md, alignItems: 'center' },
   buttonText: { ...typography.sheetOption, color: colors.white, },
 });

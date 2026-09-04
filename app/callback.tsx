@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { colors } from '../lib/theme';
+import { colors, spacing } from '../lib/theme';
 
 // Supabase gère automatiquement l'échange PKCE via detectSessionInUrl: true
 // On attend juste l'événement SIGNED_IN avant de rediriger
@@ -43,7 +43,7 @@ export default function OAuthCallback() {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.cream,
-      gap: 14,
+      gap: spacing.v14,
     }}>
       <ActivityIndicator color={colors.lave} size="large" />
       <Text style={{ fontSize: 13, color: colors.muted }}>

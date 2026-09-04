@@ -123,10 +123,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
   lede: { ...typography.body, color: colors.muted, lineHeight: 21, marginBottom: spacing.lg },
-  label: { ...typography.badgeSm, color: colors.faint, marginBottom: 6 },
+  label: { ...typography.badgeSm, color: colors.faint, marginBottom: spacing.v6 },
   field: {
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: 12,
+    borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
     marginBottom: spacing.md,
   },
   input: { ...typography.body, color: colors.ink },

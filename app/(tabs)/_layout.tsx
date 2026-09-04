@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet, type ColorValue } from 'react-native';
 import { Home, Search, CalendarRange, CalendarCheck, User } from 'lucide-react-native';
-import { colors } from '../../lib/theme';
+import { colors, radii, spacing } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 
 // Barre à 5 destinations inchangées (Accueil, Recherche, Planning,
@@ -38,7 +38,7 @@ export default function TabsLayout() {
           borderTopWidth: 0,
           backgroundColor: colors.cream,
           height: Platform.OS === 'web' ? 68 : 62,
-          paddingTop: 10,
+          paddingTop: spacing.v10,
           paddingHorizontal: railPadding,
           // Séparation nette avec le contenu qui défile en dessous, sans
           // dépendre d'un simple filet — se voit pendant le scroll aussi.
@@ -76,7 +76,7 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 34, height: 26, borderRadius: 10,
+    width: 34, height: 26, borderRadius: radii.v10,
     alignItems: 'center', justifyContent: 'center',
   },
   iconWrapActive: { backgroundColor: colors.laveSoft },

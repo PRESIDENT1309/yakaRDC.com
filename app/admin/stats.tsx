@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { TrendingUp, Users, Award, BarChart3 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography } from '../../lib/theme';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 import type { EstablishmentType } from '../../lib/types';
 
 type Period = 'day' | 'week' | 'month' | 'year';
@@ -116,7 +116,7 @@ export default function StatsScreen() {
               {categoryBreakdown.length === 0 ? (
                 <Text style={styles.emptyText}>Aucune réservation sur cette période.</Text>
               ) : (
-                <View style={{ gap: 8, marginTop: 10 }}>
+                <View style={{ gap: spacing.sm, marginTop: spacing.v10 }}>
                   {categoryBreakdown.map(c => (
                     <View key={c.type} style={styles.barRow}>
                       <Text style={styles.barLabel}>{CATEGORY_LABELS[c.type]}</Text>
@@ -140,24 +140,24 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  content: { padding: 20, gap: 14, maxWidth: 700 },
-  periodRow: { flexDirection: 'row', gap: 6 },
-  periodPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  content: { padding: spacing.v20, gap: spacing.v14, maxWidth: 700 },
+  periodRow: { flexDirection: 'row', gap: spacing.v6 },
+  periodPill: { paddingHorizontal: spacing.v14, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   periodPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   periodText: { ...typography.bodyXs, color: colors.muted, },
   periodTextActive: { color: colors.cream, fontWeight: '500' },
-  statsGrid: { flexDirection: 'row', gap: 10 },
-  bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, alignItems: 'center', gap: 6 },
+  statsGrid: { flexDirection: 'row', gap: spacing.v10 },
+  bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v14, alignItems: 'center', gap: spacing.v6 },
   bigValue: { ...typography.titleLg, color: colors.ink, },
   bigLabel: { ...typography.captionSm, color: colors.muted, textAlign: 'center', },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   cardTitle: { ...typography.pillLabel, color: colors.ink, },
-  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: 10, },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.v10, },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10 },
   barLabel: { ...typography.captionSm, width: 80, color: colors.muted, },
-  barTrack: { flex: 1, height: 8, backgroundColor: colors.surfaceSunken, borderRadius: 4, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 4 },
+  barTrack: { flex: 1, height: 8, backgroundColor: colors.surfaceSunken, borderRadius: radii.v4, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: radii.v4 },
   barPct: { ...typography.captionSm, width: 36, color: colors.ink, textAlign: 'right', },
 });

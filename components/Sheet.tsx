@@ -62,9 +62,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: spacing.md + 4, paddingBottom: Platform.OS === 'ios' ? 34 : 20, maxHeight: '90%',
   },
-  handle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
+  handle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginTop: spacing.v12, marginBottom: spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
-  headerText: { flex: 1, marginRight: 12 },
+  headerText: { flex: 1, marginRight: spacing.v12 },
   title: { ...typography.sheetTitle, color: colors.ink },
-  subtitle: { ...typography.caption, color: colors.muted, marginTop: 2 },
+  subtitle: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
 });

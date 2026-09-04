@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Star, MapPin } from 'lucide-react-native';
-import { colors, categoryColors, typography, radii, ratios } from '../lib/theme';
+import { colors, categoryColors, typography, radii, ratios, spacing } from '../lib/theme';
 import { useAppuiAnime } from '../lib/motion';
 
 const PressableAnime = Animated.createAnimatedComponent(Pressable);
@@ -123,25 +123,25 @@ const styles = StyleSheet.create({
   image: { aspectRatio: ratios.carte, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   ratingPill: {
     position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
+    backgroundColor: colors.white, borderRadius: radii.v6, paddingHorizontal: spacing.v6, paddingVertical: 3,
   },
   ratingPillText: { ...typography.captionSm, ...typography.caption, color: colors.or, },
   newPill: {
     position: 'absolute', top: 8, right: 8,
-    backgroundColor: colors.fleuveSoft, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+    backgroundColor: colors.fleuveSoft, borderRadius: radii.v6, paddingHorizontal: 7, paddingVertical: 3,
   },
   newPillText: { ...typography.badgeSm, color: colors.fleuveDark },
   statusPill: {
     position: 'absolute', top: 8, right: 8,
-    borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: radii.v6, paddingHorizontal: 7, paddingVertical: 3,
   },
   statusPillText: { ...typography.badgeSm },
-  body: { padding: 12 },
+  body: { padding: spacing.v12 },
   category: { ...typography.overlineXs, color: colors.faint, textTransform: 'uppercase', marginBottom: 3 },
-  name: { ...typography.cardTitle, color: colors.ink, marginBottom: 4 },
+  name: { ...typography.cardTitle, color: colors.ink, marginBottom: spacing.xs },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   locationText: { ...typography.caption, color: colors.faint, flex: 1 },
-  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.v6 },
   price: { ...typography.caption, fontWeight: '600' },
   reviewCount: { ...typography.caption, color: colors.faint },
 });

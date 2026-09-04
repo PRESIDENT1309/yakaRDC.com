@@ -11,7 +11,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography } from '../../lib/theme';
+import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
 import type { Establishment, EstablishmentType, EstablishmentWarning, Profile } from '../../lib/types';
 import { useAdminResponsive } from '../../lib/responsive';
 
@@ -229,14 +229,14 @@ export default function EstablishmentsScreen() {
       </View>
 
       <View style={styles.filtersRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.v6 }}>
           {CATEGORY_FILTERS.map(f => (
             <Pressable key={f.key} style={[styles.pill, categoryFilter === f.key && styles.pillActive]} onPress={() => setCategoryFilter(f.key)}>
               <Text style={[styles.pillText, categoryFilter === f.key && styles.pillTextActive]}>{f.label}</Text>
             </Pressable>
           ))}
         </ScrollView>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
+        <View style={{ flexDirection: 'row', gap: spacing.v6 }}>
           {(['all', 'active', 'suspended'] as StatusFilter[]).map(s => (
             <Pressable key={s} style={[styles.pill, statusFilter === s && styles.pillActive]} onPress={() => setStatusFilter(s)}>
               <Text style={[styles.pillText, statusFilter === s && styles.pillTextActive]}>
@@ -253,7 +253,7 @@ export default function EstablishmentsScreen() {
           {loading ? <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} /> : establishments.length === 0 ? (
             <View style={styles.empty}><Text style={styles.emptyText}>Aucun établissement trouvé.</Text></View>
           ) : (
-            <View style={{ gap: 8, padding: 14 }}>
+            <View style={{ gap: spacing.sm, padding: spacing.v14 }}>
               {establishments.map(e => (
                 <Pressable
                   key={e.id}
@@ -267,7 +267,7 @@ export default function EstablishmentsScreen() {
                     <Text style={styles.listName} numberOfLines={1}>{e.name}</Text>
                     <Text style={styles.listMeta}>{TYPE_LABELS[e.type]} · {e.neighborhood ?? e.city}</Text>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
                     {e.suspended_at ? (
                       <View style={styles.suspendedBadge}><Ban size={10} color={colors.danger} /><Text style={styles.suspendedText}>Suspendu</Text></View>
                     ) : (
@@ -295,7 +295,7 @@ export default function EstablishmentsScreen() {
               <Text style={styles.detailEmptyText}>Sélectionnez un établissement</Text>
             </View>
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.v20 }}>
               {isMobile && (
                 <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
                   <ArrowLeft size={15} color={colors.lave} />
@@ -356,7 +356,7 @@ export default function EstablishmentsScreen() {
               {warnings.length === 0 ? (
                 <Text style={styles.emptyInlineText}>Aucun avertissement émis.</Text>
               ) : (
-                <View style={{ gap: 6, marginBottom: 8 }}>
+                <View style={{ gap: spacing.v6, marginBottom: spacing.sm }}>
                   {warnings.map(w => (
                     <View key={w.id} style={styles.warningRow}>
                       <AlertTriangle size={12} color={colors.warning} />
@@ -444,13 +444,13 @@ export default function EstablishmentsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 11, paddingVertical: 7, maxWidth: 260 },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: 11, paddingVertical: 7, maxWidth: 260 },
   searchInput: { ...typography.bodyXs, flex: 1, color: colors.ink, },
-  filtersRow: { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 8 },
-  pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  filtersRow: { paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  pill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.v6, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   pillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   pillText: { ...typography.captionSm, color: colors.muted, },
   pillTextActive: { color: colors.cream, fontWeight: '500' },
@@ -458,62 +458,62 @@ const styles = StyleSheet.create({
   bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
   listMobile: { width: '100%', borderRightWidth: 0 },
-  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6, marginBottom: spacing.md },
   backToListText: { ...typography.pillLabel, color: colors.lave, },
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
-  listCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10 },
+  listCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v10 },
   listCardActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   listCardSuspended: { opacity: 0.7 },
-  listIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  listIcon: { width: 32, height: 32, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
-  activeBadge: { backgroundColor: colors.successSoft, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  activeBadge: { backgroundColor: colors.successSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: spacing.v2 },
   activeText: { ...typography.captionMd, color: colors.success, },
-  suspendedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.dangerSoft, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  suspendedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.dangerSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: spacing.v2 },
   suspendedText: { ...typography.captionMd, color: colors.danger, },
-  warningBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: colors.warningSoft, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1.5 },
+  warningBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2, backgroundColor: colors.warningSoft, borderRadius: radii.pill, paddingHorizontal: spacing.v6, paddingVertical: 1.5 },
   warningBadgeText: { ...typography.captionMd, color: colors.warning, },
   detail: { flex: 1 },
-  detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.v12 },
   detailEmptyText: { ...typography.bodySm, color: colors.muted, },
-  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  detailIcon: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.v14 },
+  detailIcon: { width: 46, height: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   detailName: { ...typography.titleSm, color: colors.ink, },
-  detailMeta: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  activeBadgeLg: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.successSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  detailMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  activeBadgeLg: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.successSoft, borderRadius: radii.pill, paddingHorizontal: spacing.v10, paddingVertical: 5 },
   activeTextLg: { ...typography.captionMd, color: colors.success, },
-  suspendedBadgeLg: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.dangerSoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  suspendedBadgeLg: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.dangerSoft, borderRadius: radii.pill, paddingHorizontal: spacing.v10, paddingVertical: 5 },
   suspendedTextLg: { ...typography.captionMd, color: colors.danger, },
-  suspensionNotice: { backgroundColor: colors.dangerSoft, borderRadius: 10, padding: 12, marginBottom: 16 },
+  suspensionNotice: { backgroundColor: colors.dangerSoft, borderRadius: radii.v10, padding: spacing.v12, marginBottom: spacing.md },
   suspensionNoticeTitle: { ...typography.caption, color: colors.danger, },
-  suspensionNoticeText: { ...typography.captionSm, color: colors.danger, marginTop: 4, },
-  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8, },
-  sectionHeaderRow: { marginTop: 6 },
-  statsGrid: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  statBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 10, alignItems: 'center' },
+  suspensionNoticeText: { ...typography.captionSm, color: colors.danger, marginTop: spacing.xs, },
+  sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: spacing.sm, },
+  sectionHeaderRow: { marginTop: spacing.v6 },
+  statsGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  statBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v10, alignItems: 'center' },
   statValue: { ...typography.titleSm, color: colors.ink, },
   statLabel: { ...typography.captionSm, color: colors.muted, marginTop: 3, },
-  ownerCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 11, marginBottom: 16 },
+  ownerCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: 11, marginBottom: spacing.md },
   ownerAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center' },
   ownerName: { ...typography.caption, color: colors.ink, },
   ownerContact: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
-  emptyInlineText: { ...typography.captionSm, color: colors.muted, marginBottom: 12, },
-  warningRow: { flexDirection: 'row', gap: 8, backgroundColor: colors.warningSoft, borderRadius: 8, padding: 9 },
+  emptyInlineText: { ...typography.captionSm, color: colors.muted, marginBottom: spacing.v12, },
+  warningRow: { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.warningSoft, borderRadius: radii.sm, padding: 9 },
   warningReason: { ...typography.captionSm, color: colors.ink, },
-  warningDate: { ...typography.captionSm, color: colors.warning, marginTop: 2, },
-  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
-  warnBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 10, paddingVertical: 11 },
+  warningDate: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2, },
+  actionsRow: { flexDirection: 'row', gap: spacing.v10, marginTop: spacing.v6 },
+  warnBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: radii.v10, paddingVertical: 11 },
   warnBtnText: { ...typography.caption, color: colors.warning, },
-  suspendBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: 10, paddingVertical: 11 },
+  suspendBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.v10, paddingVertical: 11 },
   suspendBtnText: { ...typography.caption, color: colors.danger, },
-  reactivateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: colors.successBorder, borderRadius: 10, paddingVertical: 11 },
+  reactivateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: colors.successBorder, borderRadius: radii.v10, paddingVertical: 11 },
   reactivateBtnText: { ...typography.caption, color: colors.success, },
-  formBox: { marginTop: 4 },
-  textArea: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: 12, },
-  confirmWarnBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.warning, borderRadius: 10, paddingVertical: 12 },
-  confirmSuspendBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: 10, paddingVertical: 12 },
+  formBox: { marginTop: spacing.xs },
+  textArea: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
+  confirmWarnBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.warning, borderRadius: radii.v10, paddingVertical: spacing.v12 },
+  confirmSuspendBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.v10, paddingVertical: spacing.v12 },
   confirmBtnText: { ...typography.caption, color: colors.cream, },
-  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10, paddingVertical: 12 },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.v10, paddingVertical: spacing.v12 },
   cancelBtnText: { ...typography.bodyXs, color: colors.ink, },
 });

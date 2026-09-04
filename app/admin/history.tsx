@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Check, X, UserCog, Store, History as HistoryIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography } from '../../lib/theme';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 import type { AdminActivityLog } from '../../lib/types';
 import EmptyState from '../../components/EmptyState';
 
@@ -89,14 +89,14 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  content: { padding: 20, maxWidth: 700 },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13 },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  content: { padding: spacing.v20, maxWidth: 700 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: 13 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
-  icon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  icon: { width: 28, height: 28, borderRadius: radii.v14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowText: { ...typography.bodyXs, color: colors.ink, },
-  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: 2, },
+  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, },
 });

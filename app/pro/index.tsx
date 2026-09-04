@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, fonts, typography, breakpoints } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints, radii, spacing } from '../../lib/theme';
 import type { Establishment, Booking, Review } from '../../lib/types';
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -323,7 +323,7 @@ export default function PartnerDashboard() {
           {recentReviews.length === 0 ? (
             <Text style={styles.emptyText}>Aucun avis pour le moment.</Text>
           ) : (
-            <View style={{ gap: 10 }}>
+            <View style={{ gap: spacing.v10 }}>
               {recentReviews.map(r => (
                 <View key={r.id} style={styles.reviewCard}>
                   <Text style={styles.reviewQuoteMark}>"</Text>
@@ -408,81 +408,81 @@ const styles = StyleSheet.create({
   // une demande en attente est un travail à faire, pas une erreur.
   // Contraste vérifié : warning sur warningSoft donne 5,87.
   actionBand: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.warningSoft,
     borderWidth: 1, borderColor: colors.warningBorder,
-    borderRadius: 14, padding: 14, marginBottom: 16,
+    borderRadius: radii.v14, padding: spacing.v14, marginBottom: spacing.md,
   },
   actionIcon: {
-    width: 34, height: 34, borderRadius: 10, backgroundColor: colors.white,
+    width: 34, height: 34, borderRadius: radii.v10, backgroundColor: colors.white,
     alignItems: 'center', justifyContent: 'center',
   },
   actionTitle: { ...typography.titleSm, color: colors.warning },
-  actionSub: { ...typography.captionSm, color: colors.warning, marginTop: 2 },
+  actionSub: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2 },
 
   // ── Le service du jour ──
   // Une heure, un nom, un nombre de couverts : ce qu'il faut pour préparer.
   todayCard: {
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 14, marginTop: 10, overflow: 'hidden',
+    borderRadius: radii.v14, marginTop: spacing.v10, overflow: 'hidden',
   },
   todayRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
+    paddingHorizontal: spacing.v14, paddingVertical: spacing.v12,
   },
   todayRowBorder: { borderTopWidth: 1, borderTopColor: colors.surfaceSunken },
   todayHour: { ...typography.pillLabel, color: colors.lave, minWidth: 54 },
   todayName: { ...typography.bodySm, color: colors.ink, flex: 1 },
   todayGuests: { ...typography.captionSm, color: colors.muted },
   todayPending: {
-    backgroundColor: colors.warningSoft, borderRadius: 999,
-    paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: colors.warningSoft, borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm, paddingVertical: 3,
   },
   todayPendingText: { ...typography.captionSm, color: colors.warning },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  statCard: { width: '47.5%', borderRadius: 16, padding: 14, gap: 3 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v10, marginBottom: spacing.md },
+  statCard: { width: '47.5%', borderRadius: radii.v16, padding: spacing.v14, gap: 3 },
   statIconBadge: {
     width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.v6,
   },
   statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: colors.white },
-  statLabel: { ...typography.captionSm, color: 'rgba(255,255,255,0.9)', marginTop: 2, },
+  statLabel: { ...typography.captionSm, color: 'rgba(255,255,255,0.9)', marginTop: spacing.v2, },
   statSub: { ...typography.captionSm, color: 'rgba(255,255,255,0.6)', },
   chartCard: {
-    backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 20,
+    backgroundColor: colors.white, borderRadius: radii.v16, padding: spacing.md, marginBottom: spacing.v20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
-  chartHeader: { marginBottom: 14 },
+  chartHeader: { marginBottom: spacing.v14 },
   chartTitle: { ...typography.pillLabel, color: colors.ink, },
   chartBars: { flexDirection: 'row', justifyContent: 'space-between', height: 90, alignItems: 'flex-end' },
-  barColumn: { alignItems: 'center', gap: 6, flex: 1 },
+  barColumn: { alignItems: 'center', gap: spacing.v6, flex: 1 },
   barTrack: { width: 14, height: 64, justifyContent: 'flex-end' },
-  barFill: { width: '100%', borderRadius: 4, minHeight: 4 },
+  barFill: { width: '100%', borderRadius: radii.v4, minHeight: 4 },
   barLabel: { ...typography.captionSm, color: colors.muted, },
-  chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: 12, fontStyle: 'italic', },
-  section: { marginBottom: 20 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: spacing.v12, fontStyle: 'italic', },
+  section: { marginBottom: spacing.v20 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v10 },
   sectionTitle: { fontFamily: fonts.display, fontSize: 16, color: colors.ink },
   seeAll: { ...typography.caption, color: colors.lave, },
   reviewCard: {
-    flexDirection: 'row', gap: 8, backgroundColor: colors.white, borderRadius: 14, padding: 14,
+    flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radii.v14, padding: spacing.v14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
   reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: colors.surfaceSunken, lineHeight: 30 },
-  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: 6 },
-  reviewMetaRow: { flexDirection: 'row', marginBottom: 8 },
-  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: colors.laveSoft, borderRadius: 8, padding: 8 },
+  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: spacing.v6 },
+  reviewMetaRow: { flexDirection: 'row', marginBottom: spacing.sm },
+  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.v6, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
   replyText: { ...typography.captionSm, flex: 1, color: colors.ink, },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 8 },
-  replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, paddingVertical: 4, },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: spacing.sm },
+  replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
   replyBtnText: { ...typography.caption, color: colors.lave, },
   promoTicket: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.lave, borderRadius: 12, padding: 14, position: 'relative', overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
+    backgroundColor: colors.lave, borderRadius: radii.md, padding: spacing.v14, position: 'relative', overflow: 'hidden',
   },
-  promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: colors.cream },
-  promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: 8, backgroundColor: colors.cream },
+  promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },
+  promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },
   promoLabel: { ...typography.captionSm, color: colors.amber, letterSpacing: 0.5, },
-  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: colors.cream, marginTop: 2 },
+  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: colors.cream, marginTop: spacing.v2 },
 });

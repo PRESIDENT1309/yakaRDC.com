@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, breakpoints } from '../../lib/theme';
+import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
 
 type ScanFailure = 'not_found' | 'wrong_establishment' | 'unknown';
 
@@ -153,7 +153,7 @@ export default function ScanScreen() {
 
         {mode === 'manual' && !result && (
           <View style={styles.codeCard}>
-            <QrCode size={36} color={colors.lave} style={{ alignSelf: 'center', marginBottom: 14 }} />
+            <QrCode size={36} color={colors.lave} style={{ alignSelf: 'center', marginBottom: spacing.v14 }} />
             <Text style={styles.codeLabel}>Code du ticket</Text>
             <TextInput
               style={styles.codeInput}
@@ -244,74 +244,74 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.lave,
     paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingBottom: 16,
+    paddingBottom: spacing.md,
   },
   headerInner: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.v20,
   },
   headerTitle: { ...typography.titleLg, color: colors.cream, },
-  headerSub: { ...typography.bodySm, color: 'rgba(250,248,244,0.7)', marginTop: 4, },
+  headerSub: { ...typography.bodySm, color: 'rgba(250,248,244,0.7)', marginTop: spacing.xs, },
   // Le filet de séparation court sur toute la largeur ; les deux boutons, eux,
   // s'alignent sur l'en-tête et sur la carte du dessous. Sans cela, la barre
   // était le seul élément de l'écran à s'étirer d'un bord à l'autre.
   modeSwitch: {
-    paddingVertical: 12,
+    paddingVertical: spacing.v12,
     backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   modeSwitchInner: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    flexDirection: 'row', gap: 8, paddingHorizontal: 16,
+    flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md,
   },
   modeBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong,
-    borderRadius: 10, paddingVertical: 9,
+    borderRadius: radii.v10, paddingVertical: 9,
   },
   modeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   modeBtnText: { ...typography.bodyXs, color: colors.muted, },
   modeBtnTextActive: { color: colors.cream, fontWeight: '500' },
-  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: 16, gap: 16 },
+  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.md, gap: spacing.md },
   cameraCard: {
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 16, overflow: 'hidden',
+    borderRadius: radii.v16, overflow: 'hidden',
   },
   cameraWrapper: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: '#000' },
   viewfinder: {
     position: 'absolute', top: '18%', left: '18%', right: '18%', bottom: '18%',
-    borderWidth: 3, borderColor: colors.cream, borderRadius: 20,
+    borderWidth: 3, borderColor: colors.cream, borderRadius: radii.lg,
   },
   cameraLoadingOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
   },
-  permissionBox: { alignItems: 'center', gap: 12, padding: 32 },
+  permissionBox: { alignItems: 'center', gap: spacing.v12, padding: spacing.xl },
   permissionText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
-  permissionBtn: { backgroundColor: colors.lave, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 11 },
+  permissionBtn: { backgroundColor: colors.lave, borderRadius: radii.v10, paddingHorizontal: spacing.v20, paddingVertical: 11 },
   permissionBtnText: { ...typography.pillLabel, color: colors.cream, },
-  codeCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 20 },
-  codeLabel: { ...typography.pillLabel, color: colors.ink, marginBottom: 8, },
-  codeInput: { ...typography.titleLg, borderWidth: 1.5, borderColor: colors.lave, borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
-    color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: 8, },
-  codeHint: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginBottom: 16, },
+  codeCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v16, padding: spacing.v20 },
+  codeLabel: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
+  codeInput: { ...typography.titleLg, borderWidth: 1.5, borderColor: colors.lave, borderRadius: radii.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.v14,
+    color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: spacing.sm, },
+  codeHint: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginBottom: spacing.md, },
   validateBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: colors.lave, borderRadius: 12, paddingVertical: 14,
+    gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v14,
   },
   validateBtnDisabled: { opacity: 0.5 },
   validateBtnText: { ...typography.sheetOption, color: colors.cream, },
-  resultCard: { borderRadius: 16, padding: 24, alignItems: 'center', gap: 10, borderWidth: 1 },
+  resultCard: { borderRadius: radii.v16, padding: spacing.lg, alignItems: 'center', gap: spacing.v10, borderWidth: 1 },
   resultSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   resultWarning: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
   resultError: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
   resultTitle: { ...typography.titleSm, },
   resultText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   resetBtn: {
-    marginTop: 6, paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 10,
+    marginTop: spacing.v6, paddingHorizontal: spacing.v20, paddingVertical: spacing.v10,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.v10,
   },
   resetBtnText: { ...typography.pillLabel, color: colors.ink, },
-  note: { backgroundColor: colors.surfaceSunken, borderRadius: 12, padding: 14 },
+  note: { backgroundColor: colors.surfaceSunken, borderRadius: radii.md, padding: spacing.v14 },
   noteText: { ...typography.bodyXs, color: colors.muted, },
 });

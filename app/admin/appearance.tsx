@@ -9,7 +9,7 @@ import { ImageIcon, Upload, Trash2, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { photoAssezGrande } from '../../lib/images';
-import { colors, typography } from '../../lib/theme';
+import { colors, typography, radii, spacing } from '../../lib/theme';
 
 // ─────────────────────────────────────────────
 // Emplacement à IMAGE UNIQUE (Accueil & Connexion)
@@ -300,36 +300,36 @@ const styles = StyleSheet.create({
   header: {
     maxWidth: 500, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
-    paddingHorizontal: 20, paddingBottom: 14,
+    paddingHorizontal: spacing.v20, paddingBottom: spacing.v14,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
-  content: { padding: 20, gap: 14, maxWidth: 500 },
-  groupLabel: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginTop: 6, },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16 },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  content: { padding: spacing.v20, gap: spacing.v14, maxWidth: 500 },
+  groupLabel: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginTop: spacing.v6, },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v14, padding: spacing.md },
   cardTitle: { ...typography.pillLabel, color: colors.ink, },
-  cardDescription: { ...typography.captionSm, color: colors.faint, marginTop: 2, marginBottom: 12, },
-  previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 14, aspectRatio: 16 / 10, backgroundColor: colors.surfaceSunken },
+  cardDescription: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, marginBottom: spacing.v12, },
+  previewBox: { borderRadius: radii.md, overflow: 'hidden', marginBottom: spacing.v14, aspectRatio: 16 / 10, backgroundColor: colors.surfaceSunken },
   previewImage: { width: '100%', height: '100%' },
-  previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  previewEmptyText: { ...typography.captionSm, color: colors.faint, textAlign: 'center', paddingHorizontal: 20, },
-  actionsRow: { flexDirection: 'row', gap: 10 },
-  uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.lave, borderRadius: 10, paddingVertical: 11, marginBottom: 8 },
+  previewEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  previewEmptyText: { ...typography.captionSm, color: colors.faint, textAlign: 'center', paddingHorizontal: spacing.v20, },
+  actionsRow: { flexDirection: 'row', gap: spacing.v10 },
+  uploadBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.lave, borderRadius: radii.v10, paddingVertical: 11, marginBottom: spacing.sm },
   uploadBtnText: { ...typography.caption, color: colors.cream, },
-  deleteBtn: { width: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: 10, marginBottom: 8 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  photoThumbWrap: { width: 64, height: 64, borderRadius: 10, position: 'relative' },
-  photoThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: colors.surfaceSunken },
-  photoOrderBadge: { position: 'absolute', bottom: 3, left: 3, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+  deleteBtn: { width: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.v10, marginBottom: spacing.sm },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.v12 },
+  photoThumbWrap: { width: 64, height: 64, borderRadius: radii.v10, position: 'relative' },
+  photoThumb: { width: 64, height: 64, borderRadius: radii.v10, backgroundColor: colors.surfaceSunken },
+  photoOrderBadge: { position: 'absolute', bottom: 3, left: 3, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radii.sm, paddingHorizontal: 5, paddingVertical: 1 },
   photoOrderText: { ...typography.badgeSm, color: colors.white, },
   photoDeleteBtn: {
     position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 9,
     backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.cream,
   },
-  addPhotoBtn: { width: 64, height: 64, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  addPhotoBtn: { width: 64, height: 64, borderRadius: radii.v10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   hint: { ...typography.captionSm, color: colors.faint, },
-  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 },
+  infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v14 },
   infoText: { ...typography.captionSm, color: colors.muted, },
 });

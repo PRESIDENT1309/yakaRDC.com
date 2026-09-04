@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import LogoYaka from '../../components/LogoYaka';
 import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, breakpoints } from '../../lib/theme';
+import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
 
 /**
  * Rend une erreur Supabase lisible.
@@ -306,33 +306,33 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 32,
     paddingBottom: 40,
   },
-  logoRow: { alignItems: 'center', marginBottom: 20 },
-  title: { ...typography.titleLg, color: colors.ink, textAlign: 'center', marginBottom: 6, },
+  logoRow: { alignItems: 'center', marginBottom: spacing.v20 },
+  title: { ...typography.titleLg, color: colors.ink, textAlign: 'center', marginBottom: spacing.v6, },
   subtitle: { ...typography.body, color: colors.muted, textAlign: 'center', marginBottom: 28, },
-  row: { flexDirection: 'row', gap: 10 },
-  fieldWrap: { marginBottom: 14 },
+  row: { flexDirection: 'row', gap: spacing.v10 },
+  fieldWrap: { marginBottom: spacing.v14 },
   label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
   optional: { fontWeight: '400', color: colors.faint },
   field: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11,
+    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: 11,
   },
   fieldError: { borderColor: colors.danger },
-  fieldHint: { ...typography.captionSm, color: colors.danger, marginTop: 4, },
+  fieldHint: { ...typography.captionSm, color: colors.danger, marginTop: spacing.xs, },
   input: { ...typography.body, flex: 1, color: colors.ink, },
   error: { ...typography.bodyXs, color: colors.danger,
-    backgroundColor: colors.dangerSoft, borderRadius: 8,
-    padding: 10, marginBottom: 14, textAlign: 'center', },
+    backgroundColor: colors.dangerSoft, borderRadius: radii.sm,
+    padding: spacing.v10, marginBottom: spacing.v14, textAlign: 'center', },
   btn: {
-    backgroundColor: colors.lave, borderRadius: 10,
-    paddingVertical: 14, alignItems: 'center', marginBottom: 18,
+    backgroundColor: colors.lave, borderRadius: radii.v10,
+    paddingVertical: spacing.v14, alignItems: 'center', marginBottom: 18,
   },
   btnText: { ...typography.sheetOption, color: colors.cream, },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, marginBottom: 18 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
   dividerText: { ...typography.bodyXs, color: colors.faint, },
-  loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 20 },
+  loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, marginBottom: spacing.v20 },
   loginText: { ...typography.bodySm, color: colors.muted, },
   loginLink: { color: colors.lave, fontWeight: '500' },
   legal: { ...typography.captionSm, color: colors.faint, textAlign: 'center', },

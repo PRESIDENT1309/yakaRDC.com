@@ -191,7 +191,7 @@ export default function SearchScreen() {
             title={selectedCity?.name ? `Trouver une adresse à ${selectedCity.name}` : 'Rechercher'}
           />
 
-          <View style={[styles.searchBar, { marginTop: 12 }]}>
+          <View style={[styles.searchBar, { marginTop: spacing.v12 }]}>
             <Search size={16} color={colors.faint} />
             <TextInput
               style={styles.searchInput}
@@ -345,30 +345,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
     paddingTop: Platform.OS === 'ios' ? 56 : 20,
     paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingBottom: spacing.v12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 8,
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
   },
   searchInput: { flex: 1, ...typography.body, color: colors.ink },
-  chipRow: { gap: 8, marginBottom: 6 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  chipRow: { gap: spacing.sm, marginBottom: spacing.v6 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.v6 },
   chipGroupGap: { width: 4 },
   resultCount: { ...typography.caption, color: colors.faint },
   listContent: { padding: 18, paddingBottom: 90 },
-  gridRow: { gap: 12, marginBottom: 12 },
+  gridRow: { gap: spacing.v12, marginBottom: spacing.v12 },
   // Même gouttière que la grille de résultats, pour que les silhouettes
   // occupent exactement la place qu'occuperont les cartes.
-  grilleAttente: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  grilleAttente: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v12 },
 });
