@@ -1,6 +1,10 @@
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { Star, MapPin } from 'lucide-react-native';
-import { colors, categoryColors, typography, radii } from '../lib/theme';
+import { colors, categoryColors, typography, radii, ratios } from '../lib/theme';
+import { useAppuiAnime } from '../lib/motion';
+
+const PressableAnime = Animated.createAnimatedComponent(Pressable);
 import CategoryIcon from './CategoryIcon';
 import type { EstablishmentType } from '../lib/types';
 
@@ -45,12 +49,36 @@ export default function ListingCard({
 }: ListingCardProps) {
   const cat = categoryColors[type];
   const tone = cat?.accent ?? colors.lave;
+  // La carte est la cible tactile principale du catalogue : c'est par elle
+  // qu'on entre dans une fiche. Elle mérite le même retour que les boutons.
+  const appui = useAppuiAnime();
 
   return (
-    <Pressable style={[styles.card, width ? { width } : null]} onPress={onPress}>
+    <PressableAnime
+      style={[styles.card, width ? { width } : null, appui.style]}
+      onPress={onPress}
+      {...appui.gestes}
+    >
       <View style={[styles.image, { backgroundColor: tone }]}>
         {coverPhotoUrl ? (
-          <Image source={{ uri: coverPhotoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          /* `transition` remplace l'apparition brutale par un fondu de 220 ms,
+             posé sur la couleur de catégorie qui remplit déjà la boîte : la
+             photo se substitue à un aplat de marque plutôt qu'à du vide.
+             `cachePolicy` évite de retélécharger la même vignette à chaque
+             retour sur la liste — ce qui compte davantage sur un réseau lent
+             que le fondu lui-même. */
+          <Image
+            source={{ uri: coverPhotoUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
+            recyclingKey={coverPhotoUrl}
+            // `accessibilityLabel` et non `alt` : vérifié dans le DOM, seul le
+            // premier pose réellement l'attribut `alt` sur le web, malgré une
+            // documentation qui les présente comme équivalents.
+            accessibilityLabel={`Photo de ${name}`}
+          />
         ) : (
           <CategoryIcon type={type} size={30} color="rgba(250,248,244,0.85)" />
         )}
@@ -83,13 +111,16 @@ export default function ListingCard({
           </View>
         ) : null}
       </View>
-    </Pressable>
+    </PressableAnime>
   );
 }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  image: { height: 130, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  // Rapport plutôt que hauteur fixe : à 130 px, une carte large aplatissait sa
+  // photo et une carte étroite l'étirait. Le cadrage est désormais le même
+  // partout, quelle que soit la largeur que lui donne l'écran appelant.
+  image: { aspectRatio: ratios.carte, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   ratingPill: {
     position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: colors.white, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,

@@ -2,8 +2,9 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, Modal, TextInput,
-  ActivityIndicator, Image, useWindowDimensions, Linking, Share,
+  ActivityIndicator, useWindowDimensions, Linking, Share,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Alert } from '../../lib/alert';
 import { useLocalSearchParams, router } from 'expo-router';
 import { goBack } from '../../lib/navigation';
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import Skeleton from '../../components/Skeleton';
 import { cheapestActiveOffer } from '../../lib/offers';
 import { slotToTime, timeToSlot } from '../../lib/slots';
 import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/menu';
@@ -530,7 +532,23 @@ export default function ListingDetailScreen() {
   }
 
   if (!establishment) {
-    return <View style={styles.loading}><ActivityIndicator color={colors.lave} /></View>;
+    // Le disque centré ne disait rien de la fiche à venir, et la page sautait
+    // d'un écran vide à une mise en page complète. La silhouette reprend la
+    // structure réelle — photo de 220, puis nom, lieu, et le début du texte —
+    // pour que le contenu s'installe à la place déjà réservée.
+    return (
+      <View style={styles.screen}>
+        <Skeleton height={220} radius={0} />
+        <View style={styles.attenteCorps}>
+          <Skeleton width="68%" height={22} radius={radii.pill} />
+          <Skeleton width="42%" height={13} radius={radii.pill} />
+          <View style={{ height: spacing.sm }} />
+          <Skeleton width="100%" height={12} radius={radii.pill} />
+          <Skeleton width="94%" height={12} radius={radii.pill} />
+          <Skeleton width="76%" height={12} radius={radii.pill} />
+        </View>
+      </View>
+    );
   }
 
   const cat = categoryColors[establishment.type];
@@ -869,12 +887,20 @@ export default function ListingDetailScreen() {
                     onPress ne se déclenche pas (confirmé sur appareil). La
                     galerie s'ouvre par le bouton explicite ci-dessous, qui est
                     de toute façon plus découvrable qu'un appui invisible. */}
-                {photos.map((photo) => (
+                {photos.map((photo, i) => (
                   <Image
                     key={photo.id}
                     source={{ uri: photo.url }}
                     style={{ width: heroWidth, height: '100%' }}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={220}
+                    cachePolicy="memory-disk"
+                    // La première photo décide de la première impression de la
+                    // fiche : elle est demandée en priorité haute, les suivantes
+                    // au régime normal puisqu'il faut défiler pour les voir.
+                    priority={i === 0 ? 'high' : 'normal'}
+                    recyclingKey={photo.url}
+                    accessibilityLabel={`${establishment.name} — photo ${i + 1} sur ${photos.length}`}
                   />
                 ))}
               </ScrollView>
@@ -1315,7 +1341,15 @@ export default function ListingDetailScreen() {
               <Image
                 source={{ uri: viewerPhoto.url }}
                 style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
+                // `contain` et non `cover` : dans la visionneuse, on regarde la
+                // photo entière — c'est le seul endroit de l'app où recadrer
+                // serait une perte.
+                contentFit="contain"
+                transition={160}
+                cachePolicy="memory-disk"
+                priority="high"
+                recyclingKey={viewerPhoto.url}
+                accessibilityLabel={`${establishment.name} — photo en plein écran`}
               />
             )}
           </View>
@@ -1351,6 +1385,9 @@ const styles = StyleSheet.create({
   errorBackLink: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.sm },
   errorBackText: { ...typography.caption, color: colors.muted, textDecorationLine: 'underline' },
   hero: { height: 220, position: 'relative', overflow: 'hidden' },
+  // Même gouttière que le corps de la fiche, pour que les traits d'attente
+  // partent de l'abscisse où commencera le texte.
+  attenteCorps: { padding: spacing.gutter, gap: spacing.sm },
   photoDots: {
     position: 'absolute', bottom: 14, alignSelf: 'center',
     flexDirection: 'row', gap: 6, zIndex: 2,

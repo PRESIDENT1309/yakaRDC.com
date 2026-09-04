@@ -14,6 +14,7 @@ import { useAuth } from '../lib/auth-context';
 import { colors, categoryColors, typography } from '../lib/theme';
 import type { Favorite, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
+import EmptyState from '../components/EmptyState';
 
 type FavoriteWithEstablishment = Favorite & { establishment: Establishment };
 
@@ -34,7 +35,12 @@ export default function FavoritesScreen() {
   const [loading, setLoading] = useState(true);
 
   const fetchFavorites = useCallback(async () => {
-    if (!session?.user) return;
+    // Sans session, cette fonction sortait avant tout `setLoading(false)`,
+    // alors que `loading` démarre à `true` : un visiteur non connecté restait
+    // devant un disque qui tournait indéfiniment. C'est le pire état d'attente
+    // possible — il ne finit jamais et n'explique rien. On rend la main à
+    // l'écran, qui sait dire qu'il faut un compte.
+    if (!session?.user) { setFavorites([]); setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
       .from('favorites')
@@ -64,14 +70,33 @@ export default function FavoritesScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
           <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
+        ) : !session?.user ? (
+          /* Deux vides distincts, longtemps confondus derrière le même disque :
+             « pas encore de favori » et « pas de compte ». Le second n'appelle
+             pas le catalogue mais la connexion, avec un retour ici une fois
+             connecté. */
+          <EmptyState
+            icon={<Heart size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Vos favoris vous attendent"
+            description="Connectez-vous pour retrouver ici les adresses que vous enregistrez."
+            actionLabel="Se connecter"
+            onAction={() => router.push({
+              pathname: '/(auth)/login',
+              params: { redirect: '/favorites', reason: 'Connectez-vous pour retrouver vos favoris.' },
+            })}
+          />
         ) : favorites.length === 0 ? (
-          <View style={styles.empty}>
-            <Heart size={32} color={colors.borderStrong} />
-            <Text style={styles.emptyText}>Aucun favori pour le moment.</Text>
-            <Text style={styles.emptySubtext}>
-              Touchez le cœur sur une fiche d'établissement pour l'ajouter ici.
-            </Text>
-          </View>
+          /* Un écran vide qui explique sans proposer laisse l'utilisateur au
+             même endroit. Celui-ci est le premier que voit un compte neuf :
+             il porte donc une sortie vers le catalogue, pas seulement un
+             constat. */
+          <EmptyState
+            icon={<Heart size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Aucun favori pour le moment"
+            description="Touchez le cœur sur une fiche d'établissement pour la retrouver ici."
+            actionLabel="Explorer les établissements"
+            onAction={() => router.push('/(tabs)/search')}
+          />
         ) : (
           <View style={{ gap: 8 }}>
             {favorites.map(f => {
@@ -112,9 +137,6 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { padding: 16 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { ...typography.labelMd, color: colors.ink, },
-  emptySubtext: { ...typography.bodyXs, color: colors.muted, textAlign: 'center', maxWidth: 260, },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,

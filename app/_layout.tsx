@@ -51,7 +51,22 @@ export default function RootLayout() {
     <AuthProvider>
       <CityProvider>
         <ConfirmProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.cream },
+              // Continuité plutôt que coupure : une fiche ouverte depuis une
+              // liste glisse depuis la droite, et le retour la renvoie d'où
+              // elle vient. Le geste de l'utilisateur et le déplacement à
+              // l'écran racontent alors la même chose.
+              //
+              // Neutralisé sur le web : react-native-screens n'y applique pas
+              // ces transitions natives, et les imiter en JavaScript coûterait
+              // plus qu'elles ne rapportent sur un onglet de navigateur, où le
+              // bouton « précédent » porte déjà le sens du retour.
+              animation: Platform.OS === 'web' ? 'none' : 'slide_from_right',
+            }}
+          />
         </ConfirmProvider>
       </CityProvider>
     </AuthProvider>

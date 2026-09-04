@@ -16,6 +16,7 @@ import {
   CalendarCheck,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
@@ -254,7 +255,9 @@ export default function BookingsScreen() {
   const [selectedTicket, setSelectedTicket] = useState<BookingWithEstablishment | null>(null);
 
   const fetchBookings = useCallback(async () => {
-    if (!session?.user) return;
+    // Voir favorites.tsx : sans session, la sortie précédait `setLoading(false)`
+    // et l'onglet restait bloqué sur un disque qui tournait sans fin.
+    if (!session?.user) { setBookings([]); setLoading(false); return; }
     const { data } = await supabase
       .from('bookings')
       .select(`*, establishment:establishments(*),
@@ -313,14 +316,35 @@ export default function BookingsScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={colors.lave} />
         </View>
-      ) : filtered.length === 0 ? (
+      ) : !session?.user ? (
         <View style={styles.empty}>
           <EmptyState
             icon={<CalendarCheck size={44} color={colors.borderStrong} />}
-            title="Aucune réservation"
+            title="Vos réservations"
+            description="Connectez-vous pour suivre vos demandes et présenter vos billets."
+            actionLabel="Se connecter"
+            onAction={() => router.push({
+              pathname: '/(auth)/login',
+              params: { redirect: '/(tabs)/bookings', reason: 'Connectez-vous pour voir vos réservations.' },
+            })}
+          />
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.empty}>
+          {/* Deux vides très différents sous une même apparence : un compte
+              neuf, et un filtre qui masque tout. Le second ne doit pas
+              renvoyer l'utilisateur au catalogue — il doit lui rendre ses
+              réservations, qui sont là. */}
+          <EmptyState
+            icon={<CalendarCheck size={44} color={colors.borderStrong} />}
+            title={filter === 'all' ? 'Aucune réservation' : 'Rien dans cette catégorie'}
             description={filter === 'all'
-              ? 'Vous n\'avez pas encore fait de demande de réservation.'
-              : 'Aucune réservation dans cette catégorie.'}
+              ? "Vos demandes de réservation apparaîtront ici, avec leur statut."
+              : 'Vous avez des réservations, mais aucune avec ce statut.'}
+            actionLabel={filter === 'all' ? 'Explorer les établissements' : 'Voir toutes les réservations'}
+            onAction={filter === 'all'
+              ? () => router.push('/(tabs)/search')
+              : () => setFilter('all')}
           />
         </View>
       ) : (

@@ -3,8 +3,9 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Platform, TextInput, ActivityIndicator, Modal, } from 'react-native';
 import { Alert } from '../../lib/alert';
+import { router } from 'expo-router';
 import {
-  CalendarRange, Plus, Trash2, X,
+  CalendarRange, CalendarCheck, Plus, Trash2, X,
   Check, Edit3,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
@@ -16,6 +17,7 @@ import { useConfirm } from '../../lib/confirm-context';
 import CategoryIcon from '../../components/CategoryIcon';
 import StatusBadge from '../../components/StatusBadge';
 import Chip from '../../components/Chip';
+import EmptyState from '../../components/EmptyState';
 import type {
   TripPlan, TripPlanItem, TripPackingItem, Establishment,
   Booking, PackingCategory,
@@ -115,7 +117,9 @@ export default function PlannerScreen() {
   const [savingNotes, setSavingNotes] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    if (!session?.user) return;
+    // Voir favorites.tsx : sans session, la sortie précédait `setLoading(false)`
+    // et l'onglet restait indéfiniment sur son disque de chargement.
+    if (!session?.user) { setPlan(null); setLoading(false); return; }
     setLoading(true);
 
     const { data: plans } = await supabase
@@ -314,6 +318,28 @@ export default function PlannerScreen() {
   const actualTotal = itineraryItems.reduce((s, i) => s + Number(i.actual_cost ?? i.estimated_cost), 0);
   const remaining = plan?.planned_budget != null ? plan.planned_budget - actualTotal : null;
 
+  // ── État : pas de compte ──
+  // Placé avant « aucun voyage » à dessein : ce dernier propose « Créer mon
+  // voyage », qui ouvrirait le formulaire puis échouerait à l'enregistrement
+  // faute de session. Mieux vaut demander la connexion d'abord.
+  if (!loading && !session?.user) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.header}><Text style={styles.headerTitle}>Mon planning</Text></View>
+        <EmptyState
+          icon={<CalendarRange size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+          title="Planifiez votre séjour"
+          description="Connectez-vous pour composer votre itinéraire, suivre votre budget et retrouver vos réservations."
+          actionLabel="Se connecter"
+          onAction={() => router.push({
+            pathname: '/(auth)/login',
+            params: { redirect: '/(tabs)/planner', reason: 'Connectez-vous pour planifier votre voyage.' },
+          })}
+        />
+      </View>
+    );
+  }
+
   // ── État : aucun voyage ──
   if (!loading && !plan && !showTripForm) {
     return (
@@ -493,9 +519,17 @@ export default function PlannerScreen() {
         {activeTab === 'reservations' && (
           <View style={styles.section}>
             {bookings.length === 0 ? (
-              <Text style={styles.emptyDayText}>
-                Aucune réservation liée à ce voyage pour l'instant. Réservez un établissement depuis l'app — il apparaîtra ici automatiquement si sa date tombe dans votre période de voyage.
-              </Text>
+              /* Seul des trois onglets à être une impasse : l'itinéraire et
+                 les lieux portent chacun un bouton d'ajout juste en dessous
+                 de leur message, celui-ci n'avait aucune sortie. On ne réserve
+                 pas depuis le planificateur — l'action mène donc au catalogue. */
+              <EmptyState
+                icon={<CalendarCheck size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+                title="Aucune réservation sur ce voyage"
+                description="Vos réservations apparaissent ici automatiquement dès que leur date tombe dans la période du voyage."
+                actionLabel="Explorer les établissements"
+                onAction={() => router.push('/(tabs)/search')}
+              />
             ) : (
               <View style={{ gap: 8, paddingHorizontal: 18 }}>
                 {bookings.map(b => (

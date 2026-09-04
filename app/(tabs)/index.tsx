@@ -6,10 +6,10 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  Image,
   Animated,
   FlatList,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import LogoYaka from '../../components/LogoYaka';
 import {
@@ -29,6 +29,7 @@ import RiverMotif from '../../components/RiverMotif';
 import PhotoScrim from '../../components/PhotoScrim';
 import CategoryTexture from '../../components/CategoryTexture';
 import ListingCard from '../../components/ListingCard';
+import { SkeletonCarte } from '../../components/Skeleton';
 import Chip from '../../components/Chip';
 import BottomSheet from '../../components/BottomSheet';
 import type { Establishment, EstablishmentType } from '../../lib/types';
@@ -94,8 +95,29 @@ function RotatingHero({ photos, width, height }: { photos: string[]; width: numb
   return (
     <View style={{ width, height, overflow: 'hidden' }}>
       <Animated.View style={{ flexDirection: 'row', width: width * 2, height, transform: [{ translateX }] }}>
-        <Image source={{ uri: photos[index] }} style={{ width, height }} resizeMode="cover" />
-        <Image source={{ uri: photos[nextIndex] }} style={{ width, height }} resizeMode="cover" />
+        {/* Pas de `transition` sur le carrousel : le fondu de l'image se
+            superposerait au glissement du bandeau et brouillerait les deux.
+            Le cache, lui, compte double ici — ces photos reviennent à chaque
+            tour de boucle. */}
+        <Image
+          source={{ uri: photos[index] }}
+          style={{ width, height }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          priority="high"
+          recyclingKey={photos[index]}
+          accessibilityLabel="Vue de la République démocratique du Congo"
+        />
+        <Image
+          source={{ uri: photos[nextIndex] }}
+          style={{ width, height }}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={photos[nextIndex]}
+          // Image suivante du carrousel : elle double celle qui est visible et
+          // n'apporte rien à la lecture vocale. Étiquette vide, à dessein.
+          accessibilityLabel=""
+        />
       </Animated.View>
     </View>
   );
@@ -118,7 +140,19 @@ function CategoryTile({
     <Pressable style={[styles.tile, active && styles.tileActive, style]} onPress={onPress}>
       {photoUrl ? (
         <>
-          <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Image
+            source={{ uri: photoUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
+            recyclingKey={photoUrl}
+            // `accessibilityLabel` et non `alt` : la documentation les donne
+            // pour équivalents, mais vérifié dans le DOM, seul le premier pose
+            // l'attribut `alt` sur le web. Un `<img>` sans `alt` est annoncé
+            // par son URL, ce qui est pire que rien.
+            accessibilityLabel={cat.kicker}
+          />
           <PhotoScrim from="bottom" intensity={0.68} />
         </>
       ) : (
@@ -357,7 +391,28 @@ export default function HomeScreen() {
           </View>
 
           {loading ? (
-            <Text style={styles.emptyText}>Chargement...</Text>
+            /* « Chargement... » en texte gris ne préparait à rien : la section
+               restait haute d'une ligne, puis sautait à la hauteur des cartes.
+               Les silhouettes reprennent la géométrie exacte des deux mises en
+               page — grille au bureau, file horizontale sur mobile — donc
+               l'arrivée des données ne fait plus bouger la page. */
+            isDesktop ? (
+              <View style={[wide, styles.desktopGrid]}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <View key={i} style={{ width: desktopCardWidth }}>
+                    <SkeletonCarte />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.fileAttente}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <View key={i} style={{ width: 190 }}>
+                    <SkeletonCarte />
+                  </View>
+                ))}
+              </View>
+            )
           ) : listings.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
@@ -413,7 +468,15 @@ export default function HomeScreen() {
         <View style={[styles.storyBand, { height: storyHeight }]}>
           <View style={StyleSheet.absoluteFill}>
             {storyPhoto ? (
-              <Image source={{ uri: storyPhoto }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image
+            source={{ uri: storyPhoto }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={220}
+            cachePolicy="memory-disk"
+            recyclingKey={storyPhoto}
+            accessibilityLabel="Le fleuve Congo"
+          />
             ) : (
               <RiverMotif width={width} height={storyHeight} variant="band" />
             )}
@@ -572,6 +635,9 @@ const styles = StyleSheet.create({
   tileLabel: { ...typography.tileTitle, color: colors.cream },
 
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  // Reprend la gouttière et l'écart de la file horizontale de cartes, pour
+  // que les silhouettes tombent aux mêmes abscisses que les résultats.
+  fileAttente: { flexDirection: 'row', gap: 12, paddingLeft: 18, paddingRight: 8, overflow: 'hidden' },
 
   emptyState: { paddingHorizontal: 18 },
   emptyText: { ...typography.body, color: colors.muted, paddingHorizontal: 18 },

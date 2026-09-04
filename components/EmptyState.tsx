@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, typography, fonts, radii } from '../lib/theme';
+import { colors, typography, radii } from '../lib/theme';
 
 export interface EmptyStateProps {
   icon?: ReactNode;
@@ -33,11 +33,10 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 24, gap: 10 },
-  // Aucun jeton typography.* ne correspond précisément à un titre d'état
-  // vide (~16px, sans-serif semi-gras) — composé directement depuis
-  // fonts.sansSemiBold plutôt que d'inventer un nouveau nom d'échelle pour
-  // un seul usage. À formaliser si ce besoin se généralise ailleurs.
-  title: { fontFamily: fonts.sansSemiBold, fontSize: 16, color: colors.ink },
+  // Ce style attendait un jeton qui n'existait pas encore. `titleSm` le porte
+  // désormais, avec exactement les mêmes valeurs (sansSemiBold 16) : le rendu
+  // ne bouge pas, mais la taille cesse d'être décidée ici.
+  title: { ...typography.titleSm, color: colors.ink },
   description: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
   actionBtn: { marginTop: 6, backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: 20, paddingVertical: 12 },
   actionText: { ...typography.button, color: colors.cream },

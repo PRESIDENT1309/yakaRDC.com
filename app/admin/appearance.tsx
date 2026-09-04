@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, Trash2, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import { photoAssezGrande } from '../../lib/images';
 import { colors, typography } from '../../lib/theme';
 
 // ─────────────────────────────────────────────
@@ -30,6 +31,9 @@ function SingleImageSlot({ settingKey, title, description }:
     if (status !== 'granted') { Alert.alert('Permission requise', "L'accès à vos photos est nécessaire."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
+    // Ces images occupent la pleine largeur de l'écran : le plancher de
+    // définition y compte davantage encore que sur une vignette de fiche.
+    if (!photoAssezGrande(result.assets[0])) return;
 
     setUploading(true);
     try {
@@ -153,6 +157,9 @@ function MultiImageSlot({ settingKey, title, description }:
     if (status !== 'granted') { Alert.alert('Permission requise', "L'accès à vos photos est nécessaire."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
+    // Ces images occupent la pleine largeur de l'écran : le plancher de
+    // définition y compte davantage encore que sur une vignette de fiche.
+    if (!photoAssezGrande(result.assets[0])) return;
 
     setUploading(true);
     try {

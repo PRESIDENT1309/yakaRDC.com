@@ -22,6 +22,8 @@ import ListingCard from '../../components/ListingCard';
 import Chip from '../../components/Chip';
 import BottomSheet from '../../components/BottomSheet';
 import EmptyState from '../../components/EmptyState';
+import { SkeletonCarte } from '../../components/Skeleton';
+import EntreeListe from '../../components/EntreeListe';
 import type { Establishment, EstablishmentType } from '../../lib/types';
 
 type CategoryFilter = EstablishmentType | 'all';
@@ -260,7 +262,11 @@ export default function SearchScreen() {
         keyExtractor={(item) => item.id}
         numColumns={columns}
         columnWrapperStyle={columns > 1 ? styles.gridRow : undefined}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          /* Les résultats d'une recherche arrivent en réponse à un geste :
+             la cascade dit qu'ils viennent d'être trouvés. Ailleurs, sur un
+             contenu déjà présent, la même animation ne dirait rien. */
+          <EntreeListe index={index}>
           <ListingCard
             type={item.type}
             name={item.name}
@@ -274,17 +280,32 @@ export default function SearchScreen() {
             width={cardWidth}
             onPress={() => router.push(`/listing/${item.id}`)}
           />
+          </EntreeListe>
         )}
         contentContainerStyle={[styles.listContent, isWide && wide]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          !loading ? (
+          loading ? (
+            /* Pendant la recherche, cette liste ne rendait rien : ni contenu,
+               ni signe d'attente. Les silhouettes occupent d'avance la place
+               des résultats, si bien que leur arrivée ne déplace plus la mise
+               en page. Le compteur au-dessus dit déjà « Recherche… », ce qui
+               couvre la lecture vocale — les blocs, eux, sont masqués aux
+               lecteurs d'écran. */
+            <View style={styles.grilleAttente}>
+              {Array.from({ length: columns * 3 }).map((_, i) => (
+                <View key={i} style={{ width: cardWidth }}>
+                  <SkeletonCarte />
+                </View>
+              ))}
+            </View>
+          ) : (
             <EmptyState
               icon={<Search size={36} color={colors.borderStrong} strokeWidth={1.75} />}
               title="Aucun résultat"
               description="Essayez un autre mot-clé ou modifiez les filtres."
             />
-          ) : null
+          )
         }
       />
 
@@ -347,4 +368,7 @@ const styles = StyleSheet.create({
   resultCount: { ...typography.caption, color: colors.faint },
   listContent: { padding: 18, paddingBottom: 90 },
   gridRow: { gap: 12, marginBottom: 12 },
+  // Même gouttière que la grille de résultats, pour que les silhouettes
+  // occupent exactement la place qu'occuperont les cartes.
+  grilleAttente: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });

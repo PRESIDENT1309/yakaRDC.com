@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageIcon, Upload, RotateCcw } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import { photoAssezGrande } from '../../lib/images';
 import { colors, typography } from '../../lib/theme';
 
 const SETTING_KEY = 'auth_background_url';
@@ -33,6 +34,9 @@ export default function AppearanceScreen() {
       quality: 0.8,
     });
     if (result.canceled || !result.assets?.[0]) return;
+    // Ce fond occupe tout l'écran de connexion — le premier contact avec la
+    // marque. C'est l'image de l'app qui souffre le plus d'une définition faible.
+    if (!photoAssezGrande(result.assets[0])) return;
 
     setUploading(true);
     try {

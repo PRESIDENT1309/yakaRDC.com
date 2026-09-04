@@ -4,6 +4,7 @@ import { Check, X, UserCog, Store, History as HistoryIcon } from 'lucide-react-n
 import { supabase } from '../../lib/supabase';
 import { colors, typography } from '../../lib/theme';
 import type { AdminActivityLog } from '../../lib/types';
+import EmptyState from '../../components/EmptyState';
 
 const ACTION_CONFIG: Record<string, { icon: (c: string) => React.ReactNode; bg: string; color: string }> = {
   establishment_approved:       { icon: c => <Check size={13} color={c} />, bg: colors.successSoft, color: colors.success },
@@ -54,10 +55,13 @@ export default function HistoryScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} /> : logs.length === 0 ? (
-          <View style={styles.empty}>
-            <HistoryIcon size={32} color={colors.borderStrong} />
-            <Text style={styles.emptyText}>Aucune action enregistrée pour le moment.</Text>
-          </View>
+          /* Sans action : ce journal se remplit tout seul à mesure que les
+             administrateurs agissent. Rien à proposer, seulement à expliquer. */
+          <EmptyState
+            icon={<HistoryIcon size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Aucune action enregistrée"
+            description="Les approbations, suspensions et changements de rôle apparaîtront ici, du plus récent au plus ancien."
+          />
         ) : (
           <View style={styles.card}>
             {logs.map((log, i) => {
@@ -89,8 +93,6 @@ const styles = StyleSheet.create({
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 2, },
   content: { padding: 20, maxWidth: 700 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { ...typography.bodyXs, color: colors.muted, },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },

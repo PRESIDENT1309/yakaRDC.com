@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/auth-context';
 import { colors, typography, breakpoints } from '../../lib/theme';
 import type { Establishment, Review } from '../../lib/types';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
 
 export default function PartnerReviewsScreen() {
   const { profile } = useAuth();
@@ -64,7 +65,15 @@ export default function PartnerReviewsScreen() {
         {loading ? (
           <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
         ) : reviews.length === 0 ? (
-          <Text style={styles.emptyText}>Aucun avis pour le moment.</Text>
+          /* Sans action, volontairement : un partenaire ne peut rien faire
+             pour provoquer un avis, et lui proposer un bouton reviendrait à
+             lui suggérer le contraire. La description dit d'où viendront
+             les avis — c'est la seule chose utile ici. */
+          <EmptyState
+            icon={<MessageCircle size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Aucun avis pour le moment"
+            description="Les avis de vos clients apparaîtront ici après leur visite."
+          />
         ) : (
           <View style={{ gap: 10 }}>
             {reviews.map(r => (
@@ -120,7 +129,6 @@ export default function PartnerReviewsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', marginTop: 40, },
   reviewCard: {
     backgroundColor: colors.white, borderRadius: 14, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,

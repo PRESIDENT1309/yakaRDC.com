@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { Pressable, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
 import { colors, typography, radii, spacing } from '../lib/theme';
+import { useAppuiAnime } from '../lib/motion';
+
+const PressableAnime = Animated.createAnimatedComponent(Pressable);
 
 export interface ButtonProps {
   label: string;
@@ -33,18 +36,25 @@ export default function Button({
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
   const inactive = disabled || loading;
+  // Le retour à l'appui vit ici plutôt que dans chaque écran : c'est le
+  // composant que traversent toutes les actions principales de l'application.
+  // Un bouton désactivé ne reçoit pas les gestes, donc il ne bouge pas — ce
+  // qui est le bon comportement, et qu'on obtient sans condition à écrire.
+  const appui = useAppuiAnime();
 
   return (
-    <Pressable
+    <PressableAnime
       style={[
         styles.base,
         isPrimary
           ? { backgroundColor: color }
           : { backgroundColor: softColor, borderWidth: 1.5, borderColor: color },
         inactive && styles.inactive,
+        appui.style,
       ]}
       onPress={onPress}
       disabled={inactive}
+      {...appui.gestes}
     >
       {loading ? (
         <ActivityIndicator size="small" color={isPrimary ? colors.cream : color} />
@@ -56,7 +66,7 @@ export default function Button({
           </Text>
         </>
       )}
-    </Pressable>
+    </PressableAnime>
   );
 }
 

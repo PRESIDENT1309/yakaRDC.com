@@ -13,6 +13,7 @@ import { useAuth } from '../lib/auth-context';
 import { colors, categoryColors, typography } from '../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
+import EmptyState from '../components/EmptyState';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
 
@@ -43,7 +44,9 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!session?.user) return;
+    // Voir favorites.tsx : sortir avant `setLoading(false)` laissait un
+    // visiteur non connecté devant un disque qui ne s'arrête jamais.
+    if (!session?.user) { setBookings([]); setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
       .from('bookings')
@@ -64,14 +67,29 @@ export default function NotificationsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
           <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
+        ) : !session?.user ? (
+          <EmptyState
+            icon={<Clock size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Aucune notification"
+            description="Connectez-vous pour suivre ici l'évolution de vos réservations."
+            actionLabel="Se connecter"
+            onAction={() => router.push({
+              pathname: '/(auth)/login',
+              params: { redirect: '/notifications', reason: 'Connectez-vous pour voir vos notifications.' },
+            })}
+          />
         ) : bookings.length === 0 ? (
-          <View style={styles.empty}>
-            <Clock size={32} color={colors.borderStrong} />
-            <Text style={styles.emptyText}>Aucune notification pour le moment.</Text>
-            <Text style={styles.emptySubtext}>
-              Vous serez informé ici dès qu'une de vos réservations change de statut.
-            </Text>
-          </View>
+          /* L'action mène aux réservations, et non au catalogue : cet écran
+             peut être vide alors que des réservations existent — il l'est dès
+             qu'aucune n'a changé de statut. Proposer « explorer » supposerait
+             à tort que l'utilisateur n'a rien réservé. */
+          <EmptyState
+            icon={<Clock size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Aucune notification pour le moment"
+            description="Vous serez informé ici dès qu'une de vos réservations change de statut."
+            actionLabel="Voir mes réservations"
+            onAction={() => router.push('/(tabs)/bookings')}
+          />
         ) : (
           <View style={{ gap: 8 }}>
             {bookings.map(b => {
@@ -108,9 +126,6 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { padding: 16 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyText: { ...typography.labelMd, color: colors.ink, },
-  emptySubtext: { ...typography.bodyXs, color: colors.muted, textAlign: 'center', maxWidth: 260, },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,

@@ -4,8 +4,10 @@ import {
   Platform, RefreshControl, ActivityIndicator, } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { useConfirm } from '../../lib/confirm-context';
-import { Building2, Home, UtensilsCrossed, Mountain, Phone } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { Building2, Home, UtensilsCrossed, Mountain, Phone, CalendarCheck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import EmptyState from '../../components/EmptyState';
 import { bookingItemsSummary } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
@@ -130,7 +132,16 @@ export default function PartnerBookingsScreen() {
           }
         >
           {filtered.length === 0 ? (
-            <Text style={styles.empty}>Aucune réservation dans cette catégorie.</Text>
+            /* Un partenaire ne peut pas créer de réservation : la seule chose
+               qu'il puisse faire pour en obtenir, c'est compléter sa fiche.
+               C'est donc là que mène l'action, plutôt que nulle part. */
+            <EmptyState
+              icon={<CalendarCheck size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+              title="Aucune réservation"
+              description="Les demandes de vos clients apparaîtront ici, avec leur statut."
+              actionLabel="Compléter ma fiche"
+              onAction={() => router.push('/pro/establishment')}
+            />
           ) : (
             filtered.map(b => {
               const status = STATUS_CONFIG[b.status] ?? STATUS_CONFIG.pending;
@@ -221,7 +232,6 @@ const styles = StyleSheet.create({
   pillTextActive: { color: colors.cream, fontWeight: '500' },
   count: { ...typography.captionSm, color: colors.faint, },
   list: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: 14, gap: 10, paddingBottom: 100 },
-  empty: { ...typography.bodySm, color: colors.muted, textAlign: 'center', paddingTop: 40, },
   card: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', gap: 10, padding: 12 },
   cardIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },

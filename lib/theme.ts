@@ -95,6 +95,24 @@ export const radii = {
   pill: 999,
 } as const;
 
+// Rapports d'image — direction photographique.
+//
+// L'audit du 03/09/2026 n'a trouvé que cinq `aspectRatio` dans toute
+// l'application, dont trois pour des aperçus d'administration. Les photos de
+// contenu, elles, étaient posées dans des boîtes de hauteur fixe : la carte
+// d'établissement imposait 130 px quelle que soit sa largeur, si bien que le
+// recadrage changeait d'un écran à l'autre sans que personne l'ait décidé.
+//
+// Trois rapports suffisent, et trois seulement : au-delà, la contrainte cesse
+// d'en être une. Ils valent pour les photos de contenu ; les vignettes carrées
+// d'administration gardent leur dimension fixe, qui n'est pas une photo mais
+// une pastille.
+export const ratios = {
+  carte: 3 / 2,     // photo de carte : assez haute pour situer un lieu
+  bandeau: 16 / 9,  // bande pleine largeur, hero
+  carre: 1,         // vignette, avatar
+} as const;
+
 export const spacing = {
   xs: 4,
   sm: 8,

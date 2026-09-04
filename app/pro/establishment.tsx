@@ -16,6 +16,7 @@ import {
 import LogoYaka from '../../components/LogoYaka';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import { photoAssezGrande, LARGEUR_MINIMALE } from '../../lib/images';
 import { useAuth } from '../../lib/auth-context';
 import { colors, typography, spacing, radii, breakpoints } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
@@ -212,6 +213,9 @@ export default function EstablishmentScreen() {
       allowsEditing: true,
     });
     if (result.canceled || !result.assets?.[0]) return null;
+    // Contrôle unique pour tous les téléversements de l'app : une photo trop
+    // petite est refusée ici plutôt que découverte floue sur la fiche.
+    if (!photoAssezGrande(result.assets[0])) return null;
     return result.assets[0].uri;
   }
 
@@ -590,7 +594,14 @@ export default function EstablishmentScreen() {
                 </Pressable>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.subLabel, { marginBottom: 8 }]}>Photos ({photos.length}/10)</Text>
+                <Text style={styles.subLabel}>Photos ({photos.length}/10)</Text>
+                {/* L'attente est dite avant le choix, pas après le refus :
+                    un partenaire qui apprend la contrainte au moment où sa
+                    photo est rejetée l'a déjà vécue comme un échec. */}
+                <Text style={styles.consignePhoto}>
+                  Format paysage, {LARGEUR_MINIMALE} px de large au minimum. Les photos claires et bien
+                  cadrées font la différence sur votre fiche.
+                </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {photos.map((photo, index) => (
                     <View key={photo.id} style={styles.photoThumbWrap}>
@@ -1056,6 +1067,7 @@ const styles = StyleSheet.create({
   dayClosed: { ...typography.caption, color: colors.faint },
   hoursHint: { ...typography.caption, color: colors.faint, marginTop: spacing.sm, lineHeight: 17 },
   subLabel: { ...typography.captionSm, color: colors.faint, },
+  consignePhoto: { ...typography.captionSm, color: colors.faint, marginTop: 2, marginBottom: 8, lineHeight: 15 },
   logoBox: { width: 70, height: 70, borderRadius: 12, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: colors.laveBorder, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: 12 },
   addPhotoBtn: { width: 72, height: 72, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },

@@ -1,4 +1,5 @@
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Check, Users } from 'lucide-react-native';
 import { colors, typography, radii, spacing } from '../lib/theme';
 import type { EstablishmentOffer, OfferCategory } from '../lib/types';
@@ -34,7 +35,18 @@ export default function OfferCard({
       onPress={onPress && !full ? onPress : undefined}
     >
       {photoUrl ? (
-        <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
+        /* La bande photo garde sa largeur fixe de 92 : c'est une vignette
+           latérale dans une carte en ligne, pas une photo de contenu — le
+           rapport y est imposé par la hauteur de la carte, pas l'inverse. */
+        <Image
+          source={{ uri: photoUrl }}
+          style={styles.photo}
+          contentFit="cover"
+          transition={220}
+          cachePolicy="memory-disk"
+          recyclingKey={photoUrl}
+          accessibilityLabel={offerLabel(offer, category)}
+        />
       ) : null}
 
       <View style={styles.body}>
