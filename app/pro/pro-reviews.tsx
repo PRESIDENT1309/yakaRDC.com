@@ -75,11 +75,11 @@ export default function PartnerReviewsScreen() {
             description="Les avis de vos clients apparaîtront ici après leur visite."
           />
         ) : (
-          <View style={{ gap: spacing.v10 }}>
+          <View style={{ gap: spacing.v12 }}>
             {reviews.map(r => (
               <View key={r.id} style={styles.reviewCard}>
                 <View style={styles.reviewTop}>
-                  <View style={{ flexDirection: 'row', gap: 1 }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
                     {[1, 2, 3, 4, 5].map(i => (
                       <Star key={i} size={12} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                     ))}
@@ -130,16 +130,16 @@ export default function PartnerReviewsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   reviewCard: {
-    backgroundColor: colors.white, borderRadius: radii.v14, padding: spacing.v14,
+    backgroundColor: colors.white, borderRadius: radii.md, padding: spacing.v12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
   reviewTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   reviewDate: { ...typography.captionSm, color: colors.faint, },
-  reviewComment: { ...typography.bodyXs, color: colors.ink, marginBottom: spacing.v10, },
-  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: 9 },
+  reviewComment: { ...typography.bodyXs, color: colors.ink, marginBottom: spacing.v12, },
+  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
   replyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: spacing.v2, },
   replyText: { ...typography.captionSm, color: colors.ink, },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 9 },
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: spacing.sm },
   replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
   replyBtnText: { ...typography.caption, color: colors.lave, },
 });

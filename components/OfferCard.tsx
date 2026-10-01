@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
   cardFull: { opacity: 0.55 },
   photo: { width: 92, height: '100%', minHeight: 92, backgroundColor: colors.surfaceSunken },
-  body: { flex: 1, padding: spacing.sm, gap: 3 },
+  body: { flex: 1, padding: spacing.sm, gap: spacing.v2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
   title: { ...typography.cardTitle, color: colors.ink, flex: 1 },
   description: { ...typography.caption, color: colors.muted, lineHeight: 17 },

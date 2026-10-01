@@ -153,7 +153,7 @@ export default function ScanScreen() {
 
         {mode === 'manual' && !result && (
           <View style={styles.codeCard}>
-            <QrCode size={36} color={colors.lave} style={{ alignSelf: 'center', marginBottom: spacing.v14 }} />
+            <QrCode size={36} color={colors.lave} style={{ alignSelf: 'center', marginBottom: spacing.v12 }} />
             <Text style={styles.codeLabel}>Code du ticket</Text>
             <TextInput
               style={styles.codeInput}
@@ -264,9 +264,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md,
   },
   modeBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong,
-    borderRadius: radii.v10, paddingVertical: 9,
+    borderRadius: radii.md, paddingVertical: spacing.sm,
   },
   modeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   modeBtnText: { ...typography.bodyXs, color: colors.muted, },
@@ -287,31 +287,31 @@ const styles = StyleSheet.create({
   },
   permissionBox: { alignItems: 'center', gap: spacing.v12, padding: spacing.xl },
   permissionText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
-  permissionBtn: { backgroundColor: colors.lave, borderRadius: radii.v10, paddingHorizontal: spacing.v20, paddingVertical: 11 },
+  permissionBtn: { backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12 },
   permissionBtnText: { ...typography.pillLabel, color: colors.cream, },
   codeCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v16, padding: spacing.v20 },
   codeLabel: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
   codeInput: { ...typography.titleLg, borderWidth: 1.5, borderColor: colors.lave, borderRadius: radii.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.v14,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
     color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: spacing.sm, },
   codeHint: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginBottom: spacing.md, },
   validateBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v14,
+    gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v12,
   },
   validateBtnDisabled: { opacity: 0.5 },
   validateBtnText: { ...typography.sheetOption, color: colors.cream, },
-  resultCard: { borderRadius: radii.v16, padding: spacing.lg, alignItems: 'center', gap: spacing.v10, borderWidth: 1 },
+  resultCard: { borderRadius: radii.v16, padding: spacing.lg, alignItems: 'center', gap: spacing.v12, borderWidth: 1 },
   resultSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   resultWarning: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
   resultError: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
   resultTitle: { ...typography.titleSm, },
   resultText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   resetBtn: {
-    marginTop: spacing.v6, paddingHorizontal: spacing.v20, paddingVertical: spacing.v10,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.v10,
+    marginTop: spacing.sm, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md,
   },
   resetBtnText: { ...typography.pillLabel, color: colors.ink, },
-  note: { backgroundColor: colors.surfaceSunken, borderRadius: radii.md, padding: spacing.v14 },
+  note: { backgroundColor: colors.surfaceSunken, borderRadius: radii.md, padding: spacing.v12 },
   noteText: { ...typography.bodyXs, color: colors.muted, },
 });

@@ -1134,11 +1134,11 @@ export default function ListingDetailScreen() {
                 description="Soyez le premier à partager votre expérience."
               />
             ) : (
-              <View style={{ gap: spacing.v10 }}>
+              <View style={{ gap: spacing.v12 }}>
                 {reviews.slice(0, 3).map(r => (
                   <View key={r.id} style={styles.reviewCard}>
                     <View style={styles.reviewTopRow}>
-                      <View style={{ flexDirection: 'row', gap: 1 }}>
+                      <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
                         {[1, 2, 3, 4, 5].map(i => (
                           <Star key={i} size={11} color={colors.or} fill={i <= r.rating ? colors.or : 'transparent'} />
                         ))}
@@ -1390,11 +1390,11 @@ const styles = StyleSheet.create({
   attenteCorps: { padding: spacing.gutter, gap: spacing.sm },
   photoDots: {
     position: 'absolute', bottom: 14, alignSelf: 'center',
-    flexDirection: 'row', gap: spacing.v6, zIndex: 2,
+    flexDirection: 'row', gap: spacing.sm, zIndex: 2,
   },
   // borderRadius 3 sur 6px, 16 sur 32px : géométrie de cercle, pas un choix
   // esthétique — hors échelle à dessein (§04).
-  photoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.white + '80' },
+  photoDot: { width: 6, height: 6, borderRadius: radii.v4, backgroundColor: colors.white + '80' },
   photoDotActive: { backgroundColor: colors.white, width: 18 },
   // Reprend l'emplacement et le repère semi-transparent de l'ancien compteur,
   // mais devient une vraie commande : le nombre de photos y est annoncé, et
@@ -1403,7 +1403,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 12, right: spacing.md, zIndex: 3,
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2,
     backgroundColor: colors.nuit + 'A6', borderRadius: radii.pill,
-    paddingHorizontal: 11, paddingVertical: spacing.v6,
+    paddingHorizontal: spacing.v12, paddingVertical: spacing.sm,
   },
   galleryBtnText: { ...typography.badgeSm, color: colors.cream },
   backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: spacing.md,
@@ -1438,7 +1438,7 @@ const styles = StyleSheet.create({
   desktopMain: { flex: 1, minWidth: 0 },
   desktopSidebar: { width: 320 },
   priceCardSticky: Platform.OS === 'web' ? { position: 'sticky' as any, top: spacing.lg } : {},
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: spacing.v12, flexWrap: 'wrap' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.v12, flexWrap: 'wrap' },
   metaText: { ...typography.caption, color: colors.muted },
   metaStrong: { ...typography.caption, color: colors.ink },
   metaSeparator: { ...typography.caption, color: colors.faint },
@@ -1449,15 +1449,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'stretch', marginBottom: spacing.v12,
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.white,
   },
-  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, paddingVertical: 11 },
+  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.v12 },
   contactDivider: { width: 1, backgroundColor: colors.border },
   contactLabel: { ...typography.caption, color: colors.ink },
-  followRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6, marginBottom: spacing.md },
+  followRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   followLabel: { ...typography.caption, color: colors.faint },
   followLink: { ...typography.caption, textDecorationLine: 'underline' },
   amenitiesRow: { marginBottom: spacing.md },
-  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.white,
-    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v10, paddingVertical: spacing.v6, marginRight: spacing.sm },
+  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.white,
+    borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, marginRight: spacing.sm },
   amenityText: { ...typography.caption, color: colors.ink },
   section: { marginBottom: spacing.md },
   sectionKicker: { ...typography.overline, color: colors.faint, textTransform: 'uppercase', marginBottom: spacing.sm },
@@ -1472,30 +1472,30 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   menuRowTitle: { ...typography.cardTitle, color: colors.ink },
-  menuRowMeta: { ...typography.caption, color: colors.muted, marginTop: 1 },
+  menuRowMeta: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
   // Adresse — hiérarchie typographique + filet, pas de carte blanche bordée.
-  addressBlock: { gap: 3, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: spacing.v12 },
+  addressBlock: { gap: spacing.v2, borderLeftWidth: 2, borderLeftColor: colors.border, paddingLeft: spacing.v12 },
   addressStreet: { ...typography.cardTitle, color: colors.ink },
   addressArea: { ...typography.caption, color: colors.muted },
   addressReference: { ...typography.caption, color: colors.faint },
-  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.v6 },
+  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
   directionsText: { ...typography.caption, textDecorationLine: 'underline' },
   reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   writeReviewText: { ...typography.caption },
   reviewCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
-  reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 7 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.fleuveSoft, borderRadius: radii.pill, paddingHorizontal: 7, paddingVertical: spacing.v2 },
+  reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2, backgroundColor: colors.fleuveSoft, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.v2 },
   verifiedText: { ...typography.badgeSm, color: colors.fleuve },
   reviewDate: { ...typography.badgeSm, color: colors.faint, marginLeft: 'auto' },
   reviewComment: { ...typography.caption, color: colors.ink, lineHeight: 18 },
-  partnerReplyBox: { flexDirection: 'row', gap: 7, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: 9, marginTop: 9 },
+  partnerReplyBox: { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm, marginTop: spacing.sm },
   partnerReplyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: spacing.v2 },
   partnerReplyText: { ...typography.caption, color: colors.ink, lineHeight: 16 },
   moreReviewsText: { ...typography.caption, color: colors.muted, textAlign: 'center', paddingTop: spacing.v2 },
   similarSection: { marginTop: spacing.lg },
   similarRow: { gap: spacing.v12, paddingBottom: spacing.xs },
-  reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.v6, paddingVertical: spacing.md, marginTop: spacing.sm },
+  reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md, marginTop: spacing.sm },
   reportText: { ...typography.caption, color: colors.faint, textDecorationLine: 'underline' },
   starPicker: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm + 2, marginBottom: spacing.md, marginTop: spacing.xs },
   deleteReviewBtn: { alignItems: 'center', paddingVertical: spacing.v12, marginTop: spacing.xs },
@@ -1514,12 +1514,12 @@ const styles = StyleSheet.create({
   },
   bookingBarPrice: { flex: 1 },
   successBanner: { position: 'absolute', bottom: 96, left: spacing.md, right: spacing.md,
-    backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: spacing.v6 },
+    backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: spacing.sm },
   successText: { ...typography.caption, color: colors.cream },
   successLink: { ...typography.caption, color: colors.amber },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5 },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs },
   fieldInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, ...typography.body, color: colors.ink },
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, ...typography.body, color: colors.ink },
   // 26px carré, rayon 8 (radii.sm) : pas un cercle, valeur d'échelle.
 
   // Visionneuse plein écran (galerie + menu)
@@ -1529,13 +1529,13 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg, paddingHorizontal: spacing.gutter, paddingBottom: spacing.v12,
   },
   viewerCounter: { ...typography.caption, color: colors.white },
-  viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v10 },
+  viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v12 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: spacing.v12,
   },
   viewerNavBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 44, height: 44, borderRadius: radii.lg,
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
   viewerNavBtnDisabled: { opacity: 0.3 },

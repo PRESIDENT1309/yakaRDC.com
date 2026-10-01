@@ -575,8 +575,8 @@ export default function EstablishmentScreen() {
           {/* Logo + Photos */}
           <View style={styles.card}>
             <CardTitle icon={<Images {...SECTION_ICON} />} label="Logo & Photos" />
-            <View style={{ flexDirection: 'row', gap: spacing.v14, alignItems: 'flex-start' }}>
-              <View style={{ alignItems: 'center', gap: 5 }}>
+            <View style={{ flexDirection: 'row', gap: spacing.v12, alignItems: 'flex-start' }}>
+              <View style={{ alignItems: 'center', gap: spacing.xs }}>
                 <Text style={styles.subLabel}>Logo</Text>
                 <Pressable style={styles.logoBox} onPress={handlePickLogo} disabled={uploadingLogo}>
                   {uploadingLogo ? (
@@ -1017,24 +1017,24 @@ const styles = StyleSheet.create({
   headerTitle: { ...typography.titleSm, color: colors.cream, },
   headerSub: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginTop: spacing.v2, },
   saveBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radii.sm,
     paddingHorizontal: spacing.v12, paddingVertical: spacing.sm,
   },
   saveBtnText: { ...typography.caption, color: colors.cream, },
   content: { maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center', padding: spacing.md, gap: spacing.v12, paddingBottom: 40 },
   statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v10 },
+  statCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   statVal: { ...typography.titleLg, },
   statLabel: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v14, padding: spacing.v14 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.v12, },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 13 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.v12 },
   cardTitleText: { ...typography.pillLabel, color: colors.ink, },
   // ── Horaires d'ouverture ──
   menuPhotoLabel: {
     ...typography.badgeSm, color: colors.faint,
-    marginTop: spacing.lg, marginBottom: spacing.v6,
+    marginTop: spacing.lg, marginBottom: spacing.sm,
   },
   hoursToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
   hoursWarning: {
@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
   hoursWarningText: { flex: 1, ...typography.caption, color: colors.warning, lineHeight: 17 },
   hoursToggleLabel: { ...typography.body, color: colors.ink },
   checkbox: {
-    width: 20, height: 20, borderRadius: radii.v6, borderWidth: 1.5,
+    width: 20, height: 20, borderRadius: radii.sm, borderWidth: 1.5,
     borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: colors.lave, borderColor: colors.lave },
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
   timeInput: {
     ...typography.caption, color: colors.ink, textAlign: 'center',
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: spacing.v10, paddingVertical: 7, width: 66,
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, width: 66,
   },
   timeSeparator: { ...typography.caption, color: colors.faint },
   dayClosed: { ...typography.caption, color: colors.faint },
@@ -1070,33 +1070,33 @@ const styles = StyleSheet.create({
   consignePhoto: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, marginBottom: spacing.sm, lineHeight: 15 },
   logoBox: { width: 70, height: 70, borderRadius: radii.md, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: colors.laveBorder, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: radii.md },
-  addPhotoBtn: { width: 72, height: 72, borderRadius: radii.v10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
-  photoThumbWrap: { width: 72, height: 72, borderRadius: radii.v10, overflow: 'visible', position: 'relative' },
-  photoThumb: { width: 72, height: 72, borderRadius: radii.v10, backgroundColor: colors.surfaceSunken },
+  addPhotoBtn: { width: 72, height: 72, borderRadius: radii.md, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  photoThumbWrap: { width: 72, height: 72, borderRadius: radii.md, overflow: 'visible', position: 'relative' },
+  photoThumb: { width: 72, height: 72, borderRadius: radii.md, backgroundColor: colors.surfaceSunken },
   photoDeleteBtn: {
-    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: radii.v10,
+    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: radii.md,
     backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.cream,
   },
-  hint: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v6, },
-  promoHint: { ...typography.captionSm, color: colors.muted, marginBottom: spacing.v10, },
-  row: { flexDirection: 'row', gap: spacing.v10 },
-  fieldWrap: { marginBottom: spacing.v10 },
+  hint: { ...typography.captionSm, color: colors.faint, marginTop: spacing.sm, },
+  promoHint: { ...typography.captionSm, color: colors.muted, marginBottom: spacing.v12, },
+  row: { flexDirection: 'row', gap: spacing.v12 },
+  fieldWrap: { marginBottom: spacing.v12 },
   fieldLabel: { ...typography.captionMd, color: colors.muted, marginBottom: spacing.xs, },
-  fieldInput: { ...typography.bodySm, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v10, paddingVertical: 9, color: colors.ink, },
+  fieldInput: { ...typography.bodySm, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, color: colors.ink, },
   fieldInputMulti: { height: 80, textAlignVertical: 'top' },
-  amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 7, paddingHorizontal: spacing.v10, paddingVertical: spacing.v6 },
+  amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  amenityChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm },
   amenityChipActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   amenityText: { ...typography.captionSm, color: colors.muted, },
   amenityTextActive: { color: colors.success, fontWeight: '500' },
-  communeChip: { paddingHorizontal: spacing.v12, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  communeChip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   communeChipActive: { backgroundColor: colors.laveSoft, borderColor: colors.lave },
   communeChipText: { ...typography.captionSm, color: colors.muted, },
   communeChipTextActive: { color: colors.lave, fontWeight: '500' },
-  communeWarning: { backgroundColor: colors.orSoft, borderRadius: radii.sm, padding: spacing.v10, marginBottom: spacing.v10 },
+  communeWarning: { backgroundColor: colors.orSoft, borderRadius: radii.sm, padding: spacing.v12, marginBottom: spacing.v12 },
   communeWarningText: { ...typography.captionSm, color: colors.or, },
-  saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v14, marginTop: spacing.xs },
+  saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v12, marginTop: spacing.xs },
   saveBtnFullText: { ...typography.sheetOption, color: colors.cream, },
 
   // Visionneuse plein écran
@@ -1106,20 +1106,20 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: spacing.v12,
   },
   viewerCounter: { ...typography.pillLabel, color: colors.white, },
-  viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v10 },
+  viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v12 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: spacing.v12,
   },
   viewerNavBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 44, height: 44, borderRadius: radii.lg,
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
   viewerNavBtnDisabled: { opacity: 0.3 },
   viewerDeleteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    backgroundColor: 'rgba(192,57,43,0.9)', borderRadius: radii.v10,
-    paddingHorizontal: spacing.md, paddingVertical: 11,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: 'rgba(192,57,43,0.9)', borderRadius: radii.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   viewerDeleteText: { ...typography.pillLabel, color: colors.white, },
 });

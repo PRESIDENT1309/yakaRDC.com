@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   marqueRangee: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
     paddingHorizontal: spacing.xl,
-    flexDirection: 'row', alignItems: 'center', gap: 9,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
   },
   // Cream et même ombre portée que le titre : le nom est posé sur une photo,
   // dont la luminosité varie d'un fond à l'autre.
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   reasonText: { ...typography.caption, color: colors.cream, textAlign: 'center' },
   pill: {
     backgroundColor: colors.white, borderRadius: radii.pill,
-    paddingHorizontal: spacing.v20, paddingVertical: spacing.v14,
+    paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
   },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12 },
   pillError: { borderWidth: 1.5, borderColor: colors.danger },
@@ -251,12 +251,12 @@ const styles = StyleSheet.create({
   errorText: { ...typography.bodyXs, color: '#FFB4A8', textAlign: 'center', ...shadow, },
   primaryBtn: {
     backgroundColor: colors.amber, borderRadius: radii.pill,
-    paddingVertical: 15, alignItems: 'center', marginTop: spacing.xs,
+    paddingVertical: spacing.md, alignItems: 'center', marginTop: spacing.xs,
   },
   primaryBtnText: { ...typography.titleSm, color: colors.laveDeep, },
   googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
-    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radii.pill, paddingVertical: 13,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radii.pill, paddingVertical: spacing.v12,
   },
   googleText: { ...typography.pillLabel, color: colors.ink, },
   linksRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },

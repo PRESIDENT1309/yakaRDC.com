@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { CalendarDays } from 'lucide-react-native';
 import { colors, typography, spacing, radii } from '../lib/theme';
-import Calendar, { formatFrench } from './Calendar';
+import { formatFrench } from '../lib/dates';
+import SelecteurDate from './SelecteurDate';
 import Sheet from './Sheet';
 
 export interface DateFieldProps {
@@ -41,10 +42,9 @@ export default function DateField({
 
   function select(iso: string) {
     // Une date antérieure au minimum est ignorée plutôt que refusée par une
-    // alerte : le calendrier la présente déjà comme non sélectionnable.
+    // alerte : le sélecteur la présente déjà comme non sélectionnable.
     if (minDate && iso <= minDate) return;
     onChange(iso);
-    setOpen(false);
   }
 
   return (
@@ -64,14 +64,29 @@ export default function DateField({
         subtitle={value ? formatFrench(value) : undefined}
         avoidKeyboard={false}
       >
-        <Calendar
-          value={value || null}
-          onSelect={select}
+        <SelecteurDate
+          value={value}
+          onChange={select}
           fullDays={fullDays}
           closedDays={closedDays}
           accent={accent}
           minDate={minDate}
         />
+
+        {/* Un calendrier se refermait au clic sur une case : le choix et la
+            validation étaient le même geste. Avec trois colonnes, changer de
+            mois n'est pas encore choisir une date — il faut donc un bouton
+            pour dire quand on a fini. */}
+        <Pressable
+          style={[styles.valider, { backgroundColor: accent }, !value && styles.validerInactif]}
+          onPress={() => setOpen(false)}
+          disabled={!value}
+          accessibilityRole="button"
+        >
+          <Text style={styles.validerTexte}>
+            {value ? `Choisir le ${formatFrench(value)}` : 'Choisissez une date'}
+          </Text>
+        </Pressable>
       </Sheet>
     </View>
   );
@@ -79,12 +94,18 @@ export default function DateField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.v12 },
-  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
+  label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   value: { ...typography.body, color: colors.ink },
   placeholder: { color: colors.faint },
+  valider: {
+    borderRadius: radii.md, paddingVertical: spacing.v12,
+    alignItems: 'center', marginTop: spacing.md,
+  },
+  validerInactif: { opacity: 0.45 },
+  validerTexte: { ...typography.button, color: colors.cream },
 });

@@ -58,14 +58,14 @@ const styles = StyleSheet.create({
   // Le champ de code et son bouton n'ont rien à gagner à s'étirer : on les
   // ramène à la largeur des autres formulaires. Sans effet sous 480 px.
   inner: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
-  title: { ...typography.titleLg, color: colors.ink, marginBottom: spacing.v6, },
+  title: { ...typography.titleLg, color: colors.ink, marginBottom: spacing.sm, },
   subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: spacing.lg, },
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
-    padding: spacing.v14,
+    padding: spacing.v12,
     // Saisie de code : l'espacement de 6 separe visuellement les chiffres.
     // Aucune entree de l'echelle ne porte cet ecart, propre a ce seul champ.
     fontFamily: fonts.sansMedium,

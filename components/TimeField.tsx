@@ -77,17 +77,17 @@ export default function TimeField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.v12 },
-  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
+  label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   value: { ...typography.body, color: colors.ink },
   placeholder: { color: colors.faint },
   clearBtn: { paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   clearText: { ...typography.sheetOption, color: colors.muted },
   list: { maxHeight: 340 },
-  option: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border },
+  option: { paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   optionText: { ...typography.sheetOption, color: colors.ink },
 });

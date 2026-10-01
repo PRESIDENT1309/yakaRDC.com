@@ -163,7 +163,7 @@ export default function AdminOverview() {
               {perEstablishment.length === 0 ? (
                 <Text style={styles.emptyText}>Aucune réservation aujourd'hui pour le moment.</Text>
               ) : (
-                <View style={{ gap: 7, marginTop: spacing.v10 }}>
+                <View style={{ gap: spacing.sm, marginTop: spacing.v12 }}>
                   {perEstablishment.map(s => {
                     const cat = categoryColors[s.establishment.type];
                     return (
@@ -249,49 +249,49 @@ const styles = StyleSheet.create({
   header: {
     maxWidth: ADMIN_MAX, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
-    paddingHorizontal: spacing.v20, paddingBottom: spacing.v14,
+    paddingHorizontal: spacing.v20, paddingBottom: spacing.v12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   searchBox: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: 11, paddingVertical: 7,
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm,
   },
   searchPlaceholder: { ...typography.captionSm, color: colors.faint, },
-  content: { padding: spacing.v20, gap: spacing.v14, maxWidth: ADMIN_MAX },
+  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: ADMIN_MAX },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   statCard: {
     flex: 1, minWidth: 140,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, padding: spacing.v10,
+    borderRadius: radii.md, padding: spacing.v12,
   },
   statCardAccent: { backgroundColor: colors.laveSoft, borderColor: colors.laveBorder },
   statCardGreen: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   statCardAmber: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
   statLabel: { ...typography.captionSm, color: colors.muted, },
   statValue: { ...typography.titleSm, color: colors.ink, marginTop: spacing.xs, },
-  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v14 },
+  card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
   cardTitle: { ...typography.pillLabel, color: colors.ink, },
   cardHeaderTotal: { ...typography.captionMd, color: colors.lave, },
   cardLink: { ...typography.captionMd, color: colors.lave, },
-  todayRow: { flexDirection: 'row', gap: spacing.v6, marginTop: spacing.v10 },
+  todayRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.v12 },
   todayBox: { flex: 1, backgroundColor: colors.cream, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
   todayValue: { ...typography.titleSm, },
   todayLabel: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.sm, },
-  estabRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, padding: spacing.sm, backgroundColor: colors.cream, borderRadius: radii.sm },
+  estabRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.sm, backgroundColor: colors.cream, borderRadius: radii.sm },
   estabIcon: { width: 30, height: 30, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   estabName: { ...typography.caption, flex: 1, color: colors.ink, },
-  miniBadge: { paddingHorizontal: spacing.v6, paddingVertical: spacing.v2, borderRadius: radii.pill },
+  miniBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
   miniBadgeText: { ...typography.captionMd, },
-  requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, padding: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm },
+  requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm },
   requestIcon: { width: 30, height: 30, borderRadius: radii.sm, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   requestName: { ...typography.caption, color: colors.ink, },
-  requestMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
-  examineBtn: { backgroundColor: colors.lave, borderRadius: radii.v6, paddingHorizontal: spacing.v10, paddingVertical: 5 },
+  requestMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  examineBtn: { backgroundColor: colors.lave, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.xs },
   examineBtnText: { ...typography.captionMd, color: colors.cream, },
 });

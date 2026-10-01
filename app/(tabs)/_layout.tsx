@@ -38,7 +38,7 @@ export default function TabsLayout() {
           borderTopWidth: 0,
           backgroundColor: colors.cream,
           height: Platform.OS === 'web' ? 68 : 62,
-          paddingTop: spacing.v10,
+          paddingTop: spacing.v12,
           paddingHorizontal: railPadding,
           // Séparation nette avec le contenu qui défile en dessous, sans
           // dépendre d'un simple filet — se voit pendant le scroll aussi.
@@ -76,10 +76,10 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 34, height: 26, borderRadius: radii.v10,
+    width: 34, height: 26, borderRadius: radii.md,
     alignItems: 'center', justifyContent: 'center',
   },
   iconWrapActive: { backgroundColor: colors.laveSoft },
-  label: { fontFamily: 'Manrope_500Medium', fontSize: 10.5, marginTop: 3 },
+  label: { fontFamily: 'Manrope_500Medium', fontSize: 10.5, marginTop: spacing.v2 },
   labelActive: { fontFamily: 'Manrope_600SemiBold' },
 });

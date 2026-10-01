@@ -82,15 +82,15 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.v20 },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.v6, marginTop: spacing.v14, },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.sm, marginTop: spacing.v12, },
   fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, paddingHorizontal: spacing.v14, paddingVertical: spacing.v12, color: colors.ink, },
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
   fieldInputDisabled: { backgroundColor: colors.surfaceSunken },
   disabledText: { ...typography.body, color: colors.muted, },
-  hint: { ...typography.captionSm, color: colors.faint, marginTop: 5, },
+  hint: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: 15, marginTop: 28,
+    backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.md, marginTop: 28,
   },
   saveBtnText: { ...typography.sheetOption, color: colors.cream, },
 });

@@ -323,14 +323,14 @@ export default function PartnerDashboard() {
           {recentReviews.length === 0 ? (
             <Text style={styles.emptyText}>Aucun avis pour le moment.</Text>
           ) : (
-            <View style={{ gap: spacing.v10 }}>
+            <View style={{ gap: spacing.v12 }}>
               {recentReviews.map(r => (
                 <View key={r.id} style={styles.reviewCard}>
                   <Text style={styles.reviewQuoteMark}>"</Text>
                   <View style={{ flex: 1 }}>
                     {r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
                     <View style={styles.reviewMetaRow}>
-                      <View style={{ flexDirection: 'row', gap: 1 }}>
+                      <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
                         {[1, 2, 3, 4, 5].map(i => (
                           <Star key={i} size={10} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                         ))}
@@ -396,9 +396,9 @@ const styles = StyleSheet.create({
     marginBottom: 18, paddingTop: Platform.OS === 'ios' ? 46 : 6,
   },
   brandName: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 21, color: colors.ink },
-  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: 3, },
+  headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   bellBtn: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.white,
+    width: 34, height: 34, borderRadius: radii.v16, backgroundColor: colors.white,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
@@ -411,10 +411,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.warningSoft,
     borderWidth: 1, borderColor: colors.warningBorder,
-    borderRadius: radii.v14, padding: spacing.v14, marginBottom: spacing.md,
+    borderRadius: radii.md, padding: spacing.v12, marginBottom: spacing.md,
   },
   actionIcon: {
-    width: 34, height: 34, borderRadius: radii.v10, backgroundColor: colors.white,
+    width: 34, height: 34, borderRadius: radii.md, backgroundColor: colors.white,
     alignItems: 'center', justifyContent: 'center',
   },
   actionTitle: { ...typography.titleSm, color: colors.warning },
@@ -424,11 +424,11 @@ const styles = StyleSheet.create({
   // Une heure, un nom, un nombre de couverts : ce qu'il faut pour préparer.
   todayCard: {
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v14, marginTop: spacing.v10, overflow: 'hidden',
+    borderRadius: radii.md, marginTop: spacing.v12, overflow: 'hidden',
   },
   todayRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
-    paddingHorizontal: spacing.v14, paddingVertical: spacing.v12,
+    paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   todayRowBorder: { borderTopWidth: 1, borderTopColor: colors.surfaceSunken },
   todayHour: { ...typography.pillLabel, color: colors.lave, minWidth: 54 },
@@ -436,15 +436,15 @@ const styles = StyleSheet.create({
   todayGuests: { ...typography.captionSm, color: colors.muted },
   todayPending: {
     backgroundColor: colors.warningSoft, borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm, paddingVertical: 3,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.v2,
   },
   todayPendingText: { ...typography.captionSm, color: colors.warning },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v10, marginBottom: spacing.md },
-  statCard: { width: '47.5%', borderRadius: radii.v16, padding: spacing.v14, gap: 3 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v12, marginBottom: spacing.md },
+  statCard: { width: '47.5%', borderRadius: radii.v16, padding: spacing.v12, gap: spacing.v2 },
   statIconBadge: {
-    width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.v6,
+    width: 26, height: 26, borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm,
   },
   statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: colors.white },
   statLabel: { ...typography.captionSm, color: 'rgba(255,255,255,0.9)', marginTop: spacing.v2, },
@@ -453,33 +453,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white, borderRadius: radii.v16, padding: spacing.md, marginBottom: spacing.v20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
-  chartHeader: { marginBottom: spacing.v14 },
+  chartHeader: { marginBottom: spacing.v12 },
   chartTitle: { ...typography.pillLabel, color: colors.ink, },
   chartBars: { flexDirection: 'row', justifyContent: 'space-between', height: 90, alignItems: 'flex-end' },
-  barColumn: { alignItems: 'center', gap: spacing.v6, flex: 1 },
+  barColumn: { alignItems: 'center', gap: spacing.sm, flex: 1 },
   barTrack: { width: 14, height: 64, justifyContent: 'flex-end' },
   barFill: { width: '100%', borderRadius: radii.v4, minHeight: 4 },
   barLabel: { ...typography.captionSm, color: colors.muted, },
   chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: spacing.v12, fontStyle: 'italic', },
   section: { marginBottom: spacing.v20 },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v10 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v12 },
   sectionTitle: { fontFamily: fonts.display, fontSize: 16, color: colors.ink },
   seeAll: { ...typography.caption, color: colors.lave, },
   reviewCard: {
-    flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radii.v14, padding: spacing.v14,
+    flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radii.md, padding: spacing.v12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
   reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: colors.surfaceSunken, lineHeight: 30 },
-  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: spacing.v6 },
+  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: spacing.sm },
   reviewMetaRow: { flexDirection: 'row', marginBottom: spacing.sm },
-  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.v6, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
+  replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
   replyText: { ...typography.captionSm, flex: 1, color: colors.ink, },
   replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: spacing.sm },
   replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
   replyBtnText: { ...typography.caption, color: colors.lave, },
   promoTicket: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
-    backgroundColor: colors.lave, borderRadius: radii.md, padding: spacing.v14, position: 'relative', overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
+    backgroundColor: colors.lave, borderRadius: radii.md, padding: spacing.v12, position: 'relative', overflow: 'hidden',
   },
   promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },
   promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },

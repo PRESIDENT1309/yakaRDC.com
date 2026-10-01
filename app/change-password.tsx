@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     padding: spacing.md, marginBottom: spacing.lg,
   },
   noticeText: { flex: 1, ...typography.caption, color: colors.warning, lineHeight: 18 },
-  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.md, marginBottom: spacing.v6 },
+  label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.md, marginBottom: spacing.sm },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,

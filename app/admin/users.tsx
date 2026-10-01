@@ -134,7 +134,7 @@ export default function UsersScreen() {
                 </View>
 
                 <View style={styles.modalProfileRow}>
-                  <View style={[styles.avatar, { width: 48, height: 48, borderRadius: 24 }]}>
+                  <View style={[styles.avatar, { width: 48, height: 48, borderRadius: radii.lg }]}>
                     <Text style={[styles.avatarText, { fontSize: 18 }]}>{(selected.full_name ?? selected.email ?? 'U').charAt(0).toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -186,35 +186,35 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.v10 },
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.v12 },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: 11, paddingVertical: spacing.sm, maxWidth: 360 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, maxWidth: 360 },
   searchInput: { ...typography.bodyXs, flex: 1, color: colors.ink, },
   list: { padding: spacing.v20, gap: spacing.sm, maxWidth: 700 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, padding: spacing.v12 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
+  avatar: { width: 36, height: 36, borderRadius: radii.lg, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarText: { ...typography.labelMd, color: colors.lave, },
   rowName: { ...typography.pillLabel, color: colors.ink, },
-  rowMeta: { ...typography.captionSm, color: colors.muted, marginTop: 1, },
-  roleBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: radii.pill },
+  rowMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  roleBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
   roleBadgeText: { ...typography.captionMd, },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: spacing.v20 },
   modalBox: { backgroundColor: colors.cream, borderRadius: radii.v16, padding: spacing.v20, width: '100%', maxWidth: 380 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v14 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v12 },
   modalTitle: { ...typography.sheetOption, color: colors.ink, },
   modalProfileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.md },
   modalName: { ...typography.sheetOption, color: colors.ink, },
   modalEmail: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   infoGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  infoBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, padding: 9 },
+  infoBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, padding: spacing.sm },
   infoLabel: { ...typography.captionSm, color: colors.faint, },
   infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: spacing.v2, },
   sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: spacing.sm, },
   roleOptions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  roleOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingVertical: 9 },
+  roleOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingVertical: spacing.sm },
   roleOptionActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   roleOptionText: { ...typography.captionSm, color: colors.muted, },
-  suspendBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.v10, paddingVertical: spacing.v12, alignItems: 'center' },
+  suspendBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, paddingVertical: spacing.v12, alignItems: 'center' },
   suspendBtnText: { ...typography.caption, color: colors.danger, },
 });

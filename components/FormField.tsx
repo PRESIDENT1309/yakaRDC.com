@@ -33,7 +33,7 @@ export default function FormField({ label, value, onChange, placeholder, keyboar
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.v12 },
-  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
-  input: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, color: colors.ink, },
+  label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
+  input: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
   inputMulti: { height: 70, textAlignVertical: 'top' },
 });

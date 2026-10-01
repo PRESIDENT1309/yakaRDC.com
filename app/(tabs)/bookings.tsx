@@ -298,7 +298,7 @@ export default function BookingsScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.v6 }}
+            contentContainerStyle={{ gap: spacing.sm }}
           >
             {STATUS_FILTERS.map((f) => (
               <Chip
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   headerInner: { gap: spacing.v12 },
   headerTitle: { ...typography.titleLg, color: colors.ink, },
-  list: { padding: spacing.v14, gap: spacing.v10, paddingBottom: 100 },
+  list: { padding: spacing.v12, gap: spacing.v12, paddingBottom: 100 },
   // Tablette/desktop uniquement : la colonne unique passe en grille 2
   // colonnes (voir cardWidth dans BookingsScreen).
   listGrid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center' },
   card: {
     backgroundColor: colors.white,
-    borderRadius: radii.v14,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -409,13 +409,13 @@ const styles = StyleSheet.create({
   cardPast: { opacity: 0.7 },
   cardTop: {
     flexDirection: 'row',
-    gap: spacing.v10,
+    gap: spacing.v12,
     padding: spacing.v12,
   },
   cardIcon: {
     width: 42,
     height: 42,
-    borderRadius: radii.v10,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -425,8 +425,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: spacing.v6,
-    marginBottom: 3,
+    gap: spacing.sm,
+    marginBottom: spacing.v2,
   },
   cardName: { ...typography.pillLabel, flex: 1, color: colors.ink, },
   cardMeta: { ...typography.captionSm, color: colors.muted, },
@@ -446,9 +446,9 @@ const styles = StyleSheet.create({
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: spacing.xs,
     paddingHorizontal: spacing.v12,
-    paddingVertical: spacing.v6,
+    paddingVertical: spacing.sm,
     borderRadius: radii.sm,
   },
   actionBtnText: { ...typography.captionMd, color: colors.cream, },
@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderStrong,
     borderRadius: radii.sm,
-    paddingHorizontal: spacing.v10,
-    paddingVertical: 5,
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.xs,
   },
   cancelBtnText: { ...typography.captionSm, color: colors.danger, },
   ticketOverlay: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     backgroundColor: colors.borderStrong,
-    borderRadius: 2,
+    borderRadius: radii.v4,
     alignSelf: 'center',
     marginTop: spacing.v12,
     marginBottom: spacing.md,
@@ -487,10 +487,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 18,
     marginHorizontal: spacing.md,
-    borderRadius: radii.v14,
+    borderRadius: radii.md,
     marginBottom: spacing.md,
   },
-  ticketType: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginBottom: 3, },
+  ticketType: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginBottom: spacing.v2, },
   ticketName: { ...typography.titleSm, color: colors.cream, },
   ticketBody: { paddingHorizontal: spacing.v20 },
   ticketQrPlaceholder: {
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   qrWrapper: {
-    padding: spacing.v14,
+    padding: spacing.v12,
     backgroundColor: colors.white,
     borderRadius: radii.v16,
     borderWidth: 1,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md, },
   ticketDivider: {
     position: 'relative',
-    marginBottom: spacing.v14,
+    marginBottom: spacing.v12,
   },
   ticketDividerLine: {
     height: 1,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   ticketDetailValue: { ...typography.pillLabel, color: colors.ink, },
   ticketFooter: {
     marginTop: spacing.md,
-    padding: spacing.v10,
+    padding: spacing.v12,
     backgroundColor: colors.surfaceSunken,
     borderRadius: radii.sm,
     alignItems: 'center',

@@ -43,7 +43,7 @@ export default function OAuthCallback() {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.cream,
-      gap: spacing.v14,
+      gap: spacing.v12,
     }}>
       <ActivityIndicator color={colors.lave} size="large" />
       <Text style={{ fontSize: 13, color: colors.muted }}>

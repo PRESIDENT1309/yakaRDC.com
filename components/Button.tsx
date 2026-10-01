@@ -73,7 +73,7 @@ export default function Button({
 const styles = StyleSheet.create({
   base: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, borderRadius: radii.md, paddingVertical: spacing.v14, paddingHorizontal: spacing.lg,
+    gap: spacing.sm, borderRadius: radii.md, paddingVertical: spacing.v12, paddingHorizontal: spacing.lg,
   },
   inactive: { opacity: 0.5 },
   labelPrimary: { ...typography.buttonStrong, color: colors.cream },

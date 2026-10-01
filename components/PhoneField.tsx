@@ -95,26 +95,26 @@ export default function PhoneField({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.v12 },
-  label: { ...typography.caption, color: colors.ink, marginBottom: 5, },
+  label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   row: { flexDirection: 'row', gap: spacing.sm },
   dialBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   dialText: { ...typography.body, color: colors.ink },
   input: { ...typography.body, flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.v10, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, color: colors.ink, },
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10, marginBottom: spacing.sm,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, marginBottom: spacing.sm,
   },
   searchInput: { ...typography.body, flex: 1, color: colors.ink },
   list: { maxHeight: 320 },
   option: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   optionName: { ...typography.sheetOption, color: colors.ink, flex: 1 },
   optionDial: { ...typography.sheetOption, color: colors.muted },

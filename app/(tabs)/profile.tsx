@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     right: 2,
     width: 27,
     height: 27,
-    borderRadius: radii.v14,
+    borderRadius: radii.md,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 21,
     color: colors.cream,
-    marginBottom: 3,
+    marginBottom: spacing.v2,
   },
   contact: {
     ...typography.captionSm,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 22,
+    gap: spacing.v20,
   },
   stat: { alignItems: 'center' },
   statValue: {
@@ -403,11 +403,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.md,
   },
-  section: { gap: 7 },
+  section: { gap: spacing.sm },
   sectionLabel: {
     ...typography.overlineXs,
     color: colors.faint,
-    paddingHorizontal: spacing.v6,
+    paddingHorizontal: spacing.sm,
   },
   sectionCard: {
     backgroundColor: colors.white,
@@ -423,8 +423,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.v12,
-    paddingHorizontal: spacing.v14,
-    paddingVertical: 13,
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.v12,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   menuIcon: {
     width: 30,
     height: 30,
-    borderRadius: 9,
+    borderRadius: radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -453,8 +453,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.white,
-    borderRadius: radii.v14,
-    paddingVertical: spacing.v14,
+    borderRadius: radii.md,
+    paddingVertical: spacing.v12,
     marginTop: spacing.v2,
   },
   logoutText: { ...typography.pillLabel, color: colors.danger },
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   modalBox: {
     backgroundColor: colors.cream,
     borderRadius: radii.lg,
-    padding: 22,
+    padding: spacing.v20,
     width: '100%',
     maxWidth: 340,
   },
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.v10,
+    marginBottom: spacing.v12,
   },
   modalTitle: {
     ...typography.titleSm,
@@ -489,12 +489,12 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: spacing.v10,
+    gap: spacing.v12,
   },
   cancelBtn: {
     flex: 1,
     paddingVertical: spacing.v12,
-    borderRadius: radii.v10,
+    borderRadius: radii.md,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.borderStrong,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
   confirmBtn: {
     flex: 1,
     paddingVertical: spacing.v12,
-    borderRadius: radii.v10,
+    borderRadius: radii.md,
     backgroundColor: colors.danger,
     alignItems: 'center',
   },

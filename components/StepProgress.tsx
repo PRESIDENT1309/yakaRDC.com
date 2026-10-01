@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
   bars: { flexDirection: 'row', gap: spacing.xs },
   bar: { flex: 1, height: 3, borderRadius: radii.pill },
-  labels: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.v6 },
+  labels: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   labelSlot: { flex: 1 },
   label: { ...typography.badgeSm, color: colors.faint },
   labelDone: { color: colors.muted, textDecorationLine: 'underline' },

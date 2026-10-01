@@ -116,7 +116,7 @@ export default function StatsScreen() {
               {categoryBreakdown.length === 0 ? (
                 <Text style={styles.emptyText}>Aucune réservation sur cette période.</Text>
               ) : (
-                <View style={{ gap: spacing.sm, marginTop: spacing.v10 }}>
+                <View style={{ gap: spacing.sm, marginTop: spacing.v12 }}>
                   {categoryBreakdown.map(c => (
                     <View key={c.type} style={styles.barRow}>
                       <Text style={styles.barLabel}>{CATEGORY_LABELS[c.type]}</Text>
@@ -140,22 +140,22 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  content: { padding: spacing.v20, gap: spacing.v14, maxWidth: 700 },
-  periodRow: { flexDirection: 'row', gap: spacing.v6 },
-  periodPill: { paddingHorizontal: spacing.v14, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: 700 },
+  periodRow: { flexDirection: 'row', gap: spacing.sm },
+  periodPill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   periodPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   periodText: { ...typography.bodyXs, color: colors.muted, },
   periodTextActive: { color: colors.cream, fontWeight: '500' },
-  statsGrid: { flexDirection: 'row', gap: spacing.v10 },
-  bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v14, alignItems: 'center', gap: spacing.v6 },
+  statsGrid: { flexDirection: 'row', gap: spacing.v12 },
+  bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, alignItems: 'center', gap: spacing.sm },
   bigValue: { ...typography.titleLg, color: colors.ink, },
   bigLabel: { ...typography.captionSm, color: colors.muted, textAlign: 'center', },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   cardTitle: { ...typography.pillLabel, color: colors.ink, },
-  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.v10, },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10 },
+  emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.v12, },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12 },
   barLabel: { ...typography.captionSm, width: 80, color: colors.muted, },
   barTrack: { flex: 1, height: 8, backgroundColor: colors.surfaceSunken, borderRadius: radii.v4, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: radii.v4 },

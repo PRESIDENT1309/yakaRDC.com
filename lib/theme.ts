@@ -94,22 +94,17 @@ export const radii = {
   lg: 20,
   pill: 999,
 
-  // ── Graduations intermédiaires ──────────────────────────────────────────
-  // Nommées par leur valeur, faute de rôle sémantique : ce ne sont pas des
-  // intentions de design, ce sont les pas que le produit emploie réellement.
+  // ── Graduations complémentaires ─────────────────────────────────────────
+  // Deux valeurs que l'échelle sémantique ne portait pas, conservées après le
+  // resserrement parce qu'elles correspondent à des formes réellement
+  // distinctes : 4 pour les très petites pastilles, 16 pour les grandes
+  // surfaces. Les rayons intermédiaires (6, 10, 14) ont été absorbés.
   //
-  // Les nommer ne rend pas le dessin meilleur — cela ferme l'ensemble. Tant
-  // que la seule façon d'écrire 10 était `borderRadius: 10`, rien ne
-  // distinguait une valeur voulue d'une valeur tapée au hasard. Désormais,
-  // écrire 13 se voit : aucun jeton ne le porte.
-  //
-  // Constat au passage : `v10` est le rayon le plus fréquent du produit (62
-  // occurrences), devant `sm` et `md`. L'échelle sémantique ne décrivait donc
-  // même pas son propre défaut le plus courant.
+  // Le rayon 10 était pourtant le plus employé du produit — 62 occurrences,
+  // devant `sm` (8) et `md` (12). C'est ce qui rendait le dessin flou : trois
+  // arrondis presque identiques cohabitaient sans qu'aucun ne domine. Ils sont
+  // désormais répartis entre 8 et 12.
   v4: 4,
-  v6: 6,
-  v10: 10,
-  v14: 14,
   v16: 16,
 } as const;
 
@@ -147,29 +142,33 @@ export const spacing = {
   // gouttière horizontale d'écran.
   gutter: 18,
 
-  // ── Graduations intermédiaires ──────────────────────────────────────────
-  // Même principe que pour `radii`, et même constat, en plus net : l'échelle
-  // ci-dessus progresse par doublement (4, 8, 16, 24, 32…) alors que le
-  // produit travaille sur une grille de 2 px. Les six pas ci-dessous couvrent
-  // 545 écarts écrits à la main — soit la majorité de ce qui restait.
+  // ── Graduations complémentaires ─────────────────────────────────────────
+  // Trois valeurs que l'échelle sémantique ne portait pas — 2, 12 et 20 — et
+  // qui comptent parmi les plus employées du produit (12 à lui seul : 297
+  // usages après resserrement).
   //
-  // Ils ne portent pas de nom sémantique parce qu'ils n'ont pas de rôle : `v12`
-  // n'est pas « l'espacement de carte », c'est douze points. Prétendre le
-  // contraire inventerait une intention qui n'existe pas dans le code.
+  // ── Ce qu'a fait le resserrement ────────────────────────────────────────
+  // Le produit employait une vingtaine d'écarts distincts : 2, 3, 4, 5, 6, 7,
+  // 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 22, 24. Une page dont les
+  // gouttières valent 6, 7, 8, 9 et 10 n'a pas de rythme, elle a du bruit —
+  // l'œil ne trouve aucun battement auquel se raccrocher.
   //
-  // Ce que ces jetons apportent n'est donc pas du sens mais une frontière :
-  // l'ensemble des écarts autorisés devient énumérable. C'est la condition
-  // pour, un jour, le resserrer — un ensemble ouvert ne se resserre pas.
+  // 547 valeurs ont été reportées sur l'ancre la plus proche, en tranchant les
+  // égalités vers l'ancre la plus employée : le produit s'est resserré vers son
+  // propre centre de gravité, pas vers une grille importée. Aucun déplacement
+  // ne dépasse 2 px. Les trois principaux : 10 → 12 (175 fois), 14 → 12 (101),
+  // 6 → 8 (96).
   //
-  // Restent volontairement sans jeton les valeurs impaires (3, 5, 7, 9, 11 —
-  // une centaine d'occurrences). Elles sortent de la grille de 2 px : les
-  // nommer les légitimerait, alors que leur écriture littérale signale
-  // justement qu'elles sont hors système.
+  // Il reste sept ancres : 2, 4, 8, 12, 16, 20, 24 — puis 32, 48, 64 pour les
+  // grandes respirations, et 18 pour la seule gouttière.
+  //
+  // Deux limites posées volontairement. Au-delà de 24, on ne touche à rien :
+  // ce ne sont plus des écarts de rythme mais des dimensions de mise en page
+  // (un dégagement sous la barre d'onglets vaut 90, le ramener à 64 casserait
+  // l'écran). Et les valeurs fractionnaires (1,5 sur les petites pastilles)
+  // sont des ajustements optiques, pas des écarts.
   v2: 2,
-  v6: 6,
-  v10: 10,
   v12: 12,
-  v14: 14,
   v20: 20,
 } as const;
 

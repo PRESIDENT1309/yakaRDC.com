@@ -127,11 +127,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { padding: spacing.md },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.md, padding: spacing.v12,
   },
-  iconBox: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 34, height: 34, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { ...typography.bodyXs, color: colors.ink, },
-  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: 3, },
+  rowDate: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, },
 });

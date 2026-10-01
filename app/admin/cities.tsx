@@ -170,14 +170,14 @@ export default function CitiesScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Villes configurées</Text>
           {loading ? (
-            <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.v14 }} />
+            <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.v12 }} />
           ) : cities.length === 0 ? (
             <View style={styles.empty}>
               <MapPin size={28} color={colors.borderStrong} />
               <Text style={styles.emptyText}>Aucune ville configurée.</Text>
             </View>
           ) : (
-            <View style={{ marginTop: spacing.v10, gap: 0 }}>
+            <View style={{ marginTop: spacing.v12, gap: 0 }}>
               {cities.map((city, i) => (
                 <View key={city.id} style={[styles.cityRow, i !== cities.length - 1 && styles.cityRowBorder]}>
                   <View style={[styles.cityDot, { backgroundColor: city.is_active ? colors.success : colors.borderStrong }]} />
@@ -247,7 +247,7 @@ export default function CitiesScreen() {
                 </Pressable>
               </View>
 
-              <View style={{ marginTop: spacing.v10 }}>
+              <View style={{ marginTop: spacing.v12 }}>
                 {categories.filter(c => c.establishment_type === newCatType).map((c, i, arr) => (
                   <View key={c.id} style={[styles.cityRow, i !== arr.length - 1 && styles.cityRowBorder]}>
                     <View style={[styles.cityDot, { backgroundColor: c.is_active ? colors.success : colors.borderStrong }]} />
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   header: {
     maxWidth: 600, width: '100%',
     paddingTop: Platform.OS === 'web' ? 16 : 50,
-    paddingHorizontal: spacing.v20, paddingBottom: spacing.v14,
+    paddingHorizontal: spacing.v20, paddingBottom: spacing.v12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
@@ -313,48 +313,48 @@ const styles = StyleSheet.create({
   content: { padding: spacing.v20, gap: spacing.v12, maxWidth: 600 },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.v12, },
-  addRow: { flexDirection: 'row', gap: spacing.v10, alignItems: 'center' },
+  addRow: { flexDirection: 'row', gap: spacing.v12, alignItems: 'center' },
   addInput: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v10,
+    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   input: { ...typography.bodySm, flex: 1, color: colors.ink, },
   addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.lave, borderRadius: radii.sm,
-    paddingHorizontal: spacing.v14, paddingVertical: spacing.v10,
+    paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   addBtnText: { ...typography.caption, color: colors.cream, },
   empty: { alignItems: 'center', paddingVertical: spacing.v20, gap: spacing.sm },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
-  cityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v10, paddingVertical: 11 },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, paddingVertical: spacing.v12 },
   cityRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
   cityDot: { width: 8, height: 8, borderRadius: radii.v4, flexShrink: 0 },
   cityName: { ...typography.bodySm, flex: 1, color: colors.ink, },
   cityNameInactive: { color: colors.muted, textDecorationLine: 'line-through' },
   hintText: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, },
-  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v6, marginTop: spacing.v10, marginBottom: spacing.v10 },
-  typeBtn: { paddingHorizontal: spacing.v12, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.v12, marginBottom: spacing.v12 },
+  typeBtn: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   typeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   typeBtnText: { ...typography.bodyXs, color: colors.muted, },
   typeBtnTextActive: { color: colors.cream, fontWeight: '500' },
-  cityActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.v6 },
+  cityActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   toggleBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-    paddingHorizontal: 9, paddingVertical: 5, borderRadius: radii.pill, borderWidth: 1,
+    paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radii.pill, borderWidth: 1,
   },
   toggleBtnActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   toggleBtnInactive: { backgroundColor: colors.surfaceSunken, borderColor: colors.borderStrong },
   toggleText: { ...typography.captionMd, },
   deleteBtn: {
-    width: 26, height: 26, borderRadius: radii.v6,
+    width: 26, height: 26, borderRadius: radii.sm,
     backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center',
   },
   infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   infoTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
   infoText: { ...typography.bodyXs, color: colors.muted, marginBottom: spacing.v12, },
-  categoriesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  catChip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.v6, borderRadius: radii.pill },
+  categoriesList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  catChip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill },
   catChipText: { ...typography.captionMd, },
 });

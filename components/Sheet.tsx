@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Modal, View, Text, Pressable, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
-import { colors, typography, spacing } from '../lib/theme';
+import { colors, typography, spacing, radii } from '../lib/theme';
 
 export interface SheetProps {
   visible: boolean;
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: spacing.md + 4, paddingBottom: Platform.OS === 'ios' ? 34 : 20, maxHeight: '90%',
   },
-  handle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginTop: spacing.v12, marginBottom: spacing.md },
+  handle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: radii.v4, alignSelf: 'center', marginTop: spacing.v12, marginBottom: spacing.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
   headerText: { flex: 1, marginRight: spacing.v12 },
   title: { ...typography.sheetTitle, color: colors.ink },

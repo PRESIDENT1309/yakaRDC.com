@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   content: { padding: spacing.md },
   row: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.md, padding: spacing.v12,
   },
-  iconBox: { width: 40, height: 40, borderRadius: radii.v10, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 40, height: 40, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   rowName: { ...typography.pillLabel, color: colors.ink, },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2, marginTop: spacing.v2 },
   rowLocation: { ...typography.captionSm, color: colors.faint, },
 });

@@ -73,7 +73,7 @@ export function Counter({ label, value, onDec, onInc, accent }:
 export function SlotPicker({ slots, selected, onSelect, accent }:
   { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string }) {
   return (
-    <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.v6 }]}>
+    <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
       {slots.map(s => {
         const isSelected = selected === s;
         return (
@@ -214,7 +214,7 @@ export function HotelBookingForm({ accent, form, setForm, onSubmit, loading, off
           <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
 
           <Text style={styles.fieldLabel}>Mode de paiement</Text>
-          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.v6 }]}>
+          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
             {PAYMENTS.map(p => (
               <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
                 <Text style={[styles.chipText, form.paymentMethod === p.key && { color: colors.cream, fontWeight: '500' }]}>{p.label}</Text>
@@ -344,7 +344,7 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
           )}
 
           <Text style={styles.fieldLabel}>Occasion</Text>
-          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.v6 }]}>
+          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
             {OCCASIONS.map(o => (
               <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
                 <Text style={[styles.chipText, form.occasion === o.key && { color: colors.cream, fontWeight: '500' }]}>{o.label}</Text>
@@ -584,11 +584,11 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
 
 
 const styles = StyleSheet.create({
-  chip: { paddingHorizontal: spacing.v12, paddingVertical: 7, borderRadius: radii.sm,
+  chip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.v12 },
   chipText: { ...typography.caption, color: colors.muted },
   counter: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, padding: spacing.v10, gap: spacing.xs, marginBottom: spacing.v12 },
+    borderRadius: radii.sm, padding: spacing.v12, gap: spacing.xs, marginBottom: spacing.v12 },
   counterBtn: { width: 26, height: 26, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   counterBtnMuted: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border },
   counterLabel: { ...typography.overlineXs, color: colors.muted },
@@ -597,10 +597,10 @@ const styles = StyleSheet.create({
   formRow: { flexDirection: 'row', gap: spacing.sm + 2 },
   recap: {
     borderTopWidth: 1, borderTopColor: colors.border,
-    paddingTop: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm, gap: spacing.v6,
+    paddingTop: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm, gap: spacing.sm,
   },
   recapAmount: { ...typography.caption, color: colors.ink },
-  recapDetail: { ...typography.badgeSm, color: colors.faint, marginTop: 1 },
+  recapDetail: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.v2 },
   recapLabel: { ...typography.caption, color: colors.ink },
   recapRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   recapTotal: { ...typography.cardTitle, color: colors.ink },
@@ -613,11 +613,11 @@ const styles = StyleSheet.create({
   ticketDesc: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
   ticketFull: { ...typography.badgeSm, color: colors.danger, marginTop: spacing.v2 },
   ticketLabel: { ...typography.cardTitle, color: colors.ink },
-  ticketPrice: { ...typography.caption, fontWeight: '600', marginTop: 3 },
+  ticketPrice: { ...typography.caption, fontWeight: '600', marginTop: spacing.v2 },
   ticketRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.md,
     backgroundColor: colors.white, padding: spacing.sm,
   },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: 5 },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs },
 });

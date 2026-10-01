@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: Platform.OS === 'ios' ? 50 : 36,
     alignItems: 'center',
-    gap: 22,
+    gap: spacing.v20,
   },
   caption: { ...typography.bodySm, color: 'rgba(255,248,236,0.85)',
     textAlign: 'center', ...shadow, },

@@ -117,17 +117,17 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v14, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   content: { padding: spacing.v20, maxWidth: 700 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: spacing.v10 },
+  empty: { alignItems: 'center', paddingTop: 60, gap: spacing.v12 },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.v10 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.v12 },
   estabIcon: { width: 30, height: 30, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   estabName: { ...typography.pillLabel, color: colors.ink, },
   deleteBtn: { width: 28, height: 28, borderRadius: radii.sm, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
-  comment: { ...typography.bodyXs, color: colors.muted, marginTop: 9, },
-  date: { ...typography.captionSm, color: colors.faint, marginTop: 7, },
+  comment: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.sm, },
+  date: { ...typography.captionSm, color: colors.faint, marginTop: spacing.sm, },
 });

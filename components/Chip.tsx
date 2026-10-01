@@ -49,12 +49,12 @@ export default function Chip({ label, onPress, active = false, icon, variant = '
 
 const styles = StyleSheet.create({
   base: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v6,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     borderRadius: radii.pill, backgroundColor: colors.white,
     borderWidth: 1, borderColor: colors.border,
   },
-  selectablePad: { paddingHorizontal: spacing.md, paddingVertical: 9 },
-  filterPad: { paddingHorizontal: spacing.v12, paddingVertical: 7, gap: spacing.xs },
+  selectablePad: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  filterPad: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, gap: spacing.xs },
   label: { ...typography.pillLabel, color: colors.ink },
   labelFilter: { ...typography.bodyXs, },
   selectableActive: { backgroundColor: colors.lave, borderColor: colors.lave },

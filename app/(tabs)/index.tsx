@@ -321,7 +321,7 @@ export default function HomeScreen() {
             </View>
             <View style={styles.heroContentOverlay}>
               <AvailabilityMarker />
-              <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: spacing.v10 }]}>
+              <Text style={[styles.heroTitle, { fontSize: isWide ? 38 : 30, lineHeight: isWide ? 44 : 36, marginTop: spacing.v12 }]}>
                 Découvrez la RDC{'\n'}autrement.
               </Text>
             </View>
@@ -345,7 +345,7 @@ export default function HomeScreen() {
           <View style={[wide, { paddingHorizontal: isWide ? 0 : spacing.md + 2 }]}>
             <SectionHeading kicker="Explorez" title="Quatre façons de découvrir la RDC" />
           </View>
-          <View style={{ marginTop: spacing.v14 }}>
+          <View style={{ marginTop: spacing.v12 }}>
             {isDesktop ? (
               <View style={[wide, styles.tilesRow]}>
                 {CATEGORIES.map((cat, i) => (
@@ -363,7 +363,7 @@ export default function HomeScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v10 }}
+                contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v12 }}
               >
                 {CATEGORIES.map((cat, i) => (
                   <CategoryTile
@@ -504,7 +504,7 @@ export default function HomeScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v10, marginTop: spacing.v12 }}
+              contentContainerStyle={{ paddingHorizontal: 18, gap: spacing.v12, marginTop: spacing.v12 }}
             >
               {subdivisions.featured.map((c) => (
                 <Chip
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   bellBtn: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 34, height: 34, borderRadius: radii.v16,
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
 
@@ -598,13 +598,13 @@ const styles = StyleSheet.create({
 
   // Search
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.v10,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderRadius: radii.md,
-    paddingLeft: spacing.v14, paddingRight: spacing.v6, paddingVertical: spacing.v10,
+    paddingLeft: spacing.v12, paddingRight: spacing.sm, paddingVertical: spacing.v12,
   },
   searchPlaceholder: { flex: 1, ...typography.body, color: colors.faint },
   filterBtn: {
-    width: 32, height: 32, borderRadius: 9,
+    width: 32, height: 32, borderRadius: radii.sm,
     backgroundColor: colors.lave, alignItems: 'center', justifyContent: 'center',
   },
 
@@ -647,10 +647,10 @@ const styles = StyleSheet.create({
   storyBand: { marginTop: 30, position: 'relative', overflow: 'hidden' },
   storyContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
   storyKicker: { ...typography.overline, color: colors.amber, textTransform: 'uppercase' },
-  storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: spacing.v10, marginBottom: spacing.md },
+  storyRule: { width: 40, height: 1.5, backgroundColor: colors.amber, opacity: 0.6, marginTop: spacing.v12, marginBottom: spacing.md },
   storyTitle: {
     ...typography.editorialTitle,
-    color: colors.cream, textAlign: 'center', marginBottom: spacing.v10,
+    color: colors.cream, textAlign: 'center', marginBottom: spacing.v12,
   },
   storySub: {
     ...typography.body, color: 'rgba(250,248,244,0.85)', textAlign: 'center', maxWidth: 420,
