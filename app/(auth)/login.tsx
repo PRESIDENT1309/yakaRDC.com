@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
   Platform, ImageBackground, StatusBar, KeyboardAvoidingView,
+  useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,12 +11,7 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, typography, radii, spacing, breakpoints } from '../../lib/theme';
 import LogoYaka from '../../components/LogoYaka';
-
-// Photo de fond livrée avec l'application : des pirogues au crépuscule, dans
-// la palette même de la marque. Elle dormait dans `assets/images` sous une
-// double extension (`login-bg.jpg.jpg`) et aucun écran ne la référençait —
-// l'écran de connexion retombait donc sur une illustration dessinée.
-const FOND_PAR_DEFAUT = require('../../assets/images/login-bg.jpg');
+import LandscapeIllustration from '../../components/LandscapeIllustration';
 
 // Destination d'après connexion. N'accepte qu'un chemin interne : doit commencer
 // par un seul '/' — ce qui écarte les URL absolues ('https://…') et les URL
@@ -30,6 +26,7 @@ function safeRedirect(target?: string): string {
 export default function LoginScreen() {
   // Zone sûre réelle : la marque monte en haut de l'écran, donc sous l'encoche.
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams<{ redirect?: string; reason?: string }>();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -42,7 +39,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     supabase.from('app_settings').select('value').eq('key', 'auth_background_url').maybeSingle()
-      .then(({ data }) => setBgUrl(data?.value ?? null));
+      .then(({ data }) => setBgUrl(data?.value?.trim() ? data.value : null));
   }, []);
 
   async function handleLogin() {
@@ -174,17 +171,29 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 
-  // Le fond choisi par l'admin dans l'écran Apparence l'emporte ; à défaut,
-  // la photo livrée avec l'application. L'illustration dessinée ne sert plus
-  // ici — elle reste le fond de l'écran Welcome, où elle a été conçue.
+  // Le fond choisi par l'admin dans l'écran Apparence l'emporte ; sans image
+  // (ou si elle est introuvable), c'est l'illustration dessinée qui s'affiche,
+  // comme sur l'écran Welcome. Jamais de photo de secours.
+  if (bgUrl) {
+    return (
+      <ImageBackground
+        source={{ uri: bgUrl }}
+        style={styles.screen}
+        resizeMode="cover"
+        onError={() => setBgUrl(null)}
+      >
+        {content}
+      </ImageBackground>
+    );
+  }
+
   return (
-    <ImageBackground
-      source={bgUrl ? { uri: bgUrl } : FOND_PAR_DEFAUT}
-      style={styles.screen}
-      resizeMode="cover"
-    >
+    <View style={styles.screen}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <LandscapeIllustration width={width} height={height} />
+      </View>
       {content}
-    </ImageBackground>
+    </View>
   );
 }
 
