@@ -1,14 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet, type ColorValue } from 'react-native';
-import { Home, Search, CalendarRange, CalendarCheck, User } from 'lucide-react-native';
+import { Home, Search, BookOpen, CalendarCheck, User } from 'lucide-react-native';
 import { colors, radii, spacing } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
 
-// Barre à 5 destinations inchangées (Accueil, Recherche, Planning,
-// Réservations, Profil) — seule la présentation est affinée : hauteur,
-// séparation avec le contenu, état actif (pastille discrète derrière
-// l'icône plutôt qu'un simple changement de couleur), libellés en Manrope.
-// Le mécanisme de navigation (Tabs d'expo-router) reste identique.
+// Barre à 5 destinations (Accueil, Recherche, Culture, Réservations, Profil).
+// V1 : l'onglet Culture prend la place de Planning. L'écran `planner` reste
+// dans le projet, avec ses tables Supabase, mais n'apparaît plus dans la barre
+// (`href: null`) : le planning reviendra en V2, avec l'IA YakaRDC.
+// Seule la présentation est affinée : hauteur, séparation avec le contenu,
+// état actif (pastille discrète derrière l'icône plutôt qu'un simple
+// changement de couleur), libellés en Manrope. Le mécanisme de navigation
+// (Tabs d'expo-router) reste identique.
 
 function TabIcon(Icon: typeof Home) {
   return ({ color, focused }: { color: ColorValue; focused: boolean }) => (
@@ -59,8 +62,8 @@ export default function TabsLayout() {
         options={{ title: 'Recherche', tabBarIcon: TabIcon(Search), tabBarLabel: tabLabel('Recherche') }}
       />
       <Tabs.Screen
-        name="planner"
-        options={{ title: 'Planning', tabBarIcon: TabIcon(CalendarRange), tabBarLabel: tabLabel('Planning') }}
+        name="culture"
+        options={{ title: 'Culture', tabBarIcon: TabIcon(BookOpen), tabBarLabel: tabLabel('Culture') }}
       />
       <Tabs.Screen
         name="bookings"
@@ -70,6 +73,10 @@ export default function TabsLayout() {
         name="profile"
         options={{ title: 'Profil', tabBarIcon: TabIcon(User), tabBarLabel: tabLabel('Profil') }}
       />
+      {/* V2 : planning avec l'IA YakaRDC. Masqué de la barre, mais la route
+          existe toujours, donc un lien direct ou un retour en arrière reste
+          possible le jour où on le réactive (retirer `href: null`). */}
+      <Tabs.Screen name="planner" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -57,6 +57,7 @@ import RiverMotif from '../../components/RiverMotif';
 import PhotoScrim from '../../components/PhotoScrim';
 import type { Establishment, EstablishmentType, ListingPhoto, Review, EstablishmentOffer, OfferCategory } from '../../lib/types';
 import { unitsNeeded, offerLabel } from '../../lib/types';
+import { PLANNING_ENABLED } from '../../lib/features';
 
 // Établissement suggéré en fin de fiche, enrichi de sa photo et de son tarif
 type SimilarEstablishment = Establishment & {
@@ -67,7 +68,7 @@ type SimilarEstablishment = Establishment & {
 // Contact du support YakaRDC pour les signalements de fiche (point « Signaler
 // une information incorrecte »). Aucune table de signalement dans ce lot :
 // le lien ouvre une conversation pré-remplie.
-const SUPPORT_WHATSAPP = '243999000000';
+const SUPPORT_WHATSAPP = '243819745279';
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   'Wifi': <Wifi size={13} color={colors.fleuveDark} />,
@@ -1176,14 +1177,16 @@ export default function ListingDetailScreen() {
             )}
           </View>
 
-          {/* Ajouter au planning */}
-          <Button
-            label="Ajouter à mon planning"
-            variant="secondary"
-            onPress={handleAddToPlanning}
-            loading={addingToPlan}
-            icon={<CalendarPlus size={15} color={colors.lave} strokeWidth={1.75} />}
-          />
+          {/* Ajouter au planning — masqué pour la V1, réactivé en V2 (lib/features.ts) */}
+          {PLANNING_ENABLED && (
+            <Button
+              label="Ajouter à mon planning"
+              variant="secondary"
+              onPress={handleAddToPlanning}
+              loading={addingToPlan}
+              icon={<CalendarPlus size={15} color={colors.lave} strokeWidth={1.75} />}
+            />
+          )}
 
           {/* Établissements similaires — évite que la fiche soit un cul-de-sac */}
           {similar.length > 0 && (
