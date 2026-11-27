@@ -3,7 +3,6 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
   TextInput, ActivityIndicator, Modal,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
   CalendarRange, CalendarCheck, Plus, Trash2, X, Check, Edit3,
@@ -12,18 +11,23 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
+import { colors, categoryColors, typography, fonts, radii, spacing, cible } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useZonesSures } from '../../lib/zones';
 import { useConfirm } from '../../lib/confirm-context';
 import CategoryIcon from '../../components/CategoryIcon';
 import StatusBadge from '../../components/StatusBadge';
 import Chip from '../../components/Chip';
 import DateField from '../../components/DateField';
 import EmptyState from '../../components/EmptyState';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import BoutonIcone from '../../components/BoutonIcone';
 import type {
   TripPlan, TripPlanItem, TripPackingItem, Establishment,
   Booking, PackingCategory,
-} from '../../lib/types';
+} from '../../lib/types';
+import { etatBascule } from '../../lib/a11y';
 
 /**
  * Planificateur de voyage.
@@ -61,7 +65,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'preparatifs', label: 'Préparatifs' },
 ];
 
-// Icônes lucide plutôt que les émojis d'origine (📄 👕 🧴 ✨) : un émoji ne
+// Icônes lucide plutôt que les émojis d'origine : un émoji ne
 // prend pas la couleur de la marque, se dessine différemment selon l'appareil,
 // et casse l'alignement typographique.
 const PACKING_CATEGORIES: { key: PackingCategory; label: string; Icone: typeof FileText }[] = [
@@ -98,6 +102,13 @@ function formatDayLabel(iso: string) {
   };
 }
 
+// Cotes de dessin dont dépendent les zones tactiles (voir les styles `jauge`
+// et `zoneValise`) : hauteur visible de la jauge — piste de 5, écart de 4, une
+// ligne de 15 —, côté de la case à cocher et de la corbeille de la valise.
+const HAUTEUR_JAUGE = 24;
+const COTE_CASE = 19;
+const COTE_CORBEILLE = 12;
+
 /** « 14:30:00 » → « 14:30 ». Les secondes n'apprennent rien à un voyageur. */
 function heureCourte(h: string | null | undefined): string | null {
   if (!h) return null;
@@ -108,9 +119,9 @@ export default function PlannerScreen() {
   const { session } = useAuth();
   const confirm = useConfirm();
   const { isWide, contentWidth } = useResponsive();
-  // Zone sûre réelle, au lieu du `Platform.OS === 'ios' ? 56 : 20` codé en dur
-  // qui ignorait les encoches Android.
-  const insets = useSafeAreaInsets();
+  // Zones sûres mesurées (voir lib/zones) : `haut` pour l'en-tête et le
+  // billet, `bas` pour le pied des feuilles, au-dessus de la barre de geste.
+  const { haut, bas } = useZonesSures();
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
 
   const [loading, setLoading] = useState(true);
@@ -438,8 +449,8 @@ export default function PlannerScreen() {
   if (!loading && !session?.user) {
     return (
       <View style={styles.screen}>
-        <View style={[styles.entete, { paddingTop: Math.max(insets.top, 20) }]}>
-          <Text style={styles.enteteTitre}>Mon planning</Text>
+        <View style={[styles.entete, { paddingTop: haut }]}>
+          <Text style={styles.enteteTitre} accessibilityRole="header" aria-level={1}>Mon planning</Text>
         </View>
         <EmptyState
           icon={<CalendarRange size={44} color={colors.borderStrong} strokeWidth={1.75} />}
@@ -459,8 +470,8 @@ export default function PlannerScreen() {
   if (!loading && !plan && !showTripForm) {
     return (
       <View style={styles.screen}>
-        <View style={[styles.entete, { paddingTop: Math.max(insets.top, 20) }]}>
-          <Text style={styles.enteteTitre}>Mon planning</Text>
+        <View style={[styles.entete, { paddingTop: haut }]}>
+          <Text style={styles.enteteTitre} accessibilityRole="header" aria-level={1}>Mon planning</Text>
         </View>
         <EmptyState
           icon={<CalendarRange size={44} color={colors.borderStrong} strokeWidth={1.75} />}
@@ -487,37 +498,43 @@ export default function PlannerScreen() {
       {/* ── Le billet : une seule rangée, budget compris ──────────────────
           Remplace trois rangées empilées (bandeau de chiffres à émojis, carte
           du voyage, onglets) qui consommaient 306 px avant tout contenu. */}
-      <View style={[styles.billet, { paddingTop: Math.max(insets.top, 20) }]}>
+      <View style={[styles.billet, { paddingTop: haut }]}>
         <View style={isWide ? wide : undefined}>
-          <Pressable
-            style={styles.billetHaut}
-            onPress={() => openTripForm(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Modifier le voyage"
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.billetTitre} numberOfLines={1}>{plan?.title}</Text>
+          {/* Le nom du voyage est le titre de l'écran. Il ne peut pas l'être à
+              l'intérieur d'un bouton, dont le contenu n'est lu que comme son
+              libellé : la rangée entière n'est donc plus pressable, c'est le
+              crayon qui ouvre le formulaire. */}
+          <View style={styles.billetHaut}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.billetTitre} numberOfLines={1} accessibilityRole="header" aria-level={1}>
+                {plan?.title}
+              </Text>
               <View style={styles.billetMetaRangee}>
                 {!!plan?.destination && (
                   <View style={styles.billetMetaItem}>
-                    <MapPin size={11} color={CREAM_ATTENUE} strokeWidth={2} />
+                    <MapPin size={11} color={colors.onBrandMuted} strokeWidth={2} />
                     <Text style={styles.billetMeta}>{plan.destination}</Text>
                   </View>
                 )}
                 <View style={styles.billetMetaItem}>
-                  <CalendarRange size={11} color={CREAM_ATTENUE} strokeWidth={2} />
+                  <CalendarRange size={11} color={colors.onBrandMuted} strokeWidth={2} />
                   <Text style={styles.billetMeta}>
                     {plan && `${formatDayLabel(plan.start_date).day} → ${formatDayLabel(plan.end_date).day}`}
                   </Text>
                 </View>
                 <View style={styles.billetMetaItem}>
-                  <Users size={11} color={CREAM_ATTENUE} strokeWidth={2} />
+                  <Users size={11} color={colors.onBrandMuted} strokeWidth={2} />
                   <Text style={styles.billetMeta}>{plan?.traveler_count}</Text>
                 </View>
               </View>
             </View>
-            <Edit3 size={15} color={CREAM_ATTENUE} />
-          </Pressable>
+            <BoutonIcone
+              label="Modifier le voyage"
+              taille={15}
+              onPress={() => openTripForm(true)}
+              icon={<Edit3 size={15} color={colors.onBrandMuted} />}
+            />
+          </View>
 
           {/* La jauge remplace l'onglet Budget : on voit l'effet d'un ajout au
               moment où on l'ajoute, plus deux écrans plus loin. */}
@@ -542,14 +559,14 @@ export default function PlannerScreen() {
 
       {/* ── Deux onglets, en pleine largeur : plus rien à faire défiler ── */}
       <View style={styles.onglets}>
-        <View style={[styles.ongletsRangee, isWide && wide]}>
+        <View style={[styles.ongletsRangee, isWide && wide]} accessibilityRole="tablist">
           {TABS.map(t => (
             <Pressable
               key={t.key}
               style={[styles.onglet, activeTab === t.key && styles.ongletActif]}
               onPress={() => setActiveTab(t.key)}
               accessibilityRole="tab"
-              accessibilityState={{ selected: activeTab === t.key }}
+              aria-selected={activeTab === t.key}
             >
               <Text style={[styles.ongletTexte, activeTab === t.key && styles.ongletTexteActif]}>
                 {t.label}
@@ -584,19 +601,19 @@ export default function PlannerScreen() {
                     )}
 
                     <View style={styles.jourTitre}>
-                      <Text style={styles.jourTitreTexte}>{formatDayLabel(j.date).full}</Text>
+                      <Text style={styles.jourTitreTexte} accessibilityRole="header" aria-level={2}>
+                        {formatDayLabel(j.date).full}
+                      </Text>
                       <View style={styles.jourTitreDroite}>
                         {/* Un total nul ne se dit pas : sur le voyage observé,
                             vingt-trois pastilles répétaient « 0 $ ». */}
                         {j.total > 0 && <Text style={styles.jourTotal}>{j.total.toFixed(0)} $</Text>}
-                        <Pressable
+                        <BoutonIcone
+                          label={`Ajouter une activité au ${formatDayLabel(j.date).full}`}
+                          taille={15}
                           onPress={() => ouvrirAjoutEtape(j.date)}
-                          hitSlop={10}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Ajouter une activité au ${formatDayLabel(j.date).full}`}
-                        >
-                          <Plus size={15} color={colors.lave} />
-                        </Pressable>
+                          icon={<Plus size={15} color={colors.lave} />}
+                        />
                       </View>
                     </View>
 
@@ -615,27 +632,25 @@ export default function PlannerScreen() {
                               {Number(e.etape.estimated_cost) > 0 && (
                                 <Text style={styles.evenementCout}>{Number(e.etape.estimated_cost).toFixed(0)} $</Text>
                               )}
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel="Supprimer cette étape"
+                              <BoutonIcone
+                                label="Supprimer cette étape"
+                                taille={13}
                                 onPress={() => deleteItem(e.etape.id)}
-                                hitSlop={10}
-                              >
-                                <Trash2 size={13} color={colors.faint} />
-                              </Pressable>
+                                icon={<Trash2 size={13} color={colors.faint} />}
+                              />
                             </View>
                           ) : (
                             /* Une réservation se lit mais ne se modifie pas ici :
-                               elle vient du catalogue. La teinte fleuve et la
-                               pastille disent cette différence sans l'écrire. */
+                               elle vient du catalogue. La teinte fleuve et
+                               l'icône de catégorie disent cette différence sans
+                               l'écrire. L'icône est posée nue : le carré coloré
+                               qui l'entourait n'était qu'un décor. */
                             <View style={styles.carteResa}>
-                              <View style={[styles.resaIcone, { backgroundColor: categoryColors[e.resa.establishment?.type]?.soft ?? colors.laveSoft }]}>
-                                <CategoryIcon
-                                  type={e.resa.establishment?.type}
-                                  size={15}
-                                  color={categoryColors[e.resa.establishment?.type]?.accent ?? colors.lave}
-                                />
-                              </View>
+                              <CategoryIcon
+                                type={e.resa.establishment?.type}
+                                size={18}
+                                color={categoryColors[e.resa.establishment?.type]?.accent ?? colors.lave}
+                              />
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.evenementTitre} numberOfLines={1}>
                                   {e.resa.establishment?.name}
@@ -652,7 +667,7 @@ export default function PlannerScreen() {
                 );
               })}
 
-              <Pressable style={styles.boutonAjout} onPress={() => ouvrirAjoutEtape(null)}>
+              <Pressable style={styles.boutonAjout} accessibilityRole="button" onPress={() => ouvrirAjoutEtape(null)}>
                 <Plus size={15} color={colors.lave} />
                 <Text style={styles.boutonAjoutTexte}>Ajouter à une journée</Text>
               </Pressable>
@@ -664,42 +679,41 @@ export default function PlannerScreen() {
         {activeTab === 'preparatifs' && (
           <View>
             {/* — Lieux à visiter — */}
-            <Text style={styles.blocTitre}>Lieux à visiter</Text>
+            <Text style={styles.blocTitre} accessibilityRole="header" aria-level={2}>Lieux à visiter</Text>
             {wishlistItems.length === 0 ? (
               <Text style={styles.blocVide}>Aucun lieu enregistré pour l'instant.</Text>
             ) : (
               <View style={{ gap: spacing.sm }}>
                 {wishlistItems.map(item => (
                   <View key={item.id} style={styles.ligneLieu}>
-                    <Pressable
-                      hitSlop={11}
-                      accessibilityRole="button"
-                      accessibilityLabel={item.visited ? 'Marquer comme non visité' : 'Marquer comme visité'}
+                    <BoutonIcone
+                      label={item.visited ? 'Marquer comme non visité' : 'Marquer comme visité'}
+                      taille={22}
+                      fond={item.visited ? colors.success : undefined}
+                      bordure={item.visited ? colors.success : colors.borderStrong}
+                      selected={item.visited}
                       onPress={() => toggleVisited(item)}
-                      style={[styles.cercle, item.visited && styles.cercleActif]}
-                    >
-                      {item.visited && <Check size={12} color={colors.white} />}
-                    </Pressable>
+                      icon={item.visited ? <Check size={12} color={colors.white} /> : null}
+                    />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.evenementTitre, item.visited && styles.texteFait]}>{item.title}</Text>
                       {Number(item.estimated_cost) > 0 && (
                         <Text style={styles.evenementNote}>{Number(item.estimated_cost).toFixed(0)} $</Text>
                       )}
                     </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Retirer de la liste d'envies"
+                    <BoutonIcone
+                      label="Retirer de la liste d'envies"
+                      taille={13}
                       onPress={() => deleteItem(item.id)}
-                      hitSlop={10}
-                    >
-                      <Trash2 size={13} color={colors.faint} />
-                    </Pressable>
+                      icon={<Trash2 size={13} color={colors.faint} />}
+                    />
                   </View>
                 ))}
               </View>
             )}
             <Pressable
               style={styles.boutonAjout}
+              accessibilityRole="button"
               onPress={() => { setItemTitle(''); setItemCost(''); setAddModal('wishlist'); }}
             >
               <Plus size={15} color={colors.lave} />
@@ -707,7 +721,7 @@ export default function PlannerScreen() {
             </Pressable>
 
             {/* — Valise — */}
-            <Text style={[styles.blocTitre, { marginTop: spacing.lg }]}>Valise</Text>
+            <Text style={[styles.blocTitre, { marginTop: spacing.lg }]} accessibilityRole="header" aria-level={2}>Valise</Text>
             {PACKING_CATEGORIES.map(cat => {
               const catItems = packingItems.filter(p => p.category === cat.key);
               if (catItems.length === 0) return null;
@@ -716,26 +730,31 @@ export default function PlannerScreen() {
                 <View key={cat.key} style={{ marginBottom: spacing.v12 }}>
                   <View style={styles.categorieRangee}>
                     <Icone size={13} color={colors.faint} strokeWidth={1.75} />
-                    <Text style={styles.categorieTexte}>{cat.label}</Text>
+                    <Text style={styles.categorieTexte} accessibilityRole="header" aria-level={3}>{cat.label}</Text>
                   </View>
                   <View style={{ gap: spacing.sm }}>
                     {catItems.map(item => (
                       <View key={item.id} style={styles.ligneValise}>
+                        {/* Pas `BoutonIcone` ici : sa pastille est ronde, la
+                            case est carrée, et sa zone de 44 px de haut
+                            mordrait sur la ligne voisine (voir `zoneValise`). */}
                         <Pressable
-                          hitSlop={13}
                           accessibilityRole="button"
                           accessibilityLabel={item.is_checked ? `Décocher ${item.label}` : `Cocher ${item.label}`}
+                          {...etatBascule(item.is_checked)}
                           onPress={() => togglePacking(item)}
-                          style={[styles.carre, item.is_checked && styles.carreActif]}
+                          style={[styles.zoneValise, styles.zoneCase]}
                         >
-                          {item.is_checked && <Check size={11} color={colors.white} />}
+                          <View style={[styles.carre, item.is_checked && styles.carreActif]}>
+                            {item.is_checked && <Check size={11} color={colors.white} />}
+                          </View>
                         </Pressable>
                         <Text style={[styles.valiseTexte, item.is_checked && styles.texteFait]}>{item.label}</Text>
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel="Supprimer de la valise"
                           onPress={() => deletePacking(item.id)}
-                          hitSlop={10}
+                          style={[styles.zoneValise, styles.zoneRetrait]}
                         >
                           <Trash2 size={12} color={colors.faint} />
                         </Pressable>
@@ -750,6 +769,7 @@ export default function PlannerScreen() {
             )}
             <Pressable
               style={styles.boutonAjout}
+              accessibilityRole="button"
               onPress={() => { setPackingLabel(''); setPackingCategory('documents'); setPackingModal(true); }}
             >
               <Plus size={15} color={colors.lave} />
@@ -757,21 +777,22 @@ export default function PlannerScreen() {
             </Pressable>
 
             {/* — Notes — */}
-            <Text style={[styles.blocTitre, { marginTop: spacing.lg }]}>Notes</Text>
+            <Text style={[styles.blocTitre, { marginTop: spacing.lg }]} accessibilityRole="header" aria-level={2}>Notes</Text>
+            {/* Pas de `FormField` : son libellé répéterait le titre du bloc,
+                juste au-dessus. Le champ est nommé pour la lecture vocale. */}
             <TextInput
               style={styles.champNotes}
               value={notesDraft}
               onChangeText={setNotesDraft}
+              accessibilityLabel="Notes du voyage"
               placeholder="Réserver le taxi à l'avance, prévenir l'hôtel d'une arrivée tardive, numéro d'urgence..."
               placeholderTextColor={colors.faint}
               multiline
               textAlignVertical="top"
             />
-            <Pressable style={styles.boutonPlein} onPress={handleSaveNotes} disabled={savingNotes}>
-              {savingNotes
-                ? <ActivityIndicator color={colors.cream} />
-                : <Text style={styles.boutonPleinTexte}>Enregistrer les notes</Text>}
-            </Pressable>
+            <View style={styles.action}>
+              <Button label="Enregistrer les notes" onPress={handleSaveNotes} loading={savingNotes} />
+            </View>
           </View>
         )}
       </ScrollView>
@@ -779,13 +800,11 @@ export default function PlannerScreen() {
       {/* ── Détail du budget ── */}
       <Modal visible={budgetModal} transparent animationType="slide" onRequestClose={() => setBudgetModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: bas }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Budget</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={() => setBudgetModal(false)} hitSlop={10}>
-                <X size={18} color={colors.muted} />
-              </Pressable>
+              <Text style={styles.modalTitle} accessibilityRole="header" aria-level={2}>Budget</Text>
+              <BoutonIcone label="Fermer" taille={18} onPress={() => setBudgetModal(false)} icon={<X size={18} color={colors.muted} />} />
             </View>
             <ScrollView>
               <View style={styles.budgetGrille}>
@@ -823,20 +842,17 @@ export default function PlannerScreen() {
       {/* ── Création / édition du voyage ── */}
       <Modal visible={showTripForm} transparent animationType="slide" onRequestClose={() => setShowTripForm(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: bas }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>{editingTrip ? 'Modifier le voyage' : 'Nouveau voyage'}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={() => setShowTripForm(false)} hitSlop={10}>
-                <X size={18} color={colors.muted} />
-              </Pressable>
+              <Text style={styles.modalTitle} accessibilityRole="header" aria-level={2}>
+                {editingTrip ? 'Modifier le voyage' : 'Nouveau voyage'}
+              </Text>
+              <BoutonIcone label="Fermer" taille={18} onPress={() => setShowTripForm(false)} icon={<X size={18} color={colors.muted} />} />
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={styles.fieldLabel}>Nom du voyage</Text>
-              <TextInput style={styles.fieldInput} value={title} onChangeText={setTitle} placeholder="Mon voyage à Kinshasa" placeholderTextColor={colors.faint} />
-
-              <Text style={styles.fieldLabel}>Destination</Text>
-              <TextInput style={styles.fieldInput} value={destination} onChangeText={setDestination} placeholder="Kinshasa, RDC" placeholderTextColor={colors.faint} />
+              <FormField label="Nom du voyage" value={title} onChange={setTitle} placeholder="Mon voyage à Kinshasa" />
+              <FormField label="Destination" value={destination} onChange={setDestination} placeholder="Kinshasa, RDC" />
 
               {/* Les dates se saisissaient à la main, au format JJ/MM/AAAA, avec
                   un simple contrôle après coup. C'est ainsi qu'un voyage a fini
@@ -859,27 +875,23 @@ export default function PlannerScreen() {
 
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Voyageurs</Text>
-                  <TextInput style={styles.fieldInput} value={travelerCount} onChangeText={setTravelerCount} placeholder="1" keyboardType="number-pad" placeholderTextColor={colors.faint} />
+                  <FormField label="Voyageurs" value={travelerCount} onChange={setTravelerCount} placeholder="1" keyboardType="number-pad" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Budget prévu ($)</Text>
-                  <TextInput style={styles.fieldInput} value={plannedBudget} onChangeText={setPlannedBudget} placeholder="200" keyboardType="decimal-pad" placeholderTextColor={colors.faint} />
+                  <FormField label="Budget prévu ($)" value={plannedBudget} onChange={setPlannedBudget} placeholder="200" keyboardType="decimal-pad" />
                 </View>
               </View>
 
-              {formError && <Text style={styles.errorText}>{formError}</Text>}
+              {formError && (
+                <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">{formError}</Text>
+              )}
 
-              <Pressable style={[styles.boutonPlein, saving && { opacity: 0.7 }]} onPress={handleSaveTrip} disabled={saving}>
-                {saving
-                  ? <ActivityIndicator color={colors.cream} />
-                  : <Text style={styles.boutonPleinTexte}>{editingTrip ? 'Enregistrer' : 'Créer le voyage'}</Text>}
-              </Pressable>
+              <Button label={editingTrip ? 'Enregistrer' : 'Créer le voyage'} onPress={handleSaveTrip} loading={saving} />
 
               {/* La suppression rejoint le formulaire d'édition : au fil du
                   contenu, une action destructrice n'attend qu'un faux geste. */}
               {editingTrip && (
-                <Pressable onPress={confirmDeleteTrip} style={styles.lienDanger}>
+                <Pressable onPress={confirmDeleteTrip} style={styles.lienDanger} accessibilityRole="button">
                   <Trash2 size={13} color={colors.danger} />
                   <Text style={styles.lienDangerTexte}>Supprimer ce voyage</Text>
                 </Pressable>
@@ -892,15 +904,13 @@ export default function PlannerScreen() {
       {/* ── Ajout activité / lieu ── */}
       <Modal visible={!!addModal} transparent animationType="slide" onRequestClose={() => setAddModal(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: bas }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>
+              <Text style={styles.modalTitle} accessibilityRole="header" aria-level={2}>
                 {addModal === 'itinerary' ? 'Ajouter une activité' : 'Ajouter un lieu à visiter'}
               </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={() => setAddModal(null)} hitSlop={10}>
-                <X size={18} color={colors.muted} />
-              </Pressable>
+              <BoutonIcone label="Fermer" taille={18} onPress={() => setAddModal(null)} icon={<X size={18} color={colors.muted} />} />
             </View>
 
             <ScrollView keyboardShouldPersistTaps="handled">
@@ -927,29 +937,19 @@ export default function PlannerScreen() {
                 </>
               )}
 
-              <Text style={styles.fieldLabel}>Nom</Text>
-              <TextInput style={styles.fieldInput} value={itemTitle} onChangeText={setItemTitle} placeholder="Ex : Visite du marché central" placeholderTextColor={colors.faint} />
+              <FormField label="Nom" value={itemTitle} onChange={setItemTitle} placeholder="Ex : Visite du marché central" />
 
               {addModal === 'itinerary' && (
-                <>
-                  <Text style={styles.fieldLabel}>Heure</Text>
-                  <TextInput style={styles.fieldInput} value={itemTime} onChangeText={setItemTime} placeholder="09:00" placeholderTextColor={colors.faint} />
-                </>
+                <FormField label="Heure" value={itemTime} onChange={setItemTime} placeholder="09:00" />
               )}
 
-              <Text style={styles.fieldLabel}>Coût estimé ($)</Text>
-              <TextInput style={styles.fieldInput} value={itemCost} onChangeText={setItemCost} placeholder="0" keyboardType="decimal-pad" placeholderTextColor={colors.faint} />
+              <FormField label="Coût estimé ($)" value={itemCost} onChange={setItemCost} placeholder="0" keyboardType="decimal-pad" />
 
               {addModal === 'itinerary' && (
-                <>
-                  <Text style={styles.fieldLabel}>Notes (optionnel)</Text>
-                  <TextInput style={[styles.fieldInput, { height: 60, textAlignVertical: 'top' }]} value={itemNotes} onChangeText={setItemNotes} placeholder="Réserver à l'avance..." placeholderTextColor={colors.faint} multiline />
-                </>
+                <FormField label="Notes (optionnel)" value={itemNotes} onChange={setItemNotes} placeholder="Réserver à l'avance..." multiline lines={2} />
               )}
 
-              <Pressable style={[styles.boutonPlein, !itemTitle.trim() && { opacity: 0.5 }]} onPress={handleAddItem} disabled={!itemTitle.trim()}>
-                <Text style={styles.boutonPleinTexte}>Ajouter</Text>
-              </Pressable>
+              <Button label="Ajouter" onPress={handleAddItem} disabled={!itemTitle.trim()} />
             </ScrollView>
           </View>
         </View>
@@ -958,13 +958,11 @@ export default function PlannerScreen() {
       {/* ── Ajout élément de valise ── */}
       <Modal visible={packingModal} transparent animationType="slide" onRequestClose={() => setPackingModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: bas }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Ajouter un élément</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={() => setPackingModal(false)} hitSlop={10}>
-                <X size={18} color={colors.muted} />
-              </Pressable>
+              <Text style={styles.modalTitle} accessibilityRole="header" aria-level={2}>Ajouter un élément</Text>
+              <BoutonIcone label="Fermer" taille={18} onPress={() => setPackingModal(false)} icon={<X size={18} color={colors.muted} />} />
             </View>
 
             <Text style={styles.fieldLabel}>Catégorie</Text>
@@ -979,22 +977,15 @@ export default function PlannerScreen() {
               ))}
             </View>
 
-            <Text style={styles.fieldLabel}>Élément</Text>
-            <TextInput style={styles.fieldInput} value={packingLabel} onChangeText={setPackingLabel} placeholder="Ex : Passeport" placeholderTextColor={colors.faint} />
+            <FormField label="Élément" value={packingLabel} onChange={setPackingLabel} placeholder="Ex : Passeport" />
 
-            <Pressable style={[styles.boutonPlein, !packingLabel.trim() && { opacity: 0.5 }]} onPress={handleAddPacking} disabled={!packingLabel.trim()}>
-              <Text style={styles.boutonPleinTexte}>Ajouter</Text>
-            </Pressable>
+            <Button label="Ajouter" onPress={handleAddPacking} disabled={!packingLabel.trim()} />
           </View>
         </View>
       </Modal>
     </View>
   );
 }
-
-// Cream atténué — texte secondaire posé sur le bandeau de marque. Même valeur
-// que dans ScreenHeader, où elle a la même fonction.
-const CREAM_ATTENUE = 'rgba(250,248,244,0.72)';
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
@@ -1009,9 +1000,18 @@ const styles = StyleSheet.create({
   billetTitre: { ...typography.displayMd, color: colors.cream },
   billetMetaRangee: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v12, marginTop: spacing.xs },
   billetMetaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  billetMeta: { ...typography.captionSm, color: CREAM_ATTENUE },
+  billetMeta: { ...typography.captionSm, color: colors.onBrandMuted },
 
-  jauge: { marginTop: spacing.v12 },
+  // Le dessin fait 24 px de haut (piste, écart, une ligne de texte) ; la zone
+  // tactile en fait 44. Les 20 px de surplus sont repris à parts égales sur la
+  // marge haute (12 → 2) et sous la jauge, dans le retrait bas du billet.
+  jauge: {
+    minHeight: cible.min, justifyContent: 'center',
+    marginTop: spacing.v12 - (cible.min - HAUTEUR_JAUGE) / 2,
+    marginBottom: -(cible.min - HAUTEUR_JAUGE) / 2,
+  },
+  // Crème à 22 % : piste de la jauge sur le bandeau de marque. Aucun jeton
+  // du thème ne porte cette valeur, qui ne sert qu'ici.
   jaugePiste: { height: 5, backgroundColor: 'rgba(250,248,244,0.22)', borderRadius: radii.pill, overflow: 'hidden' },
   jaugePart: { height: '100%', backgroundColor: colors.amber },
   jaugeTexte: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xs },
@@ -1019,7 +1019,10 @@ const styles = StyleSheet.create({
   // ── Onglets ──
   onglets: { backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border },
   ongletsRangee: { flexDirection: 'row' },
-  onglet: { flex: 1, alignItems: 'center', paddingVertical: spacing.v12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  onglet: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: cible.min,
+    paddingVertical: spacing.v12, borderBottomWidth: 2, borderBottomColor: 'transparent',
+  },
   ongletActif: { borderBottomColor: colors.lave },
   ongletTexte: { ...typography.labelMd, color: colors.faint },
   ongletTexteActif: { color: colors.lave },
@@ -1045,7 +1048,7 @@ const styles = StyleSheet.create({
 
   evenement: { flexDirection: 'row', gap: spacing.v12, paddingBottom: spacing.v12 },
   evenementHeure: {
-    ...typography.captionSm, color: colors.faint, fontWeight: '700',
+    ...typography.captionSm, color: colors.faint, fontFamily: fonts.sansBold,
     width: 38, textAlign: 'right', paddingTop: spacing.v12,
   },
   evenementColonne: { flex: 1, position: 'relative' },
@@ -1065,7 +1068,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fleuveSoft, borderWidth: 1, borderColor: colors.fleuve,
     borderRadius: radii.md, padding: spacing.v12,
   },
-  resaIcone: { width: 30, height: 30, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   evenementTitre: { ...typography.labelMd, color: colors.ink },
   evenementNote: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2 },
   evenementCout: { ...typography.captionMd, color: colors.lave },
@@ -1085,19 +1087,25 @@ const styles = StyleSheet.create({
   valiseTexte: { ...typography.bodySm, color: colors.ink, flex: 1 },
   texteFait: { color: colors.faint, textDecorationLine: 'line-through' },
 
-  cercle: {
-    width: 22, height: 22, borderRadius: radii.pill, borderWidth: 1.5, borderColor: colors.borderStrong,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cercleActif: { backgroundColor: colors.success, borderColor: colors.success },
   carre: {
-    width: 19, height: 19, borderRadius: radii.v4, borderWidth: 1.5, borderColor: colors.borderStrong,
+    width: COTE_CASE, height: COTE_CASE, borderRadius: radii.v4, borderWidth: 1.5, borderColor: colors.borderStrong,
     alignItems: 'center', justifyContent: 'center',
   },
   carreActif: { backgroundColor: colors.success, borderColor: colors.success },
+  // Zone tactile des deux boutons d'une ligne de valise. Large de 44 px, mais
+  // haute de 27 seulement : les lignes se suivent tous les 27 px (19 + 8), et
+  // une zone de 44 mordrait sur la ligne voisine — on cocherait un article en
+  // visant l'autre, ou on le supprimerait. Les marges négatives rendent le
+  // surplus : la ligne garde sa hauteur et ses écarts.
+  zoneValise: {
+    width: cible.min, minHeight: COTE_CASE + spacing.sm, alignSelf: 'stretch',
+    alignItems: 'center', justifyContent: 'center', marginVertical: -spacing.xs,
+  },
+  zoneCase: { marginHorizontal: -(cible.min - COTE_CASE) / 2 },
+  zoneRetrait: { marginHorizontal: -(cible.min - COTE_CORBEILLE) / 2 },
 
   champNotes: {
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, padding: spacing.v12, minHeight: 120,
     ...typography.bodySm, color: colors.ink,
   },
@@ -1106,17 +1114,15 @@ const styles = StyleSheet.create({
   boutonAjout: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: colors.laveSoft, borderRadius: radii.md,
-    paddingVertical: spacing.v12, marginTop: spacing.v12,
+    paddingVertical: spacing.v12, minHeight: cible.min, marginTop: spacing.v12,
   },
   boutonAjoutTexte: { ...typography.labelMd, color: colors.lave },
-  boutonPlein: {
-    backgroundColor: colors.lave, borderRadius: radii.md,
-    paddingVertical: spacing.v12, alignItems: 'center', marginTop: spacing.v12,
-  },
-  boutonPleinTexte: { ...typography.button, color: colors.cream },
+  // Écart au-dessus d'un `Button` qui ne suit pas un champ de formulaire
+  // (les champs portent déjà leur marge basse).
+  action: { marginTop: spacing.v12 },
   lienDanger: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    paddingVertical: spacing.md, marginTop: spacing.xs,
+    paddingVertical: spacing.md, minHeight: cible.min, marginTop: spacing.xs,
   },
   lienDangerTexte: { ...typography.bodySm, color: colors.danger },
 
@@ -1136,7 +1142,7 @@ const styles = StyleSheet.create({
   budgetLigneValeur: { ...typography.captionMd, color: colors.ink },
 
   // ── Modales ──
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(26,10,3,0.45)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: colors.cream, borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg,
     padding: spacing.gutter, maxHeight: '88%',
@@ -1151,12 +1157,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: { ...typography.displaySm, color: colors.ink },
 
-  fieldLabel: { ...typography.captionMd, color: colors.muted, marginBottom: spacing.xs, marginTop: spacing.sm },
-  fieldInput: {
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
-    ...typography.bodySm, color: colors.ink,
-  },
+  // Libellé d'un groupe de pastilles (jour, catégorie) : même dessin que celui
+  // de FormField et de DateField, ses voisins dans ces feuilles.
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.v12 },
-  errorText: { ...typography.captionSm, color: colors.danger, marginTop: spacing.sm },
+  errorText: { ...typography.bodyXs, color: colors.danger, marginBottom: spacing.v12 },
 });

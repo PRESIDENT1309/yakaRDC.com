@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  Platform,
   Modal,
   RefreshControl,
   ActivityIndicator,
@@ -14,6 +13,7 @@ import {
   QrCode,
   X,
   CalendarCheck,
+  WifiOff,
 } from 'lucide-react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { router } from 'expo-router';
@@ -21,9 +21,15 @@ import { supabase } from '../../lib/supabase';
 import { bookingItemLabel, bookingItemsSummary, bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, radii, typography, spacing } from '../../lib/theme';
+import { colors, categoryColors, radii, typography, spacing, fonts, cible } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useZonesSures } from '../../lib/zones';
+import { useConfirm } from '../../lib/confirm-context';
+import { Alert } from '../../lib/alert';
+import { messageErreur } from '../../lib/erreurs';
+import { formatFrench } from '../../lib/dates';
 import CategoryIcon from '../../components/CategoryIcon';
+import BoutonIcone from '../../components/BoutonIcone';
 import EmptyState from '../../components/EmptyState';
 import Chip from '../../components/Chip';
 import StatusBadge from '../../components/StatusBadge';
@@ -52,6 +58,11 @@ const itemsTotal = (b: BookingWithEstablishment) =>
   bookingTotal(b.booking_items, b.check_in, b.check_out);
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'past';
 
+// « 2026-12-03 » → « 3 décembre 2026 ». La base renvoie des dates ISO ; les
+// afficher telles quelles obligeait à les déchiffrer, sur l'écran même où l'on
+// vérifie qu'on ne s'est pas trompé de jour.
+const dateLisible = (iso: string) => formatFrench(iso.slice(0, 10));
+
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all', label: 'Toutes' },
   { key: 'pending', label: 'En attente' },
@@ -66,17 +77,19 @@ function TicketModal({
   booking: BookingWithEstablishment | null;
   onClose: () => void;
 }) {
+  // Avant la sortie anticipée : un crochet ne peut pas être appelé après.
+  const { bas } = useZonesSures();
   if (!booking) return null;
   const cat = categoryColors[booking.establishment.type];
   const accent = cat?.accent ?? colors.lave;
 
   const detailLines: { label: string; value: string }[] = [];
   if (booking.check_in && booking.check_out) {
-    detailLines.push({ label: 'Arrivée', value: booking.check_in });
-    detailLines.push({ label: 'Départ', value: booking.check_out });
+    detailLines.push({ label: 'Arrivée', value: dateLisible(booking.check_in) });
+    detailLines.push({ label: 'Départ', value: dateLisible(booking.check_out) });
   }
   if (booking.visit_date) {
-    detailLines.push({ label: 'Visite', value: `${booking.visit_date}${booking.visit_time ? ' · ' + timeToSlot(booking.visit_time) : ''}` });
+    detailLines.push({ label: 'Visite', value: `${dateLisible(booking.visit_date)}${booking.visit_time ? ' · ' + timeToSlot(booking.visit_time) : ''}` });
   }
   if (booking.guests) {
     detailLines.push({ label: 'Personnes', value: `${booking.guests}` });
@@ -100,22 +113,30 @@ function TicketModal({
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.ticketOverlay}>
-        <View style={styles.ticketSheet}>
+        <View style={[styles.ticketSheet, { paddingBottom: bas }]}>
           <View style={styles.ticketHandle} />
 
           <View style={[styles.ticketHeader, { backgroundColor: accent }]}>
             <View>
               <Text style={styles.ticketType}>{cat?.label ?? 'Établissement'}</Text>
-              <Text style={styles.ticketName}>{booking.establishment.name}</Text>
+              <Text style={styles.ticketName} accessibilityRole="header" aria-level={2}>{booking.establishment.name}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Fermer le billet" onPress={onClose} hitSlop={8}>
-              <X size={20} color="rgba(250,248,244,0.8)" />
-            </Pressable>
+            <BoutonIcone
+              label="Fermer le billet"
+              taille={20}
+              onPress={onClose}
+              icon={<X size={20} color={colors.onBrandMuted} />}
+            />
           </View>
 
           <View style={styles.ticketBody}>
             <View style={styles.ticketQrPlaceholder}>
-              <View style={styles.qrWrapper}>
+              <View
+                style={styles.qrWrapper}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel="Code QR de la réservation"
+              >
                 <QRCode
                   value={booking.qr_token}
                   size={140}
@@ -161,20 +182,21 @@ function BookingCard({
   item,
   onTicket,
   onCancel,
+  cancelling,
 }: {
   item: BookingWithEstablishment;
   onTicket: () => void;
   onCancel: () => void;
+  cancelling: boolean;
 }) {
   const cat = categoryColors[item.establishment.type];
-  const soft = cat?.soft ?? colors.laveSoft;
   const accent = cat?.accent ?? colors.lave;
   const isPast = item.status === 'checked_in' || item.status === 'cancelled' || item.status === 'rejected';
 
   const dateLabel = item.check_in && item.check_out
-    ? `${item.check_in} – ${item.check_out}`
+    ? `${dateLisible(item.check_in)} – ${dateLisible(item.check_out)}`
     : item.visit_date
-    ? `${item.visit_date}${item.visit_time ? ' · ' + timeToSlot(item.visit_time) : ''}`
+    ? `${dateLisible(item.visit_date)}${item.visit_time ? ' · ' + timeToSlot(item.visit_time) : ''}`
     : '—';
 
   const guestLabel = item.guests ? `· ${item.guests} pers.` : '';
@@ -187,8 +209,8 @@ function BookingCard({
   return (
     <View style={[styles.card, isPast && styles.cardPast]}>
       <View style={styles.cardTop}>
-        <View style={[styles.cardIcon, { backgroundColor: soft }]}>
-          <CategoryIcon type={item.establishment.type} size={20} color={accent} />
+        <View style={styles.cardIcon}>
+          <CategoryIcon type={item.establishment.type} size={22} color={accent} />
         </View>
         <View style={styles.cardInfo}>
           <View style={styles.cardTitleRow}>
@@ -210,16 +232,32 @@ function BookingCard({
             <Text style={styles.cardCode}>
               Code : <Text style={styles.cardCodeValue}>{item.unique_code}</Text>
             </Text>
-            <Pressable style={[styles.actionBtn, { backgroundColor: accent }]} onPress={onTicket}>
-              <QrCode size={13} color={colors.cream} />
-              <Text style={styles.actionBtnText}>Mon ticket</Text>
+            <Pressable
+              style={styles.actionZone}
+              onPress={onTicket}
+              accessibilityRole="button"
+              accessibilityLabel={`Mon ticket pour ${item.establishment.name}`}
+            >
+              <View style={[styles.actionBtn, { backgroundColor: accent }]}>
+                <QrCode size={13} color={colors.cream} />
+                <Text style={styles.actionBtnText}>Mon ticket</Text>
+              </View>
             </Pressable>
           </>
         ) : item.status === 'pending' ? (
           <>
-            <Text style={styles.cardFooterNote}>Confirmation sous 24h</Text>
-            <Pressable style={styles.cancelBtn} onPress={onCancel}>
-              <Text style={styles.cancelBtnText}>Annuler</Text>
+            <Text style={styles.cardFooterNote}>Confirmation sous 24 h</Text>
+            <Pressable
+              style={styles.actionZone}
+              onPress={onCancel}
+              disabled={cancelling}
+              accessibilityRole="button"
+              accessibilityLabel={`Annuler la réservation chez ${item.establishment.name}`}
+              aria-disabled={cancelling} aria-busy={cancelling}
+            >
+              <View style={[styles.cancelBtn, cancelling && { opacity: 0.5 }]}>
+                <Text style={styles.cancelBtnText}>{cancelling ? 'Annulation…' : 'Annuler'}</Text>
+              </View>
             </Pressable>
           </>
         ) : item.status === 'checked_in' ? (
@@ -242,6 +280,8 @@ function BookingCard({
 
 export default function BookingsScreen() {
   const { session } = useAuth();
+  const confirm = useConfirm();
+  const { haut } = useZonesSures();
   const { isWide, contentWidth } = useResponsive();
   // Grille 2 colonnes dès la tablette (contrairement à la Fiche établissement,
   // BookingCard est une carte courte : une grille lui va mieux qu'une colonne
@@ -252,20 +292,28 @@ export default function BookingsScreen() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [erreur, setErreur] = useState(false);
+  // Réservation en cours d'annulation : son bouton est neutralisé le temps de
+  // la requête, pour qu'un double appui ne l'envoie pas deux fois.
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<BookingWithEstablishment | null>(null);
 
   const fetchBookings = useCallback(async () => {
     // Voir favorites.tsx : sans session, la sortie précédait `setLoading(false)`
     // et l'onglet restait bloqué sur un disque qui tournait sans fin.
-    if (!session?.user) { setBookings([]); setLoading(false); return; }
-    const { data } = await supabase
+    if (!session?.user) { setBookings([]); setErreur(false); setLoading(false); return; }
+    const { data, error } = await supabase
       .from('bookings')
       .select(`*, establishment:establishments(*),
         booking_items(quantity, unit_price, currency,
           establishment_offers(custom_label, offer_categories(label)))`)
       .eq('traveler_id', session.user.id)
       .order('created_at', { ascending: false });
-    setBookings((data as BookingWithEstablishment[]) ?? []);
+    // Une panne affichait « Aucune réservation » : à quelqu'un qui attend une
+    // confirmation, c'est annoncer que sa demande a disparu. En cas d'échec,
+    // la liste déjà affichée est conservée.
+    setErreur(!!error);
+    if (!error) setBookings((data as BookingWithEstablishment[]) ?? []);
     setLoading(false);
     setRefreshing(false);
   }, [session?.user?.id]);
@@ -274,11 +322,50 @@ export default function BookingsScreen() {
     fetchBookings();
   }, [fetchBookings]);
 
-  async function handleCancel(bookingId: string) {
-    await supabase
+  async function handleCancel(booking: BookingWithEstablishment) {
+    // Un appui malencontreux annulait la demande sur-le-champ, sans retour
+    // possible : une annulation ne se rattrape pas, elle se confirme.
+    const ok = await confirm({
+      title: 'Annuler cette réservation ?',
+      message: `Votre demande chez ${booking.establishment.name} sera annulée. `
+        + 'Pour réserver à nouveau, il faudra refaire une demande.',
+      confirmLabel: 'Annuler la réservation',
+      cancelLabel: 'Garder',
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setCancellingId(booking.id);
+    // `.select()` : une mise à jour refusée par les règles d'accès de la base
+    // ne renvoie PAS d'erreur, seulement zéro ligne. Sans relire ce qui a été
+    // modifié, l'écran annonçait une annulation qui n'avait pas eu lieu.
+    // `.eq('status', 'pending')` : si l'établissement a confirmé entre-temps,
+    // on n'annule pas une réservation qui n'est plus en attente.
+    const { data, error } = await supabase
       .from('bookings')
       .update({ status: 'cancelled' })
-      .eq('id', bookingId);
+      .eq('id', booking.id)
+      .eq('status', 'pending')
+      .select('id');
+    setCancellingId(null);
+
+    if (error) {
+      Alert.alert('Annulation impossible', messageErreur(error, "La réservation n'a pas pu être annulée. Réessayez dans un instant."));
+      return;
+    }
+    if (!data?.length) {
+      Alert.alert(
+        'Annulation impossible',
+        "Cette réservation n'a pas pu être annulée : elle n'est peut-être plus en attente. "
+        + "Contactez l'établissement si vous devez la modifier.",
+      );
+      fetchBookings();
+      return;
+    }
+
+    // L'écran reflète ce que la base vient de confirmer, sans attendre le
+    // rechargement complet.
+    setBookings(prev => prev.map(b => (b.id === booking.id ? { ...b, status: 'cancelled' } : b)));
     fetchBookings();
   }
 
@@ -292,9 +379,9 @@ export default function BookingsScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: haut }]}>
         <View style={[styles.headerInner, isWide && wide]}>
-          <Text style={styles.headerTitle}>Mes réservations</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Mes réservations</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -314,7 +401,7 @@ export default function BookingsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={colors.lave} />
+          <ActivityIndicator color={colors.lave} accessibilityLabel="Chargement de vos réservations" />
         </View>
       ) : !session?.user ? (
         <View style={styles.empty}>
@@ -327,6 +414,16 @@ export default function BookingsScreen() {
               pathname: '/(auth)/login',
               params: { redirect: '/(tabs)/bookings', reason: 'Connectez-vous pour voir vos réservations.' },
             })}
+          />
+        </View>
+      ) : erreur && bookings.length === 0 ? (
+        <View style={styles.empty}>
+          <EmptyState
+            icon={<WifiOff size={44} color={colors.borderStrong} />}
+            title="Chargement impossible"
+            description="Vos réservations n'ont pas pu être chargées. Vérifiez votre connexion, puis réessayez."
+            actionLabel="Réessayer"
+            onAction={() => { setLoading(true); fetchBookings(); }}
           />
         </View>
       ) : filtered.length === 0 ? (
@@ -364,7 +461,8 @@ export default function BookingsScreen() {
               <BookingCard
                 item={item}
                 onTicket={() => setSelectedTicket(item)}
-                onCancel={() => handleCancel(item.id)}
+                onCancel={() => handleCancel(item)}
+                cancelling={cancellingId === item.id}
               />
             </View>
           ))}
@@ -383,8 +481,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     backgroundColor: colors.cream,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingHorizontal: 18,
+    // Le retrait haut est posé à l'appel, d'après la zone sûre de l'appareil.
+    paddingHorizontal: spacing.gutter,
     paddingBottom: spacing.v12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -412,14 +510,8 @@ const styles = StyleSheet.create({
     gap: spacing.v12,
     padding: spacing.v12,
   },
-  cardIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
+  // Icône nue, sans carré coloré ; le retrait l'aligne sur la première ligne.
+  cardIcon: { paddingTop: spacing.v2, flexShrink: 0 },
   cardInfo: { flex: 1 },
   cardTitleRow: {
     flexDirection: 'row',
@@ -441,8 +533,18 @@ const styles = StyleSheet.create({
     borderTopColor: colors.surfaceSunken,
   },
   cardCode: { ...typography.captionSm, color: colors.muted, },
-  cardCodeValue: { fontWeight: '500', color: colors.ink, letterSpacing: 0.5 },
+  cardCodeValue: { fontFamily: fonts.sansMedium, color: colors.ink, letterSpacing: 0.5 },
   cardFooterNote: { ...typography.captionSm, color: colors.muted, },
+  // Zone tactile de « Mon ticket » et d'« Annuler » : 44 px, soit toute la
+  // hauteur du pied de carte. La marge négative reprend le retrait vertical
+  // du pied, pour que les boutons gardent leur taille sans l'épaissir.
+  actionZone: {
+    minHeight: cible.min,
+    minWidth: cible.min,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginVertical: -spacing.sm,
+  },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,15 +564,15 @@ const styles = StyleSheet.create({
   cancelBtnText: { ...typography.captionSm, color: colors.danger, },
   ticketOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
+  // Le retrait bas est posé à l'appel : il suit la barre de geste réelle.
   ticketSheet: {
     backgroundColor: colors.cream,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
     overflow: 'hidden',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   ticketHandle: {
     width: 36,
@@ -485,12 +587,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 18,
+    padding: spacing.md,
     marginHorizontal: spacing.md,
     borderRadius: radii.md,
     marginBottom: spacing.md,
   },
-  ticketType: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginBottom: spacing.v2, },
+  ticketType: { ...typography.captionSm, color: colors.onBrandMuted, marginBottom: spacing.v2, },
   ticketName: { ...typography.titleSm, color: colors.cream, },
   ticketBody: { paddingHorizontal: spacing.v20 },
   ticketQrPlaceholder: {
@@ -533,8 +635,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.cream,
   },
-  ticketDividerLeft: { left: -20 },
-  ticketDividerRight: { right: -20 },
+  ticketDividerLeft: { left: -spacing.v20 },
+  ticketDividerRight: { right: -spacing.v20 },
   ticketDetail: {
     flexDirection: 'row',
     justifyContent: 'space-between',

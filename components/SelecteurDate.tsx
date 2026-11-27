@@ -1,8 +1,8 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useId } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { colors, typography, spacing, radii } from '../lib/theme';
+import { colors, typography, spacing, radii, fonts, cible } from '../lib/theme';
 import {
-  MOIS_COURTS, joursDansMois, composerIso, decomposerIso, toIsoDate,
+  MOIS, MOIS_COURTS, joursDansMois, composerIso, decomposerIso, toIsoDate,
 } from '../lib/dates';
 
 /**
@@ -25,8 +25,15 @@ import {
  * colonnes plutôt que devinée.
  */
 
+// Hauteur de la pastille visible d'une ligne, et pas d'une ligne à la suivante.
+// La pastille garde ses 38 px ; la ligne qui la porte en occupe 44, pour que
+// chaque valeur offre une cible tactile entière. La colonne, elle, ne grandit
+// pas : elle montre un peu plus de quatre lignes au lieu d'un peu moins de cinq.
 const HAUTEUR_LIGNE = 38;
+const PAS_LIGNE = cible.min;
 const HAUTEUR_COLONNE = HAUTEUR_LIGNE * 5;
+
+const JOURS_SEMAINE = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'] as const;
 
 export interface SelecteurDateProps {
   /** Date au format ISO (AAAA-MM-JJ), ou '' si rien n'est choisi. */
@@ -46,6 +53,15 @@ export interface SelecteurDateProps {
 }
 
 type Motif = 'complet' | 'ferme' | 'passe' | null;
+
+// Ce que la lecture vocale ajoute après une valeur refusée. `passe` couvre
+// aussi une date antérieure à l'arrivée, et un mois ou une année sans aucun
+// jour libre : « indisponible » reste exact dans les trois cas.
+const RAISON: Record<Exclude<Motif, null>, string> = {
+  complet: 'complet',
+  ferme: 'fermé',
+  passe: 'indisponible',
+};
 
 export default function SelecteurDate({
   value, onChange, fullDays, closedDays, minDate,
@@ -129,6 +145,8 @@ export default function SelecteurDate({
           libelle="Jour"
           valeurs={jours}
           rendu={j => String(j)}
+          // « 3 » seul ne dit ni le jour de la semaine ni le mois en cours.
+          lecture={j => `${JOURS_SEMAINE[new Date(courant.annee, courant.mois, j).getDay()]} ${j} ${MOIS[courant.mois]} ${courant.annee}`}
           actif={courant.jour}
           refuse={j => motifRefus(courant.annee, courant.mois, j)}
           onChoisir={j => changer('jour', j)}
@@ -138,6 +156,7 @@ export default function SelecteurDate({
           libelle="Mois"
           valeurs={Array.from({ length: 12 }, (_, i) => i)}
           rendu={m => MOIS_COURTS[m]}
+          lecture={m => `${MOIS[m]} ${courant.annee}`}
           actif={courant.mois}
           refuse={m => (moisIndisponible(m) ? 'passe' : null)}
           onChoisir={m => changer('mois', m)}
@@ -147,6 +166,7 @@ export default function SelecteurDate({
           libelle="Année"
           valeurs={annees}
           rendu={a => String(a)}
+          lecture={a => String(a)}
           actif={courant.annee}
           refuse={a => (anneeIndisponible(a) ? 'passe' : null)}
           onChoisir={a => changer('annee', a)}
@@ -156,7 +176,7 @@ export default function SelecteurDate({
 
       {/* La raison d'un refus se lit, elle ne se devine pas. */}
       {motifCourant && (
-        <Text style={styles.avertissement}>
+        <Text style={styles.avertissement} accessibilityRole="alert" accessibilityLiveRegion="polite">
           {motifCourant === 'complet' && 'Cette date est complète — choisissez-en une autre.'}
           {motifCourant === 'ferme' && "L'établissement est fermé ce jour-là."}
           {motifCourant === 'passe' && 'Cette date est déjà passée.'}
@@ -174,17 +194,21 @@ export default function SelecteurDate({
 
 /** Une colonne défilante. Extraite pour que les trois se comportent pareil. */
 function Colonne<T extends number>({
-  libelle, valeurs, rendu, actif, refuse, onChoisir, accent,
+  libelle, valeurs, rendu, lecture, actif, refuse, onChoisir, accent,
 }: {
   libelle: string;
   valeurs: T[];
   rendu: (v: T) => string;
+  /** Valeur dite en entier pour la lecture vocale (« mardi 3 décembre 2026 »). */
+  lecture: (v: T) => string;
   actif: T;
   refuse: (v: T) => Motif;
   onChoisir: (v: T) => void;
   accent: string;
 }) {
   const ref = useRef<ScrollView>(null);
+  // Relie le titre de la colonne à son groupe d'options.
+  const idTitre = useId();
 
   // La valeur choisie est amenée sous les yeux à l'ouverture : sans cela, une
   // date en fin de mois s'ouvrirait hors écran, et l'utilisateur croirait que
@@ -192,14 +216,17 @@ function Colonne<T extends number>({
   useEffect(() => {
     const index = valeurs.indexOf(actif);
     if (index < 0) return;
-    const y = Math.max(0, index * HAUTEUR_LIGNE - HAUTEUR_COLONNE / 2 + HAUTEUR_LIGNE / 2);
+    const y = Math.max(0, spacing.xs + index * PAS_LIGNE - HAUTEUR_COLONNE / 2 + PAS_LIGNE / 2);
     const t = setTimeout(() => ref.current?.scrollTo({ y, animated: false }), 40);
     return () => clearTimeout(t);
   }, [actif, valeurs]);
 
   return (
-    <View style={styles.colonne}>
-      <Text style={styles.colonneTitre}>{libelle}</Text>
+    // Chaque colonne est un choix unique : ses lignes sont des boutons radio,
+    // comme les créneaux de TimeField — la valeur retenue n'était portée que
+    // par la couleur.
+    <View style={styles.colonne} accessibilityRole="radiogroup" aria-labelledby={idTitre}>
+      <Text nativeID={idTitre} style={styles.colonneTitre}>{libelle}</Text>
       <ScrollView
         ref={ref}
         style={{ height: HAUTEUR_COLONNE }}
@@ -214,20 +241,22 @@ function Colonne<T extends number>({
               key={String(v)}
               onPress={() => { if (!motif) onChoisir(v); }}
               disabled={!!motif}
-              accessibilityRole="button"
-              accessibilityState={{ selected: choisi, disabled: !!motif }}
-              accessibilityLabel={motif ? `${rendu(v)} — indisponible` : rendu(v)}
-              style={[styles.ligne, choisi && { backgroundColor: accent }]}
+              accessibilityRole="radio"
+              aria-checked={choisi}
+              accessibilityLabel={motif ? `${lecture(v)}, ${RAISON[motif]}` : lecture(v)}
+              style={styles.ligne}
             >
-              <Text
-                style={[
-                  styles.ligneTexte,
-                  choisi && styles.ligneTexteChoisi,
-                  !!motif && styles.ligneTexteRefusee,
-                ]}
-              >
-                {rendu(v)}
-              </Text>
+              <View style={[styles.pastille, choisi && { backgroundColor: accent }]}>
+                <Text
+                  style={[
+                    styles.ligneTexte,
+                    choisi && styles.ligneTexteChoisi,
+                    !!motif && styles.ligneTexteRefusee,
+                  ]}
+                >
+                  {rendu(v)}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -243,12 +272,13 @@ const styles = StyleSheet.create({
     ...typography.captionSm, color: colors.faint, textAlign: 'center',
     textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: spacing.xs,
   },
-  ligne: {
+  ligne: { height: PAS_LIGNE, justifyContent: 'center' },
+  pastille: {
     height: HAUTEUR_LIGNE, alignItems: 'center', justifyContent: 'center',
-    borderRadius: radii.sm, marginBottom: spacing.v2,
+    borderRadius: radii.sm,
   },
   ligneTexte: { ...typography.bodySm, color: colors.ink },
-  ligneTexteChoisi: { color: colors.cream, fontWeight: '700' },
+  ligneTexteChoisi: { color: colors.cream, fontFamily: fonts.sansBold },
   ligneTexteRefusee: { color: colors.borderStrong, textDecorationLine: 'line-through' },
   avertissement: {
     ...typography.captionSm, color: colors.danger,

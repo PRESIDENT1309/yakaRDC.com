@@ -1,17 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, RefreshControl, ActivityIndicator, } from 'react-native';
+  RefreshControl, ActivityIndicator, } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { useConfirm } from '../../lib/confirm-context';
 import { router } from 'expo-router';
-import { Building2, Home, UtensilsCrossed, Mountain, Phone, CalendarCheck } from 'lucide-react-native';
+import { Building2, Home, UtensilsCrossed, Mountain, Phone, CalendarCheck, Check, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import EmptyState from '../../components/EmptyState';
+import StatusBadge from '../../components/StatusBadge';
 import { bookingItemsSummary } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography, breakpoints, radii, spacing } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { colors, fonts, categoryColors, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
 import type { Booking, Establishment, EstablishmentType } from '../../lib/types';
 
 type BookingWithEstablishment = Booking & { establishment: Establishment };
@@ -24,19 +26,9 @@ const FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'past', label: 'Passées' },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
-  pending:    { label: 'En attente', bg: colors.warningSoft, color: colors.warning },
-  confirmed:  { label: 'Confirmée',  bg: colors.successSoft, color: colors.success },
-  checked_in: { label: 'Utilisée',   bg: colors.fleuveSoft, color: colors.fleuveDark },
-  rejected:   { label: 'Refusée',    bg: colors.dangerSoft, color: colors.danger },
-  // `faint` sur `surfaceSunken` ne donne que 4,30 : c'est la seule paire du
-  // tableau qui n'atteint pas AA. `muted` est le gris prevu pour ce fond.
-  cancelled:  { label: 'Annulée',    bg: colors.surfaceSunken, color: colors.muted },
-};
-
 function TypeIcon({ type }: { type: EstablishmentType }) {
   const cat = categoryColors[type];
-  const props = { size: 16, color: cat?.accent ?? colors.lave };
+  const props = { size: 18, color: cat?.accent ?? colors.lave };
   switch (type) {
     case 'hotel': return <Building2 {...props} />;
     case 'furnished_house': return <Home {...props} />;
@@ -48,6 +40,7 @@ function TypeIcon({ type }: { type: EstablishmentType }) {
 export default function PartnerBookingsScreen() {
   const { profile } = useAuth();
   const confirm = useConfirm();
+  const { haut } = useZonesSures();
   const [bookings, setBookings] = useState<BookingWithEstablishment[]>([]);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [loading, setLoading] = useState(true);
@@ -105,18 +98,34 @@ export default function PartnerBookingsScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: haut }]}>
         <View style={styles.headerInner}>
-        <Text style={styles.headerTitle}>Réservations</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-          {FILTERS.map(f => (
-            <Pressable key={f.key} style={[styles.pill, filter === f.key && styles.pillActive]}
-              onPress={() => setFilter(f.key)}>
-              <Text style={[styles.pillText, filter === f.key && styles.pillTextActive]}>{f.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        <Text style={styles.count}>{filtered.length} réservation{filtered.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Réservations</Text>
+        <View style={styles.filters} accessibilityRole="tablist">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+            {FILTERS.map(f => {
+              const actif = filter === f.key;
+              return (
+                <Pressable
+                  key={f.key}
+                  style={styles.pillZone}
+                  accessibilityRole="tab"
+                  aria-selected={actif}
+                  onPress={() => setFilter(f.key)}
+                >
+                  <View style={[styles.pill, actif && styles.pillActive]}>
+                    <Text style={[styles.pillText, actif && styles.pillTextActive]}>{f.label}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+        {/* Annoncé à chaque changement de filtre : sans cela, rien ne dit à
+            l'oreille que la liste vient de changer. */}
+        <Text style={styles.count} accessibilityLiveRegion="polite">
+          {filtered.length} réservation{filtered.length !== 1 ? 's' : ''}
+        </Text>
         </View>
       </View>
 
@@ -144,25 +153,19 @@ export default function PartnerBookingsScreen() {
             />
           ) : (
             filtered.map(b => {
-              const status = STATUS_CONFIG[b.status] ?? STATUS_CONFIG.pending;
-              const cat = categoryColors[b.establishment?.type];
-              const soft = cat?.soft ?? colors.laveSoft;
+              const client = (b as any).first_name && (b as any).last_name
+                ? `${(b as any).first_name} ${(b as any).last_name}`
+                : 'Client';
               return (
                 <View key={b.id} style={styles.card}>
                   <View style={styles.cardTop}>
-                    <View style={[styles.cardIcon, { backgroundColor: soft }]}>
+                    <View style={styles.cardIcon}>
                       <TypeIcon type={b.establishment?.type} />
                     </View>
                     <View style={styles.cardInfo}>
                       <View style={styles.cardTitleRow}>
-                        <Text style={styles.cardName}>
-                          {(b as any).first_name && (b as any).last_name
-                            ? `${(b as any).first_name} ${(b as any).last_name}`
-                            : 'Client'}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-                          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-                        </View>
+                        <Text style={styles.cardName}>{client}</Text>
+                        <StatusBadge status={b.status} />
                       </View>
                       <Text style={styles.cardEstab}>{b.establishment?.name}</Text>
                       <Text style={styles.cardDate}>
@@ -188,11 +191,25 @@ export default function PartnerBookingsScreen() {
 
                   {b.status === 'pending' && (
                     <View style={styles.cardActions}>
-                      <Pressable style={styles.confirmBtn} onPress={() => handleConfirm(b.id)}>
-                        <Text style={styles.confirmBtnText}>✓ Confirmer</Text>
+                      {/* Le nom du client entre dans le libellé lu : dans une
+                          liste, dix boutons « Confirmer » ne se distinguent pas. */}
+                      <Pressable
+                        style={styles.confirmBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Confirmer la réservation de ${client}`}
+                        onPress={() => handleConfirm(b.id)}
+                      >
+                        <Check size={14} color={colors.cream} strokeWidth={2.5} />
+                        <Text style={styles.confirmBtnText}>Confirmer</Text>
                       </Pressable>
-                      <Pressable style={styles.rejectBtn} onPress={() => handleReject(b.id)}>
-                        <Text style={styles.rejectBtnText}>✕ Refuser</Text>
+                      <Pressable
+                        style={styles.rejectBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Refuser la réservation de ${client}`}
+                        onPress={() => handleReject(b.id)}
+                      >
+                        <X size={14} color={colors.danger} strokeWidth={2.5} />
+                        <Text style={styles.rejectBtnText}>Refuser</Text>
                       </Pressable>
                     </View>
                   )}
@@ -215,26 +232,33 @@ export default function PartnerBookingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  // Le retrait haut est ajouté à l'appel : il dépend de l'appareil (zone sûre).
   header: {
-    backgroundColor: colors.cream, paddingTop: Platform.OS === 'ios' ? 56 : 20,
+    backgroundColor: colors.cream,
     paddingBottom: spacing.v12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerInner: {
     maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 18, gap: spacing.v12,
+    paddingHorizontal: spacing.gutter, gap: spacing.v12,
   },
   headerTitle: { ...typography.titleLg, color: colors.ink, },
+  // Chaque filtre reçoit le doigt sur 44 px de haut, mais la pastille dessinée
+  // garde sa taille. La marge négative de la rangée rend le surplus : l'en-tête
+  // ne grandit pas.
+  filters: { marginVertical: -spacing.xs },
+  pillZone: { minHeight: cible.min, minWidth: cible.min, justifyContent: 'center' },
   pill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   pillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   pillText: { ...typography.bodyXs, color: colors.muted, },
-  pillTextActive: { color: colors.cream, fontWeight: '500' },
+  pillTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   count: { ...typography.captionSm, color: colors.faint, },
   list: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', padding: spacing.v12, gap: spacing.v12, paddingBottom: 100 },
   card: { backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   cardTop: { flexDirection: 'row', gap: spacing.v12, padding: spacing.v12 },
-  cardIcon: { width: 40, height: 40, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  // Icône nue, calée sur la première ligne du nom.
+  cardIcon: { flexShrink: 0 },
   cardInfo: { flex: 1 },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.v2 },
   cardName: { ...typography.pillLabel, color: colors.ink, flex: 1, marginRight: spacing.sm, },
@@ -243,12 +267,17 @@ const styles = StyleSheet.create({
   cardOffer: { ...typography.captionMd, color: colors.ink, marginTop: spacing.v2, },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.v2 },
   phoneText: { ...typography.captionSm, color: colors.muted, },
-  statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
-  statusText: { ...typography.captionMd, },
   cardActions: { flexDirection: 'row', gap: spacing.sm, padding: spacing.v12, paddingTop: 0 },
-  confirmBtn: { flex: 1, backgroundColor: colors.success, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
+  confirmBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    minHeight: cible.min, backgroundColor: colors.success, borderRadius: radii.sm, padding: spacing.sm,
+  },
   confirmBtnText: { ...typography.caption, color: colors.cream, },
-  rejectBtn: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
+  rejectBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    minHeight: cible.min, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong,
+    borderRadius: radii.sm, padding: spacing.sm,
+  },
   rejectBtnText: { ...typography.bodyXs, color: colors.danger, },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.v12, paddingTop: 0 },
   codeLabel: { ...typography.captionSm, color: colors.muted, },

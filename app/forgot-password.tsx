@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { ArrowLeft, MailCheck } from 'lucide-react-native';
+import { MailCheck } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { goBack } from '../lib/navigation';
-import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
+import { colors, fonts, typography, radii, spacing, breakpoints, cible } from '../lib/theme';
 import Button from '../components/Button';
 import ScreenHeader from '../components/ScreenHeader';
 
@@ -61,8 +61,10 @@ export default function ForgotPasswordScreen() {
           <View style={styles.doneIcon}>
             <MailCheck size={40} color={colors.success} strokeWidth={1.75} />
           </View>
-          <Text style={styles.doneTitle}>Vérifiez votre boîte mail</Text>
-          <Text style={styles.doneText}>
+          <Text style={styles.doneTitle} accessibilityRole="header" aria-level={1}>Vérifiez votre boîte mail</Text>
+          {/* Le formulaire vient de disparaître : sans annonce, la lecture
+              vocale reste muette sur ce qui s'est passé. */}
+          <Text style={styles.doneText} accessibilityRole="alert" accessibilityLiveRegion="polite">
             Si un compte existe pour <Text style={styles.strong}>{email.trim().toLowerCase()}</Text>,
             un lien de réinitialisation vient d'y être envoyé. Il expire dans une heure.
           </Text>
@@ -95,6 +97,7 @@ export default function ForgotPasswordScreen() {
               onChangeText={setEmail}
               placeholder="vous@exemple.cd"
               placeholderTextColor={colors.faint}
+              accessibilityLabel="Adresse email"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -104,7 +107,9 @@ export default function ForgotPasswordScreen() {
             />
           </View>
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+          )}
 
           <Button
             label="Envoyer le lien"
@@ -125,21 +130,24 @@ const styles = StyleSheet.create({
   lede: { ...typography.body, color: colors.muted, lineHeight: 21, marginBottom: spacing.lg },
   label: { ...typography.badgeSm, color: colors.faint, marginBottom: spacing.sm },
   field: {
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
-    marginBottom: spacing.md,
+    marginBottom: spacing.md, minHeight: cible.min, justifyContent: 'center',
   },
   input: { ...typography.body, color: colors.ink },
   error: { ...typography.caption, color: colors.danger, marginBottom: spacing.sm },
 
-  doneWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm },
-  doneIcon: {
-    width: 76, height: 76, borderRadius: radii.pill, backgroundColor: colors.successSoft,
-    alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: spacing.md,
+  // Même colonne que le formulaire : sur grand écran, le bouton ne s'étire
+  // plus d'un bord à l'autre.
+  doneWrap: {
+    flex: 1, justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.sm,
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
   },
+  // Icône nue : pas de pastille colorée autour (règle du design system).
+  doneIcon: { alignSelf: 'center', marginBottom: spacing.md },
   doneTitle: { ...typography.displaySm, color: colors.ink, textAlign: 'center' },
   doneText: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 21 },
-  strong: { fontWeight: '600', color: colors.ink },
+  strong: { fontFamily: fonts.sansSemiBold, color: colors.ink },
   doneHint: {
     ...typography.caption, color: colors.faint, textAlign: 'center',
     lineHeight: 18, marginBottom: spacing.lg,

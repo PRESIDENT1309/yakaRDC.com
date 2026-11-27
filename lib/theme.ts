@@ -29,11 +29,17 @@ export const colors = {
   // sur blanc — sous le seuil de 4,5 exigé pour du texte courant. Il porte
   // pourtant 170 usages : légendes, indications de saisie, prix secondaires.
   // À 4,73 et 5,02, ces textes redeviennent lisibles en plein soleil sur un
-  // téléphone d'entrée de gamme, et  reste distinctement plus sombre :
+  // téléphone d'entrée de gamme, et reste distinctement plus sombre :
   // la hiérarchie à trois niveaux tient toujours.
   faint: '#726F67',
   border: '#E5E3DA',
   borderStrong: '#D3D1C7',
+  // Contour d'un champ de saisie. `border` et `borderStrong` sont des filets
+  // de séparation : à 1,29 et 1,52 de contraste sur blanc, ils ne suffisent pas
+  // à délimiter une zone où l'on doit cliquer (WCAG 1.4.11 demande 3:1 pour le
+  // contour d'un composant). Celui-ci atteint 3,4 sur blanc et 3,2 sur cream.
+  // À réserver aux champs : sur une carte ou un séparateur, il alourdirait.
+  borderField: '#8F8B82',
   // Noir de marque (teinté lave), pour les scrims photo et sections sombres —
   // remplace les rgba(0,0,0,x) et hex ad hoc utilisés jusqu'ici.
   nuit: '#1A0A03',
@@ -79,6 +85,25 @@ export const colors = {
   nuit3: '#3D1408',        // brun de marque, fond plein de welcome et login
   chrome: '#1F1A16',       // gris très sombre, barre latérale de l'admin
   onDarkMuted: '#A8A39A',  // texte secondaire sur nuit3 ou chrome
+
+  // ── Jetons nommés d'après l'audit du 26/11/2026 ─────────────────────────
+  // Voile posé derrière une feuille ou un dialogue. Il existait en quatre
+  // variantes (noir à 40, 45 et 50 %, nuit à 45 %) selon l'écran : une seule
+  // désormais, teintée `nuit` comme le reste des fonds sombres.
+  overlay: 'rgba(26,10,3,0.45)',
+  // Ombre portée d'un texte posé sur une photo. Teintée comme `nuit`, pas
+  // noire : la règle « jamais de #000 » vaut aussi pour les ombres de texte.
+  ombreTexte: 'rgba(26,10,3,0.45)',
+  // Texte secondaire posé sur `lave` ou sur une photo assombrie : le crème
+  // atténué était réécrit une quinzaine de fois, entre 65 et 85 % d'opacité.
+  // À 78 %, il garde 7,9 de contraste sur lave.
+  onBrandMuted: 'rgba(250,248,244,0.78)',
+  // Message d'erreur sur fond sombre (connexion) : `danger` y serait illisible.
+  dangerOnDark: '#FFB4A8',
+  // Couleurs d'illustration du lever de soleil (écran de chargement, onglet
+  // Culture). Jamais pour du texte ni pour un état d'interface.
+  soleil: '#F0A042',
+  braise: '#D85A30',
 } as const;
 
 export const categoryColors: Record<string, { accent: string; soft: string; label: string }> = {
@@ -125,6 +150,11 @@ export const ratios = {
   bandeau: 16 / 9,  // bande pleine largeur, hero
   carre: 1,         // vignette, avatar
 } as const;
+
+// Côté minimal d'une cible tactile (Apple HIG, WCAG 2.5.5). Le dessin peut être
+// plus petit — une pastille de 32, une icône de 18 — mais la zone qui reçoit le
+// doigt, elle, ne descend pas sous cette valeur. Voir components/BoutonIcone.
+export const cible = { min: 44 } as const;
 
 export const spacing = {
   xs: 4,
@@ -240,9 +270,12 @@ export const typography = {
   tileTitle: { fontFamily: fonts.displayMedium, fontSize: 19 }, // libellé de tuile catégorie
   cardTitle: { fontFamily: fonts.displayMedium, fontSize: 15.5 }, // nom d'établissement (carte)
   editorialTitle: { fontFamily: fonts.displayBoldItalic, fontSize: 27, lineHeight: 33 }, // moment fort (ex. bande Fleuve Congo)
-  overlineSm: { fontFamily: fonts.sansSemiBold, fontSize: 10.5, letterSpacing: 1 }, // kicker sur photo (tuile)
-  overlineXs: { fontFamily: fonts.sansSemiBold, fontSize: 10, letterSpacing: 0.5 }, // étiquette de catégorie (carte)
-  badgeSm: { fontFamily: fonts.sansSemiBold, fontSize: 9.5 }, // texte de pastille ("Nouveau")
+  // Ces trois styles valaient 10,5, 10 et 9,5 px, sous le plancher de 11 que
+  // l'échelle se fixe plus bas (« les textes écrits sous 10 px remontent à
+  // 11 »). Ils y sont ramenés : l'écart ne dépasse pas 1,5 px.
+  overlineSm: { fontFamily: fonts.sansSemiBold, fontSize: 11, letterSpacing: 1 }, // kicker sur photo (tuile)
+  overlineXs: { fontFamily: fonts.sansSemiBold, fontSize: 11, letterSpacing: 0.5 }, // étiquette de catégorie (carte)
+  badgeSm: { fontFamily: fonts.sansSemiBold, fontSize: 11 }, // texte de pastille ("Nouveau")
   pillLabel: { fontFamily: fonts.sansMedium, fontSize: 13 }, // libellé de pastille (commune, filtre)
   sheetTitle: { fontFamily: fonts.displayMedium, fontSize: 17 }, // titre de bottom-sheet
   sheetOption: { fontFamily: fonts.sansMedium, fontSize: 15 }, // option de bottom-sheet

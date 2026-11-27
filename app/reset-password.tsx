@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/alert';
-import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints, cible } from '../lib/theme';
 import Button from '../components/Button';
+import BoutonIcone from '../components/BoutonIcone';
+import ScreenHeader from '../components/ScreenHeader';
 
 const MIN_LENGTH = 8;
 
@@ -106,14 +108,18 @@ export default function ResetPasswordScreen() {
   if (etat === 'invalide') {
     return (
       <View style={[styles.screen, styles.centre]}>
-        <View style={styles.iconRond}>
+        <View style={styles.icone}>
           <AlertCircle size={36} color={colors.danger} strokeWidth={1.75} />
         </View>
-        <Text style={styles.titre}>Ce lien n'est plus valable</Text>
-        <Text style={styles.texte}>
-          Un lien de réinitialisation expire au bout d'une heure et ne
-          fonctionne qu'une seule fois.
-        </Text>
+        {/* Titre et explication sont annoncés ensemble : l'écran arrive après
+            six secondes d'attente, sans que l'utilisateur ait rien fait. */}
+        <View style={styles.message} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <Text style={styles.titre} accessibilityRole="header" aria-level={1}>Ce lien n'est plus valable</Text>
+          <Text style={styles.texte}>
+            Un lien de réinitialisation expire au bout d'une heure et ne
+            fonctionne qu'une seule fois.
+          </Text>
+        </View>
         <View style={{ height: spacing.lg }} />
         <Button
           label="Demander un nouveau lien"
@@ -127,9 +133,15 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Nouveau mot de passe</Text>
-        </View>
+        {/* Sans retour : on arrive ici depuis un email, il n'y a pas d'écran
+            précédent. L'en-tête commun apporte la zone sûre réelle — le retrait
+            était fixé à 52 px, encoche ou non — et le titre de niveau 1. */}
+        <ScreenHeader
+          title="Nouveau mot de passe"
+          variant="plain"
+          showBack={false}
+          contentMaxWidth={breakpoints.formMax}
+        />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.notice}>
@@ -148,15 +160,19 @@ export default function ResetPasswordScreen() {
               onChangeText={setPassword}
               placeholder={`Au moins ${MIN_LENGTH} caractères`}
               placeholderTextColor={colors.faint}
+              accessibilityLabel="Nouveau mot de passe"
               secureTextEntry={!visible}
               autoCapitalize="none"
               autoComplete="new-password"
             />
-            <Pressable accessibilityRole="button" accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setVisible(v => !v)} hitSlop={8}>
-              {visible
+            <BoutonIcone
+              icon={visible
                 ? <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />
                 : <Eye size={16} color={colors.faint} strokeWidth={1.75} />}
-            </Pressable>
+              label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              onPress={() => setVisible(v => !v)}
+              taille={16}
+            />
           </View>
 
           <Text style={styles.label}>Confirmer</Text>
@@ -167,13 +183,16 @@ export default function ResetPasswordScreen() {
               onChangeText={setConfirm}
               placeholder="Saisissez-le à nouveau"
               placeholderTextColor={colors.faint}
+              accessibilityLabel="Confirmer le nouveau mot de passe"
               secureTextEntry={!visible}
               autoCapitalize="none"
               autoComplete="new-password"
             />
           </View>
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+          )}
 
           <Button
             label="Enregistrer"
@@ -192,17 +211,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   centre: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
   attente: { ...typography.caption, color: colors.muted, marginTop: spacing.md },
-  iconRond: {
-    width: 72, height: 72, borderRadius: radii.pill, backgroundColor: colors.dangerSoft,
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md,
-  },
+  // Icône nue : pas de pastille colorée autour (règle du design system).
+  icone: { marginBottom: spacing.md },
+  message: { alignItems: 'center', maxWidth: breakpoints.formMax },
   titre: { ...typography.displaySm, color: colors.ink, textAlign: 'center', marginBottom: spacing.sm },
   texte: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 21 },
-  header: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.gutter, paddingTop: 52, paddingBottom: spacing.md,
-  },
-  headerTitle: { ...typography.cardTitle, color: colors.ink },
   content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
   notice: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
@@ -213,8 +226,9 @@ const styles = StyleSheet.create({
   label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.sm, marginBottom: spacing.sm },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   input: { flex: 1, ...typography.body, color: colors.ink },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },

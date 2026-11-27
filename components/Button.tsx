@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, cible } from '../lib/theme';
 import { useAppuiAnime } from '../lib/motion';
 
 const PressableAnime = Animated.createAnimatedComponent(Pressable);
@@ -20,6 +20,13 @@ export interface ButtonProps {
   // Fond doux du variant secondary. Défaut : laveSoft. À passer quand `color`
   // est surchargé, sinon le contour et le fond ne sont pas de la même famille.
   softColor?: string;
+  // Libellé lu à voix haute, quand le texte du bouton ne suffit pas hors de son
+  // contexte (« Supprimer » → « Supprimer l'avis de Marie »). Défaut : `label`.
+  accessibilityLabel?: string;
+  // Occupe toute la hauteur que lui laisse son parent. Pour deux boutons côte à
+  // côte dont un libellé passe sur deux lignes : sans cela, l'un est plus haut
+  // que l'autre (boîte de confirmation sur téléphone).
+  remplir?: boolean;
 }
 
 // Source officielle pour les boutons d'action. Remplace submitBtn / bookBtn /
@@ -32,7 +39,7 @@ export interface ButtonProps {
 // principale d'un écran doit dominer son alternative. Fait jurisprudence.
 export default function Button({
   label, onPress, variant = 'primary', icon, loading = false, disabled = false,
-  color = colors.lave, softColor = colors.laveSoft,
+  color = colors.lave, softColor = colors.laveSoft, accessibilityLabel, remplir = false,
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
   const inactive = disabled || loading;
@@ -50,10 +57,18 @@ export default function Button({
           ? { backgroundColor: color }
           : { backgroundColor: softColor, borderWidth: 1.5, borderColor: color },
         inactive && styles.inactive,
+        remplir && styles.remplir,
         appui.style,
       ]}
       onPress={onPress}
       disabled={inactive}
+      // Sans rôle, le web rend un bloc anonyme : la lecture vocale n'annonce ni
+      // « bouton », ni qu'il est indisponible, ni qu'une action est en cours.
+      // Le libellé est répété ici parce que le texte disparaît pendant le
+      // chargement, remplacé par l'indicateur.
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      aria-disabled={inactive} aria-busy={loading}
       {...appui.gestes}
     >
       {loading ? (
@@ -74,8 +89,12 @@ const styles = StyleSheet.create({
   base: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: spacing.sm, borderRadius: radii.md, paddingVertical: spacing.v12, paddingHorizontal: spacing.lg,
+    minHeight: cible.min,
   },
   inactive: { opacity: 0.5 },
-  labelPrimary: { ...typography.buttonStrong, color: colors.cream },
-  labelSecondary: { ...typography.button },
+  remplir: { flex: 1 },
+  // `flexShrink` + `textAlign` : un libellé trop long pour sa largeur passe à la
+  // ligne au lieu de déborder, et ses lignes restent centrées.
+  labelPrimary: { ...typography.buttonStrong, color: colors.cream, flexShrink: 1, textAlign: 'center' },
+  labelSecondary: { ...typography.button, flexShrink: 1, textAlign: 'center' },
 });

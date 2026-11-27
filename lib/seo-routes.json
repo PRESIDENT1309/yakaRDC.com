@@ -1,0 +1,80 @@
+{
+  "siteName": "YakaRDC",
+  "siteUrl": "https://www.yakardc.com",
+  "locale": "fr_CD",
+  "themeColor": "#712B13",
+  "ogImage": "/og-image.png",
+  "defaultTitle": "YakaRDC — Hôtels, restaurants et sites touristiques en RDC",
+  "defaultDescription": "Réservez hôtels, maisons meublées, restaurants et sites touristiques en République démocratique du Congo. Des adresses sélectionnées avec exigence, à Kinshasa et ailleurs.",
+  "typesEtablissement": {
+    "hotel": { "label": "Hôtel", "schema": "Hotel" },
+    "furnished_house": { "label": "Maison meublée", "schema": "LodgingBusiness" },
+    "restaurant": { "label": "Restaurant", "schema": "Restaurant" },
+    "site": { "label": "Site touristique", "schema": "TouristAttraction" }
+  },
+  "routes": {
+    "/": {
+      "title": "YakaRDC — Hôtels, restaurants et sites touristiques en RDC",
+      "description": "Réservez hôtels, maisons meublées, restaurants et sites touristiques en République démocratique du Congo. Des adresses sélectionnées avec exigence, à Kinshasa et ailleurs.",
+      "index": true
+    },
+    "/welcome": {
+      "title": "Bienvenue sur YakaRDC",
+      "description": "« Yaka » veut dire « viens » en lingala : une invitation à découvrir le Congo autrement, de ses hôtels à ses tables et à ses sites touristiques.",
+      "index": true
+    },
+    "/search": {
+      "title": "Rechercher une adresse en RDC",
+      "description": "Trouvez un hôtel, une maison meublée, un restaurant ou un site touristique en RDC. Filtrez par commune, par prix et par note, puis réservez en ligne.",
+      "index": true
+    },
+    "/culture": {
+      "title": "Culture congolaise",
+      "description": "La RDC ne se visite pas seulement, elle se vit : une terre, des centaines de cultures, une histoire à découvrir avec YakaRDC.",
+      "index": true
+    },
+    "/become-partner": {
+      "title": "Devenir partenaire",
+      "description": "Vous gérez un hôtel, une maison meublée, un restaurant ou un site touristique en RDC ? Référencez votre établissement sur YakaRDC et recevez des réservations en ligne.",
+      "index": true
+    },
+    "/login": {
+      "title": "Connexion",
+      "description": "Connectez-vous à votre compte YakaRDC pour réserver, suivre vos demandes et retrouver vos adresses favorites.",
+      "index": true
+    },
+    "/register": {
+      "title": "Créer un compte",
+      "description": "Créez votre compte YakaRDC en quelques secondes pour réserver hôtels, restaurants et visites en RDC.",
+      "index": true
+    },
+    "/confidentialite": {
+      "title": "Politique de confidentialité",
+      "description": "Quelles données YakaRDC collecte, pourquoi, avec qui elles sont partagées et comment exercer vos droits.",
+      "index": true
+    },
+    "/conditions": {
+      "title": "Conditions d'utilisation",
+      "description": "Les règles d'utilisation de YakaRDC pour les voyageurs et les établissements partenaires.",
+      "index": true
+    },
+    "/forgot-password": { "title": "Mot de passe oublié", "index": false },
+    "/reset-password": { "title": "Nouveau mot de passe", "index": false },
+    "/change-password": { "title": "Changer de mot de passe", "index": false },
+    "/verify": { "title": "Vérification", "index": false },
+    "/callback": { "title": "Connexion en cours", "index": false },
+    "/bookings": { "title": "Mes réservations", "index": false },
+    "/profile": { "title": "Mon profil", "index": false },
+    "/planner": { "title": "Planning", "index": false },
+    "/favorites": { "title": "Mes favoris", "index": false },
+    "/notifications": { "title": "Notifications", "index": false },
+    "/edit-profile": { "title": "Modifier le profil", "index": false },
+    "/listing": {
+      "title": "Fiche établissement",
+      "description": "Photos, tarifs, horaires et avis de cet établissement, avec réservation en ligne sur YakaRDC.",
+      "index": true
+    },
+    "/admin": { "title": "Administration", "index": false },
+    "/pro": { "title": "Espace partenaire", "index": false }
+  }
+}

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { TrendingUp, Users, Award, BarChart3 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, radii, spacing } from '../../lib/theme';
-import type { EstablishmentType } from '../../lib/types';
+import { colors, typography, radii, spacing, fonts, breakpoints, cible } from '../../lib/theme';
+import type { EstablishmentType } from '../../lib/types';
+import { etatBascule } from '../../lib/a11y';
 
 type Period = 'day' | 'week' | 'month' | 'year';
 
@@ -79,32 +80,48 @@ export default function StatsScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Statistiques</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Statistiques</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* La pastille visible garde sa taille ; c'est la zone qui l'entoure
+            qui atteint 44 px. */}
         <View style={styles.periodRow}>
-          {PERIODS.map(p => (
-            <Pressable key={p.key} style={[styles.periodPill, period === p.key && styles.periodPillActive]} onPress={() => setPeriod(p.key)}>
-              <Text style={[styles.periodText, period === p.key && styles.periodTextActive]}>{p.label}</Text>
-            </Pressable>
-          ))}
+          {PERIODS.map(p => {
+            const actif = period === p.key;
+            return (
+              <Pressable
+                key={p.key}
+                style={styles.periodZone}
+                accessibilityRole="button"
+                {...etatBascule(actif)}
+                onPress={() => setPeriod(p.key)}
+              >
+                <View style={[styles.periodPill, actif && styles.periodPillActive]}>
+                  <Text style={[styles.periodText, actif && styles.periodTextActive]}>{p.label}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
 
         {loading ? <ActivityIndicator color={colors.lave} style={{ marginTop: 30 }} /> : (
           <>
             <View style={styles.statsGrid}>
-              <View style={styles.bigCard}>
+              {/* Cartes locales, et non StatCard : sur téléphone ces libellés
+                  passent sur deux lignes, et StatCard ne centre pas un texte
+                  qui revient à la ligne. Chiffre et libellé sont lus ensemble. */}
+              <View style={styles.bigCard} accessible accessibilityLabel={`${totalBookings}, Réservations`}>
                 <BarChart3 size={18} color={colors.lave} />
                 <Text style={styles.bigValue}>{totalBookings}</Text>
                 <Text style={styles.bigLabel}>Réservations</Text>
               </View>
-              <View style={styles.bigCard}>
+              <View style={styles.bigCard} accessible accessibilityLabel={`${confirmationRate} %, Taux confirmation`}>
                 <TrendingUp size={18} color={colors.success} />
                 <Text style={[styles.bigValue, { color: colors.success }]}>{confirmationRate}%</Text>
                 <Text style={styles.bigLabel}>Taux confirmation</Text>
               </View>
-              <View style={styles.bigCard}>
+              <View style={styles.bigCard} accessible accessibilityLabel={`${newSignups}, Nouveaux inscrits`}>
                 <Users size={18} color={colors.warning} />
                 <Text style={[styles.bigValue, { color: colors.warning }]}>{newSignups}</Text>
                 <Text style={styles.bigLabel}>Nouveaux inscrits</Text>
@@ -112,13 +129,14 @@ export default function StatsScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Répartition par catégorie</Text>
+              <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Répartition par catégorie</Text>
               {categoryBreakdown.length === 0 ? (
                 <Text style={styles.emptyText}>Aucune réservation sur cette période.</Text>
               ) : (
                 <View style={{ gap: spacing.sm, marginTop: spacing.v12 }}>
                   {categoryBreakdown.map(c => (
-                    <View key={c.type} style={styles.barRow}>
+                    // Une ligne, une annonce : la barre seule ne se lit pas.
+                    <View key={c.type} style={styles.barRow} accessible accessibilityLabel={`${CATEGORY_LABELS[c.type]} : ${c.pct} %`}>
                       <Text style={styles.barLabel}>{CATEGORY_LABELS[c.type]}</Text>
                       <View style={styles.barTrack}>
                         <View style={[styles.barFill, { width: `${c.pct}%`, backgroundColor: CATEGORY_COLORS[c.type] }]} />
@@ -140,14 +158,19 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  // La colonne est centrée : calée à gauche, elle laissait sur grand écran tout
+  // le vide du même côté. La zone sûre, elle, est dégagée par le layout de l'admin.
+  header: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', paddingTop: spacing.md, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
-  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: 700 },
+  content: { padding: spacing.v20, gap: spacing.v12, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   periodRow: { flexDirection: 'row', gap: spacing.sm },
+  // Le surplus de la zone tactile est repris en marge négative : la rangée
+  // garde la hauteur de ses pastilles (texte de 17, retraits de 8, filet).
+  periodZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -(cible.min - 35) / 2 },
   periodPill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   periodPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   periodText: { ...typography.bodyXs, color: colors.muted, },
-  periodTextActive: { color: colors.cream, fontWeight: '500' },
+  periodTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   statsGrid: { flexDirection: 'row', gap: spacing.v12 },
   bigCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, alignItems: 'center', gap: spacing.sm },
   bigValue: { ...typography.titleLg, color: colors.ink, },

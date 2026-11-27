@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  TextInput, Platform, KeyboardAvoidingView, ActivityIndicator,
+  Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
   Building2, Home, UtensilsCrossed, Mountain,
-  CheckCircle, User, Phone, Mail,
+  CheckCircle, Camera,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
 import { uuidv4 } from '../lib/uuid';
 import ScreenHeader from '../components/ScreenHeader';
 import LogoYaka from '../components/LogoYaka';
-import { colors, categoryColors, typography, breakpoints, radii, spacing } from '../lib/theme';
+import FormField from '../components/FormField';
+import Button from '../components/Button';
+import { colors, categoryColors, fonts, typography, breakpoints, radii, spacing, cible } from '../lib/theme';
 import { useActiveCities } from '../lib/cities';
 import { getCitySubdivisions } from '../lib/geography';
 import type { EstablishmentType } from '../lib/types';
@@ -24,26 +26,6 @@ const TYPES: { key: EstablishmentType; label: string; icon: (c: string) => React
   { key: 'restaurant', label: 'Restaurant', icon: c => <UtensilsCrossed size={20} color={c} /> },
   { key: 'site', label: 'Site touristique', icon: c => <Mountain size={20} color={c} /> },
 ];
-
-function Field({ label, value, onChange, placeholder, keyboardType = 'default', multiline = false }:
-  { label: string; value: string; onChange: (v: string) => void; placeholder?: string;
-    keyboardType?: any; multiline?: boolean }) {
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.fieldInput, multiline && styles.fieldInputMulti]}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.faint}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={multiline ? 3 : 1}
-      />
-    </View>
-  );
-}
 
 export default function BecomePartnerScreen() {
   // `cities` (Admin → Villes & catégories) est la source de vérité — tant
@@ -189,20 +171,21 @@ export default function BecomePartnerScreen() {
   if (success) {
     return (
       <View style={styles.successScreen}>
-        <View style={styles.successIcon}>
-          <CheckCircle size={44} color={colors.success} />
-        </View>
-        <Text style={styles.successTitle}>Demande envoyée !</Text>
-        <Text style={styles.successText}>
+        {/* Icône nue : pas de pastille colorée autour (règle du design system). */}
+        <CheckCircle size={44} color={colors.success} />
+        <Text style={styles.successTitle} accessibilityRole="header" aria-level={1}>Demande envoyée !</Text>
+        {/* Le formulaire vient de disparaître : sans annonce, la lecture vocale
+            reste muette sur le sort de la demande. */}
+        <Text style={styles.successText} accessibilityRole="alert" accessibilityLiveRegion="polite">
           Merci pour votre candidature. Notre équipe va examiner les informations de{' '}
-          <Text style={{ fontWeight: '500' }}>{name}</Text> et vous répond sous 48h.
+          <Text style={styles.fort}>{name}</Text> et vous répond sous 48h.
           {contactEmail.trim()
-            ? <> Un accusé de réception vient de partir à <Text style={{ fontWeight: '500' }}>{contactEmail.trim()}</Text>.</>
-            : <> Nous vous recontacterons au <Text style={{ fontWeight: '500' }}>{contactPhone}</Text>.</>}
+            ? <> Un accusé de réception vient de partir à <Text style={styles.fort}>{contactEmail.trim()}</Text>.</>
+            : <> Nous vous recontacterons au <Text style={styles.fort}>{contactPhone}</Text>.</>}
         </Text>
-        <Pressable style={styles.successBtn} onPress={() => router.replace('/(auth)/login')}>
-          <Text style={styles.successBtnText}>Retour à l'accueil</Text>
-        </Pressable>
+        <View style={styles.successBtn}>
+          <Button label="Retour à l'accueil" onPress={() => router.replace('/(auth)/login')} />
+        </View>
       </View>
     );
   }
@@ -233,14 +216,17 @@ export default function BecomePartnerScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Devenir partenaire</Text>
+          {/* L'en-tête porte la marque, pas un intitulé : le titre de niveau 1
+              de l'écran est donc celui-ci. */}
+          <Text style={styles.title} accessibilityRole="header" aria-level={1}>Devenir partenaire</Text>
           <Text style={styles.subtitle}>
             Faites connaître votre établissement aux voyageurs sur YakaRDC. Remplissez ce formulaire, notre équipe examine chaque demande sous 48h.
           </Text>
 
-          {/* Type d'établissement */}
-          <Text style={styles.sectionLabel}>Type d'établissement</Text>
-          <View style={styles.typeGrid}>
+          {/* Type d'établissement — un seul choix possible : annoncé comme un
+              groupe de boutons radio, pas comme quatre boutons sans lien. */}
+          <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>Type d'établissement</Text>
+          <View style={styles.typeGrid} accessibilityRole="radiogroup" accessibilityLabel="Type d'établissement">
             {TYPES.map(t => {
               const active = type === t.key;
               const cat = categoryColors[t.key];
@@ -249,34 +235,40 @@ export default function BecomePartnerScreen() {
                   key={t.key}
                   style={[styles.typeCard, active && { borderColor: cat?.accent, backgroundColor: cat?.soft }]}
                   onPress={() => setType(t.key)}
+                  accessibilityRole="radio"
+                  aria-checked={active}
                 >
                   {t.icon(active ? (cat?.accent ?? colors.lave) : colors.muted)}
-                  <Text style={[styles.typeLabel, active && { color: cat?.accent, fontWeight: '500' }]}>{t.label}</Text>
+                  <Text style={[styles.typeLabel, active && { color: cat?.accent, fontFamily: fonts.sansMedium }]}>{t.label}</Text>
                 </Pressable>
               );
             })}
           </View>
 
           {/* Infos établissement */}
-          <Text style={styles.sectionLabel}>Informations générales</Text>
-          <Field label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
-          <Field label="Description" value={description} onChange={setDescription}
-            placeholder="Décrivez votre établissement en quelques phrases..." multiline />
+          <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>Informations générales</Text>
+          <FormField label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
+          <FormField label="Description" value={description} onChange={setDescription}
+            placeholder="Décrivez votre établissement en quelques phrases..." multiline lines={3} />
 
           {/* Ville — ne s'affiche que s'il y a un vrai choix à faire */}
           {activeCities.length > 1 && (
             <>
-              <Text style={styles.sectionLabel}>Ville</Text>
-              <View style={styles.typeGrid}>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>Ville</Text>
+              <View style={styles.typeGrid} accessibilityRole="radiogroup" accessibilityLabel="Ville">
                 {activeCities.map(c => {
                   const active = cityName === c.name;
                   return (
                     <Pressable
                       key={c.id}
-                      style={[styles.cityChip, active && styles.cityChipActive]}
+                      style={styles.cityChipZone}
                       onPress={() => setCityName(c.name)}
+                      accessibilityRole="radio"
+                      aria-checked={active}
                     >
-                      <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c.name}</Text>
+                      <View style={[styles.cityChip, active && styles.cityChipActive]}>
+                        <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c.name}</Text>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -285,71 +277,91 @@ export default function BecomePartnerScreen() {
           )}
 
           {/* Localisation */}
-          <Text style={styles.sectionLabel}>Localisation</Text>
+          <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>Localisation</Text>
           {subdivisions && (
             <>
               <Text style={styles.fieldLabel}>Commune</Text>
-              <View style={[styles.typeGrid, { marginBottom: spacing.xs }]}>
+              <View
+                style={[styles.typeGrid, { marginBottom: spacing.xs }]}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Commune"
+              >
                 {subdivisions.all.map(c => {
                   const active = commune === c;
                   return (
                     <Pressable
                       key={c}
-                      style={[styles.cityChip, active && styles.cityChipActive]}
+                      style={styles.cityChipZone}
                       onPress={() => { setCommune(c); setCommuneError(false); }}
+                      accessibilityRole="radio"
+                      aria-checked={active}
                     >
-                      <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c}</Text>
+                      <View style={[styles.cityChip, active && styles.cityChipActive]}>
+                        <Text style={[styles.cityChipText, active && styles.cityChipTextActive]}>{c}</Text>
+                      </View>
                     </Pressable>
                   );
                 })}
               </View>
               {communeError && (
-                <Text style={styles.fieldErrorText}>Veuillez sélectionner une commune.</Text>
+                <Text style={styles.fieldErrorText} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                  Veuillez sélectionner une commune.
+                </Text>
               )}
             </>
           )}
-          <Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
+          <FormField label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
           <View style={styles.row}>
-            <View style={{ flex: 2 }}><Field label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
-            <View style={{ flex: 1 }}><Field label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
+            <View style={{ flex: 2 }}><FormField label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
+            <View style={{ flex: 1 }}><FormField label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
           </View>
-          <Field label="Référence / point de repère" value={reference} onChange={setReference}
+          <FormField label="Référence / point de repère" value={reference} onChange={setReference}
             placeholder="Ex : En face de la Banque Centrale" />
 
           {/* Contact */}
-          <Text style={styles.sectionLabel}>Vos coordonnées</Text>
-          <Field label="Votre nom complet" value={contactName} onChange={setContactName} placeholder="Jean Mbeki" />
+          <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>Vos coordonnées</Text>
+          <FormField label="Votre nom complet" value={contactName} onChange={setContactName} placeholder="Jean Mbeki"
+            autoComplete="name" />
           <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="Téléphone" value={contactPhone} onChange={setContactPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
-            <View style={{ flex: 1 }}><Field label="Email" value={contactEmail} onChange={setContactEmail} placeholder="vous@exemple.cd" keyboardType="email-address" /></View>
+            <View style={{ flex: 1 }}>
+              <FormField label="Téléphone" value={contactPhone} onChange={setContactPhone}
+                placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" autoComplete="tel" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <FormField label="Email" value={contactEmail} onChange={setContactEmail}
+                placeholder="vous@exemple.cd" keyboardType="email-address" autoComplete="email"
+                autoCapitalize="none" autoCorrect={false} />
+            </View>
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && (
+            <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+          )}
 
-          <Pressable
-            style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-            onPress={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting
-              ? <ActivityIndicator color={colors.cream} />
-              : <Text style={styles.submitBtnText}>Envoyer ma candidature</Text>
-            }
-          </Pressable>
+          <View style={styles.submitBtn}>
+            <Button label="Envoyer ma candidature" onPress={handleSubmit} loading={submitting} />
+          </View>
 
-          <Text style={styles.note}>
-            📷 Vous pourrez ajouter des photos une fois votre candidature approuvée.
-          </Text>
+          <View style={styles.note}>
+            <Camera size={14} color={colors.faint} />
+            <Text style={styles.noteText}>
+              Vous pourrez ajouter des photos une fois votre candidature approuvée.
+            </Text>
+          </View>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
+// Hauteur dessinée d'une puce de ville ou de commune : une ligne de texte,
+// deux retraits de 8 et deux filets de 1,5.
+const HAUTEUR_PUCE = typography.bodyXs.lineHeight + 2 * spacing.sm + 3;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 17, color: colors.ink },
+  logoText: { fontFamily: fonts.display, fontSize: 17, color: colors.ink },
   content: { padding: spacing.v20, paddingBottom: 50, maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center' },
   title: { ...typography.titleLg, color: colors.ink, marginBottom: spacing.sm, },
   subtitle: { ...typography.bodySm, color: colors.muted, marginBottom: spacing.v20, },
@@ -361,28 +373,32 @@ const styles = StyleSheet.create({
     borderRadius: radii.md, paddingVertical: spacing.v12,
   },
   typeLabel: { ...typography.bodyXs, color: colors.muted, },
+  // La puce garde ses 36 px à l'écran ; c'est la zone autour qui en fait 44.
+  // La marge négative annule le surplus : les rangées ne s'écartent pas.
+  cityChipZone: {
+    minHeight: cible.min, justifyContent: 'center',
+    marginVertical: -(cible.min - HAUTEUR_PUCE) / 2,
+  },
   cityChip: {
     paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill,
     backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border,
   },
   cityChipActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   cityChipText: { ...typography.bodyXs, color: colors.muted, },
-  cityChipTextActive: { color: colors.lave, fontWeight: '500' },
+  cityChipTextActive: { color: colors.lave, fontFamily: fonts.sansMedium },
   row: { flexDirection: 'row', gap: spacing.v12 },
-  fieldWrap: { marginBottom: spacing.v12 },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
-  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
-  fieldInputMulti: { height: 76, textAlignVertical: 'top' },
-  fieldErrorText: { ...typography.captionSm, color: colors.danger, marginTop: -2, marginBottom: spacing.v12, },
+  fieldErrorText: { ...typography.captionSm, color: colors.danger, marginTop: -spacing.v2, marginBottom: spacing.v12, },
   errorText: { ...typography.bodyXs, color: colors.danger, backgroundColor: colors.dangerSoft, borderRadius: radii.sm, padding: spacing.v12, marginBottom: spacing.v12, textAlign: 'center', },
-  submitBtn: { backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.md, alignItems: 'center', marginTop: spacing.sm },
-  submitBtnText: { ...typography.sheetOption, color: colors.cream, },
-  note: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginTop: spacing.v12, },
+  submitBtn: { marginTop: spacing.sm },
+  note: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    marginTop: spacing.v12,
+  },
+  noteText: { ...typography.captionSm, color: colors.faint, flexShrink: 1 },
   successScreen: { flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.v12 },
-  successIcon: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
   successTitle: { ...typography.titleLg, color: colors.ink, },
   successText: { ...typography.body, color: colors.muted, textAlign: 'center', maxWidth: 340, },
-  successBtn: { backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.v12, marginTop: spacing.sm },
-  successBtnText: { ...typography.labelMd, color: colors.cream, },
+  fort: { fontFamily: fonts.sansMedium },
+  successBtn: { marginTop: spacing.sm },
 });

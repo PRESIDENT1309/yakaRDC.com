@@ -1,14 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, Modal, } from 'react-native';
+  TextInput, ActivityIndicator, Modal, } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { Search, ChevronRight, X, Check } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, radii, spacing } from '../../lib/theme';
+import { colors, typography, radii, spacing, fonts, breakpoints, cible } from '../../lib/theme';
 import type { Profile, UserRole } from '../../lib/types';
+import BoutonIcone from '../../components/BoutonIcone';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; bg: string; color: string }> = {
   traveler: { label: 'Voyageur', bg: colors.fleuveSoft, color: colors.fleuveDark },
@@ -69,15 +70,14 @@ export default function UsersScreen() {
 
   function confirmSuspend() {
     if (!selected) return;
+    // Ce bouton demandait une confirmation, puis répondait par une note
+    // technique en jargon (« Edge Function avec service_role ») : il laissait
+    // croire à une suspension qui n'existe pas encore. Il dit maintenant la
+    // vérité d'emblée, et ce qu'on peut faire en attendant.
     Alert.alert(
-      'Suspendre ce compte',
-      `Êtes-vous sûr de vouloir suspendre ${selected.full_name ?? selected.email} ? Cette fonctionnalité désactivera son accès.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Suspendre', style: 'destructive', onPress: () => {
-          Alert.alert('Note', 'La suspension complète nécessite une Edge Function avec service_role pour désactiver auth.users — prévu en prochaine itération.');
-        }},
-      ]
+      'Suspension non disponible',
+      "La suspension d'un compte n'est pas encore disponible. En attendant, vous pouvez "
+      + 'changer son rôle ci-dessus, ou suspendre ses établissements depuis « Établissements ».',
     );
   }
 
@@ -85,7 +85,7 @@ export default function UsersScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Utilisateurs</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Utilisateurs</Text>
           <Text style={styles.headerSub}>{users.length} compte{users.length !== 1 ? 's' : ''}</Text>
         </View>
         <View style={styles.searchBox}>
@@ -96,6 +96,7 @@ export default function UsersScreen() {
             onChangeText={setQuery}
             placeholder="Rechercher un nom, email, téléphone..."
             placeholderTextColor={colors.faint}
+            accessibilityLabel="Rechercher un utilisateur par nom, email ou téléphone"
           />
         </View>
       </View>
@@ -105,7 +106,7 @@ export default function UsersScreen() {
           users.map(u => {
             const r = ROLE_CONFIG[u.role];
             return (
-              <Pressable key={u.id} style={styles.row} onPress={() => openDetail(u)}>
+              <Pressable key={u.id} style={styles.row} accessibilityRole="button" onPress={() => openDetail(u)}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{(u.full_name ?? u.email ?? 'U').charAt(0).toUpperCase()}</Text>
                 </View>
@@ -129,8 +130,8 @@ export default function UsersScreen() {
             {selected && (
               <>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Fiche utilisateur</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Fermer la fiche" onPress={() => setSelected(null)} hitSlop={8}><X size={18} color={colors.muted} /></Pressable>
+                  <Text style={styles.modalTitle} accessibilityRole="header" aria-level={2}>Fiche utilisateur</Text>
+                  <BoutonIcone label="Fermer la fiche" taille={18} onPress={() => setSelected(null)} icon={<X size={18} color={colors.muted} />} />
                 </View>
 
                 <View style={styles.modalProfileRow}>
@@ -155,22 +156,27 @@ export default function UsersScreen() {
                 </View>
 
                 <Text style={styles.sectionLabel}>Changer le rôle</Text>
-                <View style={styles.roleOptions}>
+                {/* Un choix parmi trois : annoncé comme tel, avec l'option en cours. */}
+                <View style={styles.roleOptions} accessibilityRole="radiogroup" accessibilityLabel="Changer le rôle">
                   {(['traveler', 'partner', 'admin'] as UserRole[]).map(r => (
                     <Pressable
                       key={r}
-                      style={[styles.roleOption, selected.role === r && styles.roleOptionActive]}
+                      style={styles.roleZone}
+                      accessibilityRole="radio"
+                      aria-checked={selected.role === r}
                       onPress={() => changeRole(r)}
                     >
-                      {selected.role === r && <Check size={12} color={colors.lave} />}
-                      <Text style={[styles.roleOptionText, selected.role === r && { color: colors.lave, fontWeight: '500' }]}>
-                        {ROLE_CONFIG[r].label}
-                      </Text>
+                      <View style={[styles.roleOption, selected.role === r && styles.roleOptionActive]}>
+                        {selected.role === r && <Check size={12} color={colors.lave} />}
+                        <Text style={[styles.roleOptionText, selected.role === r && styles.roleOptionTextActive]}>
+                          {ROLE_CONFIG[r].label}
+                        </Text>
+                      </View>
                     </Pressable>
                   ))}
                 </View>
 
-                <Pressable style={styles.suspendBtn} onPress={confirmSuspend}>
+                <Pressable style={styles.suspendBtn} accessibilityRole="button" onPress={confirmSuspend}>
                   <Text style={styles.suspendBtnText}>Suspendre ce compte</Text>
                 </Pressable>
               </>
@@ -186,12 +192,16 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.v12 },
+  // La colonne est centrée : calée à gauche, elle laissait sur grand écran tout
+  // le vide du même côté. La zone sûre, elle, est dégagée par le layout de l'admin.
+  header: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', paddingTop: spacing.md, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.v12 },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, maxWidth: 360 },
-  searchInput: { ...typography.bodyXs, flex: 1, color: colors.ink, },
-  list: { padding: spacing.v20, gap: spacing.sm, maxWidth: 700 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField, borderRadius: radii.sm, paddingHorizontal: spacing.v12, minHeight: cible.min, maxWidth: 360 },
+  // La saisie occupe toute la hauteur de la barre (44 px) : un appui n'importe
+  // où dans la barre tombe dans le champ.
+  searchInput: { ...typography.bodyXs, flex: 1, alignSelf: 'stretch', color: colors.ink },
+  list: { padding: spacing.v20, gap: spacing.sm, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   avatar: { width: 36, height: 36, borderRadius: radii.lg, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   avatarText: { ...typography.labelMd, color: colors.lave, },
@@ -199,7 +209,7 @@ const styles = StyleSheet.create({
   rowMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   roleBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
   roleBadgeText: { ...typography.captionMd, },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: spacing.v20 },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center', padding: spacing.v20 },
   modalBox: { backgroundColor: colors.cream, borderRadius: radii.v16, padding: spacing.v20, width: '100%', maxWidth: 380 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v12 },
   modalTitle: { ...typography.sheetOption, color: colors.ink, },
@@ -212,9 +222,13 @@ const styles = StyleSheet.create({
   infoValue: { ...typography.bodyXs, color: colors.ink, marginTop: spacing.v2, },
   sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: spacing.sm, },
   roleOptions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  roleOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingVertical: spacing.sm },
+  // Zone tactile de 44 px autour d'une option de 33 : la marge négative rend
+  // à la rangée sa hauteur d'origine.
+  roleZone: { flex: 1, minHeight: cible.min, justifyContent: 'center', marginVertical: -(cible.min - 33) / 2 },
+  roleOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingVertical: spacing.sm },
   roleOptionActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   roleOptionText: { ...typography.captionSm, color: colors.muted, },
-  suspendBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, paddingVertical: spacing.v12, alignItems: 'center' },
+  roleOptionTextActive: { color: colors.lave, fontFamily: fonts.sansMedium },
+  suspendBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, paddingVertical: spacing.v12, alignItems: 'center', justifyContent: 'center', minHeight: cible.min },
   suspendBtnText: { ...typography.caption, color: colors.danger, },
 });

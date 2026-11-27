@@ -1,7 +1,8 @@
+import { etatBascule } from '../lib/a11y';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, Users } from 'lucide-react-native';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, fonts } from '../lib/theme';
 import type { EstablishmentOffer, OfferCategory } from '../lib/types';
 import { offerLabel } from '../lib/types';
 
@@ -14,6 +15,12 @@ export interface OfferCardProps {
   selected?: boolean;
   onPress?: () => void;
   accent?: string;
+  /**
+   * Ce que la carte est pour la lecture vocale quand elle se touche. `radio` :
+   * une option parmi d'autres dans un choix unique, annoncée cochée ou non.
+   * `button` (défaut) : une action, avec son état sélectionné.
+   */
+  accessibilityRole?: 'button' | 'radio';
 }
 
 // Carte d'une catégorie proposée par l'établissement — utilisée sur la fiche
@@ -21,19 +28,25 @@ export interface OfferCardProps {
 // celle-ci décrit un établissement, celle-là une offre à l'intérieur.
 export default function OfferCard({
   offer, category, photoUrl, remaining, selected = false, onPress, accent = colors.lave,
+  accessibilityRole = 'button',
 }: OfferCardProps) {
   const full = remaining !== undefined && remaining <= 0;
-  const Wrapper: any = onPress && !full ? Pressable : View;
+  const titre = offerLabel(offer, category);
+  const disponibilite = remaining === undefined
+    ? null
+    : full
+      ? 'Complet à ces dates'
+      : remaining <= 3
+        ? `Plus que ${remaining} disponible${remaining > 1 ? 's' : ''}`
+        : 'Disponible';
+  const style = [
+    styles.card,
+    selected && { borderColor: accent, borderWidth: 1.5 },
+    full && styles.cardFull,
+  ];
 
-  return (
-    <Wrapper
-      style={[
-        styles.card,
-        selected && { borderColor: accent, borderWidth: 1.5 },
-        full && styles.cardFull,
-      ]}
-      onPress={onPress && !full ? onPress : undefined}
-    >
+  const contenu = (
+    <>
       {photoUrl ? (
         /* La bande photo garde sa largeur fixe de 92 : c'est une vignette
            latérale dans une carte en ligne, pas une photo de contenu — le
@@ -45,13 +58,13 @@ export default function OfferCard({
           transition={220}
           cachePolicy="memory-disk"
           recyclingKey={photoUrl}
-          accessibilityLabel={offerLabel(offer, category)}
+          accessibilityLabel={titre}
         />
       ) : null}
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>{offerLabel(offer, category)}</Text>
+          <Text style={styles.title} numberOfLines={1}>{titre}</Text>
           {selected && <Check size={15} color={accent} strokeWidth={2} />}
         </View>
 
@@ -75,17 +88,45 @@ export default function OfferCard({
         {/* La disponibilité n'est annoncée que lorsqu'elle est réellement
             calculée — afficher « disponible » sans l'avoir vérifié serait pire
             que de ne rien dire. */}
-        {remaining !== undefined && (
+        {disponibilite !== null && (
           <Text style={[styles.availability, full ? styles.availabilityFull : null]}>
-            {full
-              ? 'Complet à ces dates'
-              : remaining <= 3
-                ? `Plus que ${remaining} disponible${remaining > 1 ? 's' : ''}`
-                : 'Disponible'}
+            {disponibilite}
           </Text>
         )}
       </View>
-    </Wrapper>
+    </>
+  );
+
+  // Sans action, la carte n'est qu'un contenu : ses textes se lisent un à un.
+  if (!onPress) return <View style={style}>{contenu}</View>;
+
+  const choix = accessibilityRole === 'radio';
+  return (
+    <Pressable
+      style={style}
+      onPress={onPress}
+      // Une offre complète reste annoncée, mais comme indisponible : la retirer
+      // de la lecture ferait croire qu'elle n'existe pas.
+      disabled={full}
+      accessibilityRole={accessibilityRole}
+      // Un seul libellé pour toute la carte. Laissée à ses enfants, la lecture
+      // répétait le nom — celui de la photo, puis le titre — et butait sur
+      // l'abréviation « pers. max ».
+      accessibilityLabel={[
+        titre,
+        offer.description,
+        `${offer.price} ${offer.currency}`,
+        offer.max_guests != null ? `${offer.max_guests} personne${offer.max_guests > 1 ? 's' : ''} maximum` : null,
+        disponibilite,
+      ].filter(Boolean).join(', ')}
+      // Sans état annoncé, le choix en cours n'était porté que par la couleur
+      // du contour. « Coché » pour un bouton radio, « enfoncé » pour un bouton.
+      aria-disabled={full}
+      aria-checked={choix ? selected : undefined}
+      {...(choix ? null : etatBascule(selected))}
+    >
+      {contenu}
+    </Pressable>
   );
 }
 
@@ -104,7 +145,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.v2 },
   meta: { ...typography.caption, color: colors.faint },
   metaSep: { ...typography.caption, color: colors.faint },
-  price: { ...typography.caption, fontWeight: '600' },
+  price: { ...typography.caption, fontFamily: fonts.sansSemiBold },
   availability: { ...typography.badgeSm, color: colors.success, marginTop: spacing.v2 },
   availabilityFull: { color: colors.danger },
 });

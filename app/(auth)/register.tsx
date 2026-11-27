@@ -1,44 +1,21 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, Link } from 'expo-router';
 import LogoYaka from '../../components/LogoYaka';
+import Button from '../../components/Button';
+import BoutonIcone from '../../components/BoutonIcone';
 import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
-
-/**
- * Rend une erreur Supabase lisible.
- *
- * `error.message` n'est pas toujours une phrase : selon la réponse du serveur,
- * il peut arriver vide, ou contenir le corps JSON brut — d'où le « {} » affiché
- * tel quel à l'écran, qui ne dit rien à personne. On assemble donc ce qui est
- * réellement présent (message, statut HTTP, code) et, à défaut, on l'annonce
- * franchement plutôt que d'afficher une coquille vide.
- */
-function messageLisible(e: any): string {
-  if (!e) return 'erreur inconnue';
-  const bouts: string[] = [];
-
-  const m = typeof e.message === 'string' ? e.message.trim() : '';
-  if (m && m !== '{}' && m !== '[object Object]') bouts.push(m);
-  if (e.status) bouts.push(`HTTP ${e.status}`);
-  if (e.code) bouts.push(`code ${e.code}`);
-  if (!bouts.length && e.name) bouts.push(String(e.name));
-
-  if (!bouts.length) {
-    try {
-      const brut = JSON.stringify(e);
-      if (brut && brut !== '{}') bouts.push(brut.slice(0, 200));
-    } catch { /* objet non sérialisable : on laisse le repli ci-dessous */ }
-  }
-
-  return bouts.length ? bouts.join(' · ') : 'le serveur a répondu sans expliquer pourquoi';
-}
+import { colors, fonts, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { lienVers } from '../../lib/liens';
+import { messageErreur, detailTechnique } from '../../lib/erreurs';
 
 export default function RegisterScreen() {
+  const { haut } = useZonesSures();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName]   = useState('');
   const [email, setEmail]         = useState('');
@@ -88,11 +65,7 @@ export default function RegisterScreen() {
       // recouvrait précisément le message que cet écran vient de composer.
       console.log('[inscription] échec de signUp', authError);
       setLoading(false);
-      setError(
-        authError.message === 'User already registered'
-          ? 'Un compte existe déjà avec cet email.'
-          : messageLisible(authError),
-      );
+      setError(messageErreur(authError, "Le compte n'a pas pu être créé. Réessayez dans un instant."));
       return;
     }
 
@@ -153,7 +126,7 @@ export default function RegisterScreen() {
         setLoading(false);
         setError(
           "Votre compte d'accès a été créé, mais son profil n'a pas pu être "
-          + `enregistré (${messageLisible(profileError)}). Signalez-le au `
+          + `enregistré (${detailTechnique(profileError)}). Signalez-le au `
           + 'support : sans profil, la connexion restera sans effet.',
         );
         return;
@@ -170,7 +143,9 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        // Le plancher de 32 garde le retrait d'origine là où il n'y a pas
+        // d'encoche (web, Android sans barre d'état translucide).
+        contentContainerStyle={[styles.scroll, { paddingTop: Math.max(haut, spacing.xl) }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -179,8 +154,13 @@ export default function RegisterScreen() {
           <LogoYaka size={48} />
         </View>
 
-        <Text style={styles.title}>Créer un compte</Text>
+        <Text style={styles.title} accessibilityRole="header" aria-level={1}>Créer un compte</Text>
         <Text style={styles.subtitle}>Rejoignez YakaRDC et découvrez le Congo</Text>
+
+        {/* Les champs restent dessinés ici : `FormField` ne sait pas loger une
+            icône en tête ni l'œil du mot de passe. Chacun reprend donc son
+            libellé visible en `accessibilityLabel`, sans quoi la lecture vocale
+            n'annonce que « zone de texte ». */}
 
         {/* Prénom + Nom */}
         <View style={styles.row}>
@@ -189,7 +169,8 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <User size={16} color={colors.faint} />
               <TextInput style={styles.input} value={firstName} onChangeText={setFirstName}
-                placeholder="Jean" placeholderTextColor={colors.faint} autoCapitalize="words" />
+                placeholder="Jean" placeholderTextColor={colors.faint} autoCapitalize="words"
+                accessibilityLabel="Prénom" autoComplete="given-name" />
             </View>
           </View>
           <View style={[styles.fieldWrap, { flex: 1 }]}>
@@ -197,7 +178,8 @@ export default function RegisterScreen() {
             <View style={styles.field}>
               <User size={16} color={colors.faint} />
               <TextInput style={styles.input} value={lastName} onChangeText={setLastName}
-                placeholder="Mbeki" placeholderTextColor={colors.faint} autoCapitalize="words" />
+                placeholder="Mbeki" placeholderTextColor={colors.faint} autoCapitalize="words"
+                accessibilityLabel="Nom" autoComplete="family-name" />
             </View>
           </View>
         </View>
@@ -209,7 +191,8 @@ export default function RegisterScreen() {
             <Mail size={16} color={colors.faint} />
             <TextInput style={styles.input} value={email} onChangeText={setEmail}
               placeholder="vous@exemple.com" placeholderTextColor={colors.faint}
-              keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+              keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+              accessibilityLabel="Adresse email" autoComplete="email" />
           </View>
         </View>
 
@@ -220,7 +203,8 @@ export default function RegisterScreen() {
             <Phone size={16} color={colors.faint} />
             <TextInput style={styles.input} value={phone} onChangeText={setPhone}
               placeholder="+243 8xx xxx xxx" placeholderTextColor={colors.faint}
-              keyboardType="phone-pad" />
+              keyboardType="phone-pad"
+              accessibilityLabel="Téléphone (optionnel)" autoComplete="tel" />
           </View>
         </View>
 
@@ -231,10 +215,14 @@ export default function RegisterScreen() {
             <Lock size={16} color={colors.faint} />
             <TextInput style={styles.input} value={password} onChangeText={setPassword}
               placeholder="Au moins 6 caractères" placeholderTextColor={colors.faint}
-              secureTextEntry={!showPwd} />
-            <Pressable accessibilityRole="button" accessibilityLabel={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setShowPwd(v => !v)} hitSlop={8}>
-              {showPwd ? <EyeOff size={16} color={colors.faint} /> : <Eye size={16} color={colors.faint} />}
-            </Pressable>
+              secureTextEntry={!showPwd}
+              accessibilityLabel="Mot de passe" autoComplete="new-password" />
+            <BoutonIcone
+              icon={showPwd ? <EyeOff size={16} color={colors.faint} /> : <Eye size={16} color={colors.faint} />}
+              label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              onPress={() => setShowPwd(v => !v)}
+              taille={16}
+            />
           </View>
         </View>
 
@@ -245,28 +233,31 @@ export default function RegisterScreen() {
             <Lock size={16} color={colors.faint} />
             <TextInput style={styles.input} value={confirm} onChangeText={setConfirm}
               placeholder="Même mot de passe" placeholderTextColor={colors.faint}
-              secureTextEntry={!showCfm} />
-            <Pressable accessibilityRole="button" accessibilityLabel={showCfm ? 'Masquer la confirmation' : 'Afficher la confirmation'} onPress={() => setShowCfm(v => !v)} hitSlop={8}>
-              {showCfm ? <EyeOff size={16} color={colors.faint} /> : <Eye size={16} color={colors.faint} />}
-            </Pressable>
+              secureTextEntry={!showCfm}
+              accessibilityLabel="Confirmer le mot de passe" autoComplete="new-password"
+              aria-invalid={confirm.length > 0 && password !== confirm ? true : undefined} />
+            <BoutonIcone
+              icon={showCfm ? <EyeOff size={16} color={colors.faint} /> : <Eye size={16} color={colors.faint} />}
+              label={showCfm ? 'Masquer la confirmation' : 'Afficher la confirmation'}
+              onPress={() => setShowCfm(v => !v)}
+              taille={16}
+            />
           </View>
           {confirm.length > 0 && password !== confirm && (
-            <Text style={styles.fieldHint}>Les mots de passe ne correspondent pas</Text>
+            <Text style={styles.fieldHint} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              Les mots de passe ne correspondent pas
+            </Text>
           )}
         </View>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && (
+          <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+        )}
 
         {/* Bouton */}
-        <Pressable
-          style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }, loading && { opacity: 0.7 }]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color={colors.cream} />
-            : <Text style={styles.btnText}>Créer mon compte</Text>}
-        </Pressable>
+        <View style={styles.btnWrap}>
+          <Button label="Créer mon compte" onPress={handleRegister} loading={loading} />
+        </View>
 
         {/* Séparateur */}
         <View style={styles.divider}>
@@ -276,7 +267,11 @@ export default function RegisterScreen() {
         </View>
 
         {/* Lien login */}
-        <Pressable style={styles.loginRow} onPress={() => router.replace('/(auth)/login')}>
+        <Pressable
+          style={styles.loginRow}
+          accessibilityRole="link"
+          {...lienVers('/login', { remplacer: true })}
+        >
           <ArrowLeft size={14} color={colors.lave} />
           <Text style={styles.loginText}>Déjà un compte ? <Text style={styles.loginLink}>Se connecter</Text></Text>
         </Pressable>
@@ -284,14 +279,16 @@ export default function RegisterScreen() {
         {/* Mentions légales */}
         <Text style={styles.legal}>
           En créant un compte, vous acceptez nos{' '}
-          <Text style={styles.legalLink}>Conditions d'utilisation</Text>
+          <Link href="/conditions" style={styles.legalLink}>Conditions d'utilisation</Link>
           {' '}et notre{' '}
-          <Text style={styles.legalLink}>Politique de confidentialité</Text>.
+          <Link href="/confidentialite" style={styles.legalLink}>Politique de confidentialité</Link>.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const DEBORD_LIEN = (cible.min - typography.bodySm.lineHeight) / 2;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
@@ -302,8 +299,8 @@ const styles = StyleSheet.create({
     maxWidth: breakpoints.formMax,
     width: '100%',
     alignSelf: 'center',
+    // Le retrait haut vient de la zone sûre : il est posé à l'appel.
     paddingHorizontal: 28,
-    paddingTop: Platform.OS === 'ios' ? 60 : 32,
     paddingBottom: 40,
   },
   logoRow: { alignItems: 'center', marginBottom: spacing.v20 },
@@ -312,29 +309,34 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.v12 },
   fieldWrap: { marginBottom: spacing.v12 },
   label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
-  optional: { fontWeight: '400', color: colors.faint },
+  optional: { fontFamily: fonts.sans, color: colors.faint },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   fieldError: { borderColor: colors.danger },
   fieldHint: { ...typography.captionSm, color: colors.danger, marginTop: spacing.xs, },
-  input: { ...typography.body, flex: 1, color: colors.ink, },
+  // `minWidth: 0` : sur le web, une saisie a une largeur plancher d'une
+  // vingtaine de caractères. Dans les champs demi-largeur (Prénom, Nom), elle
+  // ne rétrécissait pas et c'est l'icône voisine qui s'écrasait.
+  input: { ...typography.body, flex: 1, minWidth: 0, color: colors.ink, },
   error: { ...typography.bodyXs, color: colors.danger,
     backgroundColor: colors.dangerSoft, borderRadius: radii.sm,
     padding: spacing.v12, marginBottom: spacing.v12, textAlign: 'center', },
-  btn: {
-    backgroundColor: colors.lave, borderRadius: radii.md,
-    paddingVertical: spacing.v12, alignItems: 'center', marginBottom: 18,
-  },
-  btnText: { ...typography.sheetOption, color: colors.cream, },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: 18 },
+  btnWrap: { marginBottom: spacing.v20 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.v20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
   dividerText: { ...typography.bodyXs, color: colors.faint, },
-  loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.v20 },
+  // Zone tactile de 44 px autour d'une ligne de 19 : la marge négative annule
+  // le surplus, le lien reste à sa place.
+  loginRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    minHeight: cible.min, marginTop: -DEBORD_LIEN, marginBottom: spacing.v20 - DEBORD_LIEN,
+  },
   loginText: { ...typography.bodySm, color: colors.muted, },
-  loginLink: { color: colors.lave, fontWeight: '500' },
+  loginLink: { color: colors.lave, fontFamily: fonts.sansMedium },
   legal: { ...typography.captionSm, color: colors.faint, textAlign: 'center', },
   legalLink: { color: colors.lave },
 });

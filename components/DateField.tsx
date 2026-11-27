@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { CalendarDays } from 'lucide-react-native';
-import { colors, typography, spacing, radii } from '../lib/theme';
+import { colors, typography, spacing, radii, cible } from '../lib/theme';
+import Button from './Button';
 import { formatFrench } from '../lib/dates';
 import SelecteurDate from './SelecteurDate';
 import Sheet from './Sheet';
@@ -50,7 +51,12 @@ export default function DateField({
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable style={styles.field} onPress={() => setOpen(true)}>
+      <Pressable
+        style={styles.field}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label} : ${value ? formatFrench(value) : 'non renseigné'}`}
+      >
         <CalendarDays size={15} color={value ? accent : colors.faint} strokeWidth={1.75} />
         <Text style={[styles.value, !value && styles.placeholder]}>
           {value ? formatFrench(value) : placeholder}
@@ -77,16 +83,14 @@ export default function DateField({
             validation étaient le même geste. Avec trois colonnes, changer de
             mois n'est pas encore choisir une date — il faut donc un bouton
             pour dire quand on a fini. */}
-        <Pressable
-          style={[styles.valider, { backgroundColor: accent }, !value && styles.validerInactif]}
-          onPress={() => setOpen(false)}
-          disabled={!value}
-          accessibilityRole="button"
-        >
-          <Text style={styles.validerTexte}>
-            {value ? `Choisir le ${formatFrench(value)}` : 'Choisissez une date'}
-          </Text>
-        </Pressable>
+        <View style={styles.valider}>
+          <Button
+            label={value ? `Choisir le ${formatFrench(value)}` : 'Choisissez une date'}
+            onPress={() => setOpen(false)}
+            disabled={!value}
+            color={accent}
+          />
+        </View>
       </Sheet>
     </View>
   );
@@ -97,15 +101,11 @@ const styles = StyleSheet.create({
   label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   value: { ...typography.body, color: colors.ink },
   placeholder: { color: colors.faint },
-  valider: {
-    borderRadius: radii.md, paddingVertical: spacing.v12,
-    alignItems: 'center', marginTop: spacing.md,
-  },
-  validerInactif: { opacity: 0.45 },
-  validerTexte: { ...typography.button, color: colors.cream },
+  valider: { marginTop: spacing.md },
 });

@@ -1,4 +1,5 @@
 import { Alert } from './alert';
+import { messageErreur } from './erreurs';
 
 /**
  * Écritures en base dont l'échec ne doit pas passer inaperçu.
@@ -19,17 +20,13 @@ import { Alert } from './alert';
 
 type Resultat = { error: { message?: string; code?: string; hint?: string | null } | null };
 
-/** Rend une erreur PostgREST lisible : message, plus le code quand il éclaire. */
+/**
+ * Phrase française pour une erreur de base. Délègue à `lib/erreurs.ts`, qui
+ * traduit les codes Postgres (droits insuffisants, doublon, valeur refusée…)
+ * au lieu d'afficher le message anglais du serveur.
+ */
 export function messageBase(e: Resultat['error']): string {
-  if (!e) return 'erreur inconnue';
-  const bouts: string[] = [];
-  if (e.message?.trim()) bouts.push(e.message.trim());
-  if (e.hint) bouts.push(e.hint);
-  // 42501 = violation de politique RLS. Sans cette précision, le message brut
-  // de Postgres ne dit pas que c'est une question de droits.
-  if (e.code === '42501') bouts.push("(droits insuffisants sur cette donnée)");
-  else if (e.code) bouts.push(`(code ${e.code})`);
-  return bouts.join(' ') || 'le serveur a refusé sans expliquer pourquoi';
+  return messageErreur(e, "L'opération n'a pas abouti. Réessayez dans un instant.");
 }
 
 /**

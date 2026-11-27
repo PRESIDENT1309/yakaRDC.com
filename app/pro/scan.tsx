@@ -1,16 +1,19 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Camera, CheckCircle, Keyboard, QrCode, Search, XCircle } from 'lucide-react-native';
+import {
+  Ban, Camera, CircleCheck, CircleX, Keyboard, Lightbulb, QrCode, Search, TriangleAlert,
+} from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable, StyleSheet,
   Text, TextInput,
   View,
 } from 'react-native';
+import Button from '../../components/Button';
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
 
 type ScanFailure = 'not_found' | 'wrong_establishment' | 'unknown';
 
@@ -34,6 +37,7 @@ function failureFromError(message?: string): ScanFailure {
 
 export default function ScanScreen() {
   const { profile } = useAuth();
+  const { haut } = useZonesSures();
   const [mode, setMode] = useState<Mode>('camera');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,9 +92,9 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: haut }]}>
         <View style={styles.headerInner}>
-          <Text style={styles.headerTitle}>Scanner un ticket</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Scanner un ticket</Text>
           <Text style={styles.headerSub}>
             {mode === 'camera' ? 'Visez le QR code du client' : 'Entrez le code du ticket du client'}
           </Text>
@@ -99,20 +103,28 @@ export default function ScanScreen() {
 
       {/* Bascule caméra / saisie manuelle */}
       <View style={styles.modeSwitch}>
-        <View style={styles.modeSwitchInner}>
+        <View style={styles.modeSwitchInner} accessibilityRole="tablist">
         <Pressable
-          style={[styles.modeBtn, mode === 'camera' && styles.modeBtnActive]}
+          style={styles.modeZone}
+          accessibilityRole="tab"
+          aria-selected={mode === 'camera'}
           onPress={() => { setMode('camera'); handleReset(); }}
         >
-          <Camera size={14} color={mode === 'camera' ? colors.cream : colors.muted} />
-          <Text style={[styles.modeBtnText, mode === 'camera' && styles.modeBtnTextActive]}>Caméra</Text>
+          <View style={[styles.modeBtn, mode === 'camera' && styles.modeBtnActive]}>
+            <Camera size={14} color={mode === 'camera' ? colors.cream : colors.muted} />
+            <Text style={[styles.modeBtnText, mode === 'camera' && styles.modeBtnTextActive]}>Caméra</Text>
+          </View>
         </Pressable>
         <Pressable
-          style={[styles.modeBtn, mode === 'manual' && styles.modeBtnActive]}
+          style={styles.modeZone}
+          accessibilityRole="tab"
+          aria-selected={mode === 'manual'}
           onPress={() => { setMode('manual'); handleReset(); }}
         >
-          <Keyboard size={14} color={mode === 'manual' ? colors.cream : colors.muted} />
-          <Text style={[styles.modeBtnText, mode === 'manual' && styles.modeBtnTextActive]}>Saisie manuelle</Text>
+          <View style={[styles.modeBtn, mode === 'manual' && styles.modeBtnActive]}>
+            <Keyboard size={14} color={mode === 'manual' ? colors.cream : colors.muted} />
+            <Text style={[styles.modeBtnText, mode === 'manual' && styles.modeBtnTextActive]}>Saisie manuelle</Text>
+          </View>
         </Pressable>
         </View>
       </View>
@@ -128,9 +140,7 @@ export default function ScanScreen() {
                 <Text style={styles.permissionText}>
                   L'accès à la caméra est nécessaire pour scanner les tickets.
                 </Text>
-                <Pressable style={styles.permissionBtn} onPress={requestPermission}>
-                  <Text style={styles.permissionBtnText}>Autoriser la caméra</Text>
-                </Pressable>
+                <Button label="Autoriser la caméra" onPress={requestPermission} />
               </View>
             ) : (
               <View style={styles.cameraWrapper}>
@@ -143,7 +153,7 @@ export default function ScanScreen() {
                 <View style={styles.viewfinder} pointerEvents="none" />
                 {loading && (
                   <View style={styles.cameraLoadingOverlay}>
-                    <ActivityIndicator color={colors.cream} />
+                    <ActivityIndicator color={colors.cream} accessibilityLabel="Validation en cours" />
                   </View>
                 )}
               </View>
@@ -164,20 +174,18 @@ export default function ScanScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={10}
+              accessibilityLabel="Code du ticket"
             />
             <Text style={styles.codeHint}>
               Le code figure sur le ticket du client (ex : YK-4F9X2A)
             </Text>
-            <Pressable
-              style={[styles.validateBtn, (!code.trim() || loading) && styles.validateBtnDisabled]}
+            <Button
+              label="Valider le ticket"
               onPress={() => runValidation(code, { normalize: true })}
-              disabled={!code.trim() || loading}
-            >
-              {loading
-                ? <ActivityIndicator color={colors.cream} />
-                : <><Search size={16} color={colors.cream} /><Text style={styles.validateBtnText}>Valider le ticket</Text></>
-              }
-            </Pressable>
+              icon={<Search size={16} color={colors.cream} />}
+              loading={loading}
+              disabled={!code.trim()}
+            />
           </View>
         )}
 
@@ -189,49 +197,59 @@ export default function ScanScreen() {
             result.success && result.alreadyUsed ? styles.resultWarning :
             styles.resultError,
           ]}>
-            {result.success && !result.alreadyUsed ? (
-              <>
-                <CheckCircle size={40} color={colors.success} />
-                <Text style={[styles.resultTitle, { color: colors.success }]}>✅ Ticket valide</Text>
-                <Text style={styles.resultText}>Le client est enregistré. Ce code est maintenant invalidé.</Text>
-              </>
-            ) : result.success && result.alreadyUsed ? (
-              <>
-                <XCircle size={40} color={colors.warning} />
-                <Text style={[styles.resultTitle, { color: colors.warning }]}>⚠️ Ticket déjà utilisé</Text>
-                <Text style={styles.resultText}>
-                  Ce code a déjà été scanné.
-                  {result.usedAt ? `\n(${new Date(result.usedAt).toLocaleString('fr-FR')})` : ''}
-                </Text>
-              </>
-            ) : (
-              <>
-                <XCircle size={40} color={colors.danger} />
-                <Text style={[styles.resultTitle, { color: colors.danger }]}>
+            {/* Le verdict est annoncé dès qu'il apparaît : le partenaire a les
+                yeux sur le client, pas sur l'écran. Le bouton reste hors de
+                l'annonce, pour ne pas être lu avec elle. */}
+            <View style={styles.resultMessage} accessibilityRole="alert" accessibilityLiveRegion="polite">
+              {result.success && !result.alreadyUsed ? (
+                <>
+                  <CircleCheck size={40} color={colors.success} />
+                  <Text style={[styles.resultTitle, { color: colors.success }]}>Ticket valide</Text>
+                  <Text style={styles.resultText}>Le client est enregistré. Ce code est maintenant invalidé.</Text>
+                </>
+              ) : result.success && result.alreadyUsed ? (
+                <>
+                  <TriangleAlert size={40} color={colors.warning} />
+                  <Text style={[styles.resultTitle, { color: colors.warning }]}>Ticket déjà utilisé</Text>
+                  <Text style={styles.resultText}>
+                    Ce code a déjà été scanné.
+                    {result.usedAt ? `\n(${new Date(result.usedAt).toLocaleString('fr-FR')})` : ''}
+                  </Text>
+                </>
+              ) : (
+                <>
                   {result.failure === 'wrong_establishment'
-                    ? '⛔ Autre établissement'
+                    ? <Ban size={40} color={colors.danger} />
                     : result.failure === 'unknown'
-                    ? '⚠️ Validation impossible'
-                    : '❌ Code inconnu'}
-                </Text>
-                <Text style={styles.resultText}>
-                  {result.failure === 'wrong_establishment'
-                    ? "Ce ticket est valide mais concerne un autre établissement. Il ne peut pas être validé ici."
-                    : result.failure === 'unknown'
-                    ? "La validation n'a pas pu aboutir. Vérifiez votre connexion, puis réessayez."
-                    : "Ce code ne correspond à aucun ticket. Vérifiez la saisie ou demandez au client d'afficher à nouveau son QR code."}
-                </Text>
-              </>
-            )}
-            <Pressable style={styles.resetBtn} onPress={handleReset}>
+                    ? <TriangleAlert size={40} color={colors.danger} />
+                    : <CircleX size={40} color={colors.danger} />}
+                  <Text style={[styles.resultTitle, { color: colors.danger }]}>
+                    {result.failure === 'wrong_establishment'
+                      ? 'Autre établissement'
+                      : result.failure === 'unknown'
+                      ? 'Validation impossible'
+                      : 'Code inconnu'}
+                  </Text>
+                  <Text style={styles.resultText}>
+                    {result.failure === 'wrong_establishment'
+                      ? "Ce ticket est valide mais concerne un autre établissement. Il ne peut pas être validé ici."
+                      : result.failure === 'unknown'
+                      ? "La validation n'a pas pu aboutir. Vérifiez votre connexion, puis réessayez."
+                      : "Ce code ne correspond à aucun ticket. Vérifiez la saisie ou demandez au client d'afficher à nouveau son QR code."}
+                  </Text>
+                </>
+              )}
+            </View>
+            <Pressable style={styles.resetBtn} accessibilityRole="button" onPress={handleReset}>
               <Text style={styles.resetBtnText}>Scanner un autre ticket</Text>
             </Pressable>
           </View>
         )}
 
         <View style={styles.note}>
+          <Lightbulb size={14} color={colors.muted} style={styles.noteIcon} />
           <Text style={styles.noteText}>
-            💡 Le client peut vous montrer son QR code ou vous lire son code à voix haute. Chaque code ne peut être validé qu'une seule fois.
+            Le client peut vous montrer son QR code ou vous lire son code à voix haute. Chaque code ne peut être validé qu'une seule fois.
           </Text>
         </View>
       </View>
@@ -241,9 +259,9 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
+  // Le retrait haut est ajouté à l'appel : il dépend de l'appareil (zone sûre).
   header: {
     backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
     paddingBottom: spacing.md,
   },
   headerInner: {
@@ -251,57 +269,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.v20,
   },
   headerTitle: { ...typography.titleLg, color: colors.cream, },
-  headerSub: { ...typography.bodySm, color: 'rgba(250,248,244,0.7)', marginTop: spacing.xs, },
+  headerSub: { ...typography.bodySm, color: colors.onBrandMuted, marginTop: spacing.xs, },
   // Le filet de séparation court sur toute la largeur ; les deux boutons, eux,
   // s'alignent sur l'en-tête et sur la carte du dessous. Sans cela, la barre
   // était le seul élément de l'écran à s'étirer d'un bord à l'autre.
+  //
+  // Le retrait vertical est passé de 12 à 8 : les zones tactiles montent à
+  // 44 px autour de boutons qui gardent leur taille, et la barre sa hauteur.
   modeSwitch: {
-    paddingVertical: spacing.v12,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.cream, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   modeSwitchInner: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
     flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md,
   },
+  modeZone: { flex: 1, minHeight: cible.min, justifyContent: 'center' },
   modeBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong,
     borderRadius: radii.md, paddingVertical: spacing.sm,
   },
   modeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   modeBtnText: { ...typography.bodyXs, color: colors.muted, },
-  modeBtnTextActive: { color: colors.cream, fontWeight: '500' },
+  modeBtnTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.md, gap: spacing.md },
   cameraCard: {
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.v16, overflow: 'hidden',
   },
-  cameraWrapper: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: '#000' },
+  cameraWrapper: { width: '100%', aspectRatio: 1, position: 'relative', backgroundColor: colors.nuit },
   viewfinder: {
     position: 'absolute', top: '18%', left: '18%', right: '18%', bottom: '18%',
     borderWidth: 3, borderColor: colors.cream, borderRadius: radii.lg,
   },
   cameraLoadingOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center',
   },
   permissionBox: { alignItems: 'center', gap: spacing.v12, padding: spacing.xl },
   permissionText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
-  permissionBtn: { backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12 },
-  permissionBtnText: { ...typography.pillLabel, color: colors.cream, },
   codeCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.v16, padding: spacing.v20 },
   codeLabel: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
   codeInput: { ...typography.titleLg, borderWidth: 1.5, borderColor: colors.lave, borderRadius: radii.md,
     paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
     color: colors.ink, textAlign: 'center', letterSpacing: 3, marginBottom: spacing.sm, },
   codeHint: { ...typography.captionSm, color: colors.faint, textAlign: 'center', marginBottom: spacing.md, },
-  validateBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v12,
-  },
-  validateBtnDisabled: { opacity: 0.5 },
-  validateBtnText: { ...typography.sheetOption, color: colors.cream, },
   resultCard: { borderRadius: radii.v16, padding: spacing.lg, alignItems: 'center', gap: spacing.v12, borderWidth: 1 },
+  resultMessage: { alignItems: 'center', gap: spacing.v12 },
   resultSuccess: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   resultWarning: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
   resultError: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerBorder },
@@ -309,9 +324,15 @@ const styles = StyleSheet.create({
   resultText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
   resetBtn: {
     marginTop: spacing.sm, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
+    minHeight: cible.min, justifyContent: 'center',
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md,
   },
   resetBtnText: { ...typography.pillLabel, color: colors.ink, },
-  note: { backgroundColor: colors.surfaceSunken, borderRadius: radii.md, padding: spacing.v12 },
-  noteText: { ...typography.bodyXs, color: colors.muted, },
+  note: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
+    backgroundColor: colors.surfaceSunken, borderRadius: radii.md, padding: spacing.v12,
+  },
+  // Cale l'ampoule sur la première ligne du texte (interligne de 17).
+  noteIcon: { marginTop: spacing.v2 },
+  noteText: { ...typography.bodyXs, color: colors.muted, flex: 1 },
 });

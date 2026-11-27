@@ -1,9 +1,10 @@
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Plus, Trash2, GripVertical } from 'lucide-react-native';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, fonts, cible } from '../lib/theme';
 import { MENU_SECTION_SUGGESTIONS } from '../lib/menu';
 import type { Menu, MenuSection, MenuItem } from '../lib/menu';
 import Chip from './Chip';
+import BoutonIcone from './BoutonIcone';
 
 export interface MenuEditorProps {
   value: Menu;
@@ -28,6 +29,7 @@ export default function MenuEditor({
   value, onChange, establishmentType, accent = colors.lave,
 }: MenuEditorProps) {
   const sections = value.sections;
+  const restaurant = establishmentType === 'restaurant';
   const suggestions = MENU_SECTION_SUGGESTIONS[establishmentType];
   const used = new Set(sections.map(s => s.title.trim().toLowerCase()));
 
@@ -81,69 +83,94 @@ export default function MenuEditor({
     <View style={{ gap: spacing.md }}>
       {sections.length === 0 && (
         <Text style={styles.empty}>
-          {establishmentType === 'restaurant'
+          {restaurant
             ? "Aucun plat saisi. Ajoutez une section pour composer votre carte — les voyageurs la verront sur votre fiche."
             : "Aucune attraction saisie. Ajoutez une section pour publier vos tarifs."}
         </Text>
       )}
 
-      {sections.map((section, sIdx) => (
-        <View key={sIdx} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <GripVertical size={14} color={colors.faint} strokeWidth={1.75} />
-            <TextInput
-              style={styles.sectionTitle}
-              value={section.title}
-              onChangeText={v => setSectionTitle(sIdx, v)}
-              placeholder="Nom de la section"
-              placeholderTextColor={colors.faint}
-            />
-            <Pressable accessibilityRole="button" accessibilityLabel="Supprimer cette section du menu" onPress={() => removeSection(sIdx)} hitSlop={8}>
-              <Trash2 size={15} color={colors.danger} strokeWidth={1.75} />
-            </Pressable>
-          </View>
-
-          {section.items.map((item, iIdx) => (
-            <View key={iIdx} style={styles.item}>
-              <View style={styles.itemTop}>
-                <TextInput
-                  style={styles.itemLabel}
-                  value={item.label}
-                  onChangeText={v => setItem(sIdx, iIdx, 'label', v)}
-                  placeholder={establishmentType === 'restaurant' ? 'Poulet moambe' : 'Grande cascade'}
-                  placeholderTextColor={colors.faint}
-                />
-                <TextInput
-                  style={styles.itemPrice}
-                  value={item.price == null ? '' : String(item.price)}
-                  onChangeText={v => setItem(sIdx, iIdx, 'price', v)}
-                  placeholder="12"
-                  placeholderTextColor={colors.faint}
-                  keyboardType="decimal-pad"
-                />
-                <Text style={styles.currency}>{item.currency}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Supprimer ce plat" onPress={() => removeItem(sIdx, iIdx)} hitSlop={8}>
-                  <Trash2 size={13} color={colors.faint} strokeWidth={1.75} />
-                </Pressable>
-              </View>
+      {sections.map((section, sIdx) => {
+        // Les champs d'une carte se ressemblent tous et n'ont pas de libellé
+        // visible : la lecture vocale doit pouvoir dire de quelle section et
+        // de quelle ligne il s'agit, sans quoi elle n'annonce que « zone de
+        // texte » d'un bout à l'autre du menu.
+        const nomSection = section.title.trim() || `n° ${sIdx + 1}`;
+        return (
+          <View key={sIdx} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <GripVertical size={14} color={colors.faint} strokeWidth={1.75} />
               <TextInput
-                style={styles.itemDescription}
-                value={item.description ?? ''}
-                onChangeText={v => setItem(sIdx, iIdx, 'description', v)}
-                placeholder="Description (facultatif)"
+                style={styles.sectionTitle}
+                value={section.title}
+                onChangeText={v => setSectionTitle(sIdx, v)}
+                placeholder="Nom de la section"
                 placeholderTextColor={colors.faint}
+                accessibilityLabel={`Nom de la section n° ${sIdx + 1}`}
+              />
+              <BoutonIcone
+                label={`Supprimer la section ${nomSection}`}
+                taille={15}
+                onPress={() => removeSection(sIdx)}
+                icon={<Trash2 size={15} color={colors.danger} strokeWidth={1.75} />}
               />
             </View>
-          ))}
 
-          <Pressable style={styles.addItem} onPress={() => addItem(sIdx)}>
-            <Plus size={13} color={accent} strokeWidth={2} />
-            <Text style={[styles.addItemText, { color: accent }]}>
-              {establishmentType === 'restaurant' ? 'Ajouter un plat' : 'Ajouter une ligne'}
-            </Text>
-          </Pressable>
-        </View>
-      ))}
+            {section.items.map((item, iIdx) => {
+              const ligne = `${restaurant ? 'du plat' : 'de la ligne'} n° ${iIdx + 1}, section ${nomSection}`;
+              return (
+                <View key={iIdx} style={styles.item}>
+                  <View style={styles.itemTop}>
+                    <TextInput
+                      style={styles.itemLabel}
+                      value={item.label}
+                      onChangeText={v => setItem(sIdx, iIdx, 'label', v)}
+                      placeholder={restaurant ? 'Poulet moambe' : 'Grande cascade'}
+                      placeholderTextColor={colors.faint}
+                      accessibilityLabel={`Nom ${ligne}`}
+                    />
+                    <TextInput
+                      style={styles.itemPrice}
+                      value={item.price == null ? '' : String(item.price)}
+                      onChangeText={v => setItem(sIdx, iIdx, 'price', v)}
+                      placeholder="12"
+                      placeholderTextColor={colors.faint}
+                      keyboardType="decimal-pad"
+                      accessibilityLabel={`Prix en ${item.currency} ${ligne}`}
+                    />
+                    <Text style={styles.currency}>{item.currency}</Text>
+                    <BoutonIcone
+                      label={`Supprimer ${item.label.trim() || `${restaurant ? 'le plat' : 'la ligne'} n° ${iIdx + 1}`}, section ${nomSection}`}
+                      taille={13}
+                      onPress={() => removeItem(sIdx, iIdx)}
+                      icon={<Trash2 size={13} color={colors.faint} strokeWidth={1.75} />}
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.itemDescription}
+                    value={item.description ?? ''}
+                    onChangeText={v => setItem(sIdx, iIdx, 'description', v)}
+                    placeholder="Description (facultatif)"
+                    placeholderTextColor={colors.faint}
+                    accessibilityLabel={`Description ${ligne}`}
+                  />
+                </View>
+              );
+            })}
+
+            <Pressable
+              style={styles.addItem}
+              onPress={() => addItem(sIdx)}
+              accessibilityRole="button"
+              accessibilityLabel={`${restaurant ? 'Ajouter un plat' : 'Ajouter une ligne'}, section ${nomSection}`}
+            >
+              <Plus size={13} color={accent} strokeWidth={2} />
+              <Text style={[styles.addItemText, { color: accent }]}>
+                {restaurant ? 'Ajouter un plat' : 'Ajouter une ligne'}
+              </Text>
+            </Pressable>
+          </View>
+        );
+      })}
 
       <View>
         <Text style={styles.addSectionLabel}>Ajouter une section</Text>
@@ -157,6 +184,11 @@ export default function MenuEditor({
     </View>
   );
 }
+
+// « Ajouter un plat » tient sur une ligne de texte. Sa zone tactile en fait 44 :
+// le surplus déborde à parts égales au-dessus et au-dessous, et les marges
+// négatives le rendent pour que la section ne grandisse pas.
+const DEBORD_AJOUT = (cible.min - typography.caption.lineHeight) / 2;
 
 const styles = StyleSheet.create({
   empty: { ...typography.caption, color: colors.muted, lineHeight: 18 },
@@ -175,12 +207,16 @@ const styles = StyleSheet.create({
   itemLabel: { flex: 1, ...typography.body, color: colors.ink, paddingVertical: spacing.v2 },
   itemPrice: {
     width: 58, ...typography.body, color: colors.ink, textAlign: 'right',
-    borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: spacing.v2,
+    borderBottomWidth: 1, borderBottomColor: colors.borderField, paddingVertical: spacing.v2,
   },
   currency: { ...typography.caption, color: colors.faint },
   itemDescription: { ...typography.caption, color: colors.muted, paddingVertical: spacing.v2 },
-  addItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingTop: spacing.xs },
-  addItemText: { ...typography.caption, fontWeight: '600' },
+  // Le retrait haut de 4 px d'origine est repris dans la marge.
+  addItem: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: cible.min,
+    marginTop: spacing.xs - DEBORD_AJOUT, marginBottom: -DEBORD_AJOUT,
+  },
+  addItemText: { ...typography.caption, fontFamily: fonts.sansSemiBold },
   addSectionLabel: { ...typography.badgeSm, color: colors.faint, marginBottom: spacing.sm },
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

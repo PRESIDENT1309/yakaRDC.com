@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Clock } from 'lucide-react-native';
-import { colors, typography, spacing, radii } from '../lib/theme';
+import { colors, typography, spacing, radii, fonts, cible } from '../lib/theme';
 import Sheet from './Sheet';
 
 export interface TimeFieldProps {
@@ -46,7 +46,12 @@ export default function TimeField({
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable style={styles.field} onPress={() => setOpen(true)}>
+      <Pressable
+        style={styles.field}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label} : ${value || 'non renseigné'}`}
+      >
         <Clock size={15} color={value ? accent : colors.faint} strokeWidth={1.75} />
         <Text style={[styles.value, !value && styles.placeholder]}>{value || placeholder}</Text>
       </Pressable>
@@ -59,14 +64,20 @@ export default function TimeField({
         avoidKeyboard={false}
       >
         {clearable && !!value && (
-          <Pressable style={styles.clearBtn} onPress={() => { onChange(''); setOpen(false); }}>
+          <Pressable style={styles.clearBtn} accessibilityRole="button" onPress={() => { onChange(''); setOpen(false); }}>
             <Text style={styles.clearText}>Ne pas préciser</Text>
           </Pressable>
         )}
         <ScrollView style={styles.list}>
           {slots.map(s => (
-            <Pressable key={s} style={styles.option} onPress={() => select(s)}>
-              <Text style={[styles.optionText, s === value && { color: accent, fontWeight: '600' }]}>{s}</Text>
+            <Pressable
+              key={s}
+              style={styles.option}
+              onPress={() => select(s)}
+              accessibilityRole="radio"
+              aria-checked={s === value}
+            >
+              <Text style={[styles.optionText, s === value && { color: accent, fontFamily: fonts.sansSemiBold }]}>{s}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -80,14 +91,15 @@ const styles = StyleSheet.create({
   label: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   value: { ...typography.body, color: colors.ink },
   placeholder: { color: colors.faint },
-  clearBtn: { paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  clearBtn: { minHeight: cible.min, justifyContent: 'center', paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   clearText: { ...typography.sheetOption, color: colors.muted },
   list: { maxHeight: 340 },
-  option: { paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  option: { minHeight: cible.min, justifyContent: 'center', paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   optionText: { ...typography.sheetOption, color: colors.ink },
 });

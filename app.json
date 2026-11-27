@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Yaka",
+    "name": "YakaRDC",
     "slug": "yaka-rdc",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -18,6 +18,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#FAEEDA"
       }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./public/icon-512.png"
     }
   }
 }

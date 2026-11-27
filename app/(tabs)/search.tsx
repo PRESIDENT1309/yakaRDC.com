@@ -3,20 +3,21 @@ import {
   View,
   Text,
   TextInput,
-  Pressable,
   FlatList,
   ScrollView,
   StyleSheet,
-  Platform,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Search, X, MapPin, DollarSign, Star } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Search, X, MapPin, DollarSign, Star, WifiOff } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { cheapestActiveOffer } from '../../lib/offers';
-import { colors, typography, spacing, radii } from '../../lib/theme';
+import { unitLabel } from '../../lib/listing-format';
+import { colors, typography, spacing, radii, cible } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useZonesSures } from '../../lib/zones';
 import { useSelectedCity } from '../../lib/city-context';
 import { getCitySubdivisions } from '../../lib/geography';
+import BoutonIcone from '../../components/BoutonIcone';
 import SectionHeading from '../../components/SectionHeading';
 import ListingCard from '../../components/ListingCard';
 import Chip from '../../components/Chip';
@@ -62,17 +63,11 @@ const NOTES: { label: string; min: number | null }[] = [
   { label: '3.5 +', min: 3.5 },
 ];
 
-function unitLabel(unit: string | null): string {
-  if (unit === 'night') return '/ nuit';
-  if (unit === 'person') return '/ pers.';
-  if (unit === 'visit') return '/ visite';
-  return '';
-}
-
 export default function SearchScreen() {
   const params = useLocalSearchParams<{ commune?: string }>();
   const { width, isDesktop, isTablet, isWide, contentWidth } = useResponsive();
-  const { selectedCity } = useSelectedCity();
+  const { haut } = useZonesSures();
+  const { selectedCity, loading: villesEnCours, erreur: erreurVilles, recharger: rechargerVilles } = useSelectedCity();
   const subdivisions = getCitySubdivisions(selectedCity?.name);
   const communeOptions = subdivisions ? ['Toutes', ...subdivisions.all] : null;
 
@@ -83,6 +78,9 @@ export default function SearchScreen() {
   const [note, setNote] = useState('Toutes');
   const [results, setResults] = useState<EnrichedEstablishment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState(false);
+  // Incrémenté par « Réessayer » : relance la recherche sans toucher aux filtres.
+  const [tentative, setTentative] = useState(0);
   const [activeModal, setActiveModal] = useState<'commune' | 'prix' | 'note' | null>(null);
 
   // Si on arrive depuis une commune tapée sur l'accueil, on pré-remplit le filtre
@@ -96,9 +94,12 @@ export default function SearchScreen() {
     if (!subdivisions) setCommune('Toutes');
   }, [subdivisions]);
 
-  const fetchResults = useCallback(async () => {
+  // `estPerimee` : chaque frappe lance une recherche ; quand une réponse
+  // ancienne arrive après une plus récente, elle ne doit pas l'écraser.
+  const fetchResults = useCallback(async (estPerimee: () => boolean) => {
     if (!selectedCity) return;
     setLoading(true);
+    setErreur(false);
 
     // On récupère les offres et photos liées en une seule requête,
     // plutôt qu'un appel supplémentaire par établissement. Le prix affiché
@@ -113,10 +114,25 @@ export default function SearchScreen() {
     if (commune !== 'Toutes') q = q.eq('commune', commune);
     if (query.trim()) q = q.ilike('name', `%${query.trim()}%`);
 
-    const [{ data }, { data: ratings }] = await Promise.all([
-      q.limit(50),
-      supabase.from('establishment_ratings').select('*'),
-    ]);
+    const { data, error } = await q.limit(50);
+    if (estPerimee()) return;
+
+    if (error) {
+      // Une panne n'est pas « aucun résultat » : l'utilisateur modifierait ses
+      // filtres pour rien, alors que c'est le réseau qui ne répond pas.
+      setResults([]);
+      setErreur(true);
+      setLoading(false);
+      return;
+    }
+
+    // Les notes des seuls établissements trouvés. La requête lisait auparavant
+    // la vue entière — tout le catalogue — à chaque frappe.
+    const ids = ((data as any[]) ?? []).map(e => e.id);
+    const { data: ratings } = ids.length
+      ? await supabase.from('establishment_ratings').select('*').in('establishment_id', ids)
+      : { data: [] };
+    if (estPerimee()) return;
 
     // Index des notes par établissement, pour une association rapide
     const ratingMap = new Map<string, { avg_rating: number | null; review_count: number }>();
@@ -169,24 +185,36 @@ export default function SearchScreen() {
   }, [query, category, commune, prix, note, selectedCity]);
 
   useEffect(() => {
-    const timer = setTimeout(fetchResults, 350);
-    return () => clearTimeout(timer);
-  }, [fetchResults]);
+    let perimee = false;
+    const timer = setTimeout(() => fetchResults(() => perimee), 350);
+    return () => { perimee = true; clearTimeout(timer); };
+  }, [fetchResults, tentative]);
+
+  // La recherche ne part pas sans ville (voir `fetchResults`) : si la liste des
+  // villes n'a pas pu être lue, c'est cette panne-là qu'il faut annoncer, et
+  // non « 0 résultat », qui inviterait à changer des filtres hors de cause.
+  const enCours = villesEnCours || loading;
+  const enPanne = erreurVilles || erreur;
+  const reessayer = () => {
+    if (erreurVilles) rechargerVilles();
+    else setTentative(t => t + 1);
+  };
 
   // ── Mise en page responsive : grille 2 (mobile/tablette) → grille 4 (desktop) ──
   const columns = isDesktop ? 4 : 2;
   const gridWidth = isWide ? contentWidth : width;
-  const gutter = spacing.md + 2; // 18 — gouttière de facto déjà en usage sur cet écran
-  const gap = 12;
+  const gutter = spacing.gutter;
+  const gap = spacing.v12;
   const cardWidth = (gridWidth - gutter * 2 - gap * (columns - 1)) / columns;
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
 
   return (
     <View style={styles.screen}>
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: haut }]}>
         <View style={isWide ? wide : undefined}>
           <SectionHeading
+            niveau={1}
             kicker="Recherche"
             title={selectedCity?.name ? `Trouver une adresse à ${selectedCity.name}` : 'Rechercher'}
           />
@@ -197,15 +225,19 @@ export default function SearchScreen() {
               style={styles.searchInput}
               value={query}
               onChangeText={setQuery}
-              placeholder="Hôtel, restaurant, site..."
+              placeholder="Hôtel, restaurant, site…"
+              accessibilityLabel="Rechercher un établissement"
               placeholderTextColor={colors.faint}
               autoCorrect={false}
               returnKeyType="search"
             />
             {query.length > 0 && (
-              <Pressable accessibilityRole="button" accessibilityLabel="Effacer la recherche" onPress={() => setQuery('')} hitSlop={8}>
-                <X size={16} color={colors.faint} strokeWidth={1.75} />
-              </Pressable>
+              <BoutonIcone
+                label="Effacer la recherche"
+                taille={16}
+                onPress={() => setQuery('')}
+                icon={<X size={16} color={colors.faint} strokeWidth={1.75} />}
+              />
             )}
           </View>
 
@@ -250,8 +282,10 @@ export default function SearchScreen() {
             );
           })()}
 
-          <Text style={styles.resultCount}>
-            {loading ? 'Recherche...' : `${results.length} résultat${results.length !== 1 ? 's' : ''} trouvé${results.length !== 1 ? 's' : ''}`}
+          {/* Annoncé à chaque changement : sans cela, rien ne dit à la lecture
+              vocale qu'une frappe ou un filtre a modifié la liste en dessous. */}
+          <Text style={styles.resultCount} accessibilityLiveRegion="polite">
+            {enCours ? 'Recherche…' : enPanne ? 'Recherche interrompue' : `${results.length} résultat${results.length !== 1 ? 's' : ''} trouvé${results.length !== 1 ? 's' : ''}`}
           </Text>
         </View>
       </View>
@@ -278,14 +312,14 @@ export default function SearchScreen() {
               ? `${item.price} ${item.currency} ${unitLabel(item.priceUnit)}`.trim()
               : 'Tarif sur demande'}
             width={cardWidth}
-            onPress={() => router.push(`/listing/${item.id}`)}
+            href={`/listing/${item.id}`}
           />
           </EntreeListe>
         )}
         contentContainerStyle={[styles.listContent, isWide && wide]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          loading ? (
+          enCours ? (
             /* Pendant la recherche, cette liste ne rendait rien : ni contenu,
                ni signe d'attente. Les silhouettes occupent d'avance la place
                des résultats, si bien que leur arrivée ne déplace plus la mise
@@ -299,6 +333,14 @@ export default function SearchScreen() {
                 </View>
               ))}
             </View>
+          ) : enPanne ? (
+            <EmptyState
+              icon={<WifiOff size={36} color={colors.borderStrong} strokeWidth={1.75} />}
+              title="Recherche impossible"
+              description="Les résultats n'ont pas pu être chargés. Vérifiez votre connexion, puis réessayez."
+              actionLabel="Réessayer"
+              onAction={reessayer}
+            />
           ) : (
             <EmptyState
               icon={<Search size={36} color={colors.borderStrong} strokeWidth={1.75} />}
@@ -343,8 +385,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     backgroundColor: colors.cream,
-    paddingTop: Platform.OS === 'ios' ? 56 : 20,
-    paddingHorizontal: 18,
+    // `paddingTop` vient de la zone sûre mesurée (voir lib/zones), posé à l'appel.
+    paddingHorizontal: spacing.gutter,
     paddingBottom: spacing.v12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -355,18 +397,23 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.borderField,
     borderRadius: radii.md,
     paddingHorizontal: spacing.v12,
-    paddingVertical: spacing.sm,
+    // Hauteur d'un champ du design system (voir FormField) : sur le web, la
+    // barre n'atteignait que 39 px.
+    minHeight: cible.min,
     marginBottom: spacing.sm,
   },
-  searchInput: { flex: 1, ...typography.body, color: colors.ink },
+  // Le retrait vertical est porté par la saisie, non par la barre : la saisie
+  // ne mesurait que sa ligne de texte (21 px), et un appui dans le haut ou le
+  // bas de la barre ne plaçait pas le curseur.
+  searchInput: { flex: 1, alignSelf: 'stretch', paddingVertical: spacing.sm, ...typography.body, color: colors.ink },
   chipRow: { gap: spacing.sm, marginBottom: spacing.sm },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  chipGroupGap: { width: 4 },
+  chipGroupGap: { width: spacing.xs },
   resultCount: { ...typography.caption, color: colors.faint },
-  listContent: { padding: 18, paddingBottom: 90 },
+  listContent: { padding: spacing.gutter, paddingBottom: 90 },
   gridRow: { gap: spacing.v12, marginBottom: spacing.v12 },
   // Même gouttière que la grille de résultats, pour que les silhouettes
   // occupent exactement la place qu'occuperont les cartes.

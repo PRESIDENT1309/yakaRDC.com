@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Search, Store, ChevronRight } from 'lucide-react-native';
+import { Search, Store, ChevronRight, CalendarDays, Building2, Sparkles } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
+import { lienVers } from '../../lib/liens';
+import { colors, categoryColors, typography, radii, spacing, breakpoints, cible } from '../../lib/theme';
 import CategoryIcon from '../../components/CategoryIcon';
+import StatCard from '../../components/StatCard';
 import type { Establishment, PartnerRequest } from '../../lib/types';
 
 interface EstabBookingSummary {
@@ -93,7 +94,7 @@ export default function AdminOverview() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Vue d'ensemble</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Vue d'ensemble</Text>
           <Text style={styles.headerSub}>{dateLabel}</Text>
         </View>
         <View style={styles.searchBox}>
@@ -113,44 +114,33 @@ export default function AdminOverview() {
           <>
             {/* Stats globales */}
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Établissements actifs</Text>
-                <Text style={styles.statValue}>{activeEstablishments}</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardAccent]}>
-                <Text style={[styles.statLabel, { color: colors.lave }]}>Réservations aujourd'hui</Text>
-                <Text style={[styles.statValue, { color: colors.lave }]}>{todayTotal}</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statLabel}>Utilisateurs total</Text>
-                <Text style={styles.statValue}>{totalUsers}</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardGreen]}>
-                <Text style={[styles.statLabel, { color: colors.success }]}>Nouveaux ce mois</Text>
-                <Text style={[styles.statValue, { color: colors.success }]}>{newUsersThisMonth}</Text>
-              </View>
-              <View style={[styles.statCard, styles.statCardAmber]}>
-                <Text style={[styles.statLabel, { color: colors.warning }]}>Demandes partenaires</Text>
-                <Text style={[styles.statValue, { color: colors.warning }]}>{pendingRequests}</Text>
-              </View>
+              <StatCard style={styles.statCard} value={activeEstablishments} label="Établissements actifs" />
+              <StatCard style={[styles.statCard, styles.statCardAccent]} couleur={colors.lave} value={todayTotal} label="Réservations aujourd'hui" />
+              <StatCard style={styles.statCard} value={totalUsers} label="Utilisateurs total" />
+              <StatCard style={[styles.statCard, styles.statCardGreen]} couleur={colors.success} value={newUsersThisMonth} label="Nouveaux ce mois" />
+              <StatCard style={[styles.statCard, styles.statCardAmber]} couleur={colors.warning} value={pendingRequests} label="Demandes partenaires" />
             </View>
 
             {/* Réservations du jour - ensemble */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>📅 Réservations du jour — Toutes plateformes</Text>
+                <View style={styles.cardTitleRow}>
+                  <CalendarDays size={14} color={colors.muted} />
+                  <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Réservations du jour — Toutes plateformes</Text>
+                </View>
                 <Text style={styles.cardHeaderTotal}>{todayTotal} au total</Text>
               </View>
               <View style={styles.todayRow}>
-                <View style={styles.todayBox}>
+                {/* Chiffre et libellé lus ensemble : séparés, ce sont deux annonces sans lien. */}
+                <View style={styles.todayBox} accessible accessibilityLabel={`${todayPending}, En attente`}>
                   <Text style={[styles.todayValue, { color: colors.lave }]}>{todayPending}</Text>
                   <Text style={styles.todayLabel}>En attente</Text>
                 </View>
-                <View style={styles.todayBox}>
+                <View style={styles.todayBox} accessible accessibilityLabel={`${todayConfirmed}, Confirmées`}>
                   <Text style={[styles.todayValue, { color: colors.success }]}>{todayConfirmed}</Text>
                   <Text style={styles.todayLabel}>Confirmées</Text>
                 </View>
-                <View style={styles.todayBox}>
+                <View style={styles.todayBox} accessible accessibilityLabel={`${todayCheckedIn}, Check-ins`}>
                   <Text style={[styles.todayValue, { color: colors.fleuveDark }]}>{todayCheckedIn}</Text>
                   <Text style={styles.todayLabel}>Check-ins</Text>
                 </View>
@@ -159,7 +149,10 @@ export default function AdminOverview() {
 
             {/* Par établissement */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>🏢 Réservations du jour — Par établissement</Text>
+              <View style={styles.cardTitleRow}>
+                <Building2 size={14} color={colors.muted} />
+                <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Réservations du jour — Par établissement</Text>
+              </View>
               {perEstablishment.length === 0 ? (
                 <Text style={styles.emptyText}>Aucune réservation aujourd'hui pour le moment.</Text>
               ) : (
@@ -168,9 +161,7 @@ export default function AdminOverview() {
                     const cat = categoryColors[s.establishment.type];
                     return (
                       <View key={s.establishment.id} style={styles.estabRow}>
-                        <View style={[styles.estabIcon, { backgroundColor: cat?.soft ?? colors.laveSoft }]}>
-                          <CategoryIcon type={s.establishment.type} size={14} color={cat?.accent ?? colors.lave} />
-                        </View>
+                        <CategoryIcon type={s.establishment.type} size={16} color={cat?.accent ?? colors.lave} />
                         <Text style={styles.estabName} numberOfLines={1}>{s.establishment.name}</Text>
                         <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                           {s.pending > 0 && (
@@ -199,9 +190,17 @@ export default function AdminOverview() {
             {/* Demandes partenaires récentes */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>🆕 Nouvelles demandes de partenariat</Text>
+                <View style={styles.cardTitleRow}>
+                  <Sparkles size={14} color={colors.muted} />
+                  <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Nouvelles demandes de partenariat</Text>
+                </View>
                 {pendingRequests > 0 && (
-                  <Pressable onPress={() => router.push('/admin/partner-requests')}>
+                  <Pressable
+                    style={styles.cardLinkZone}
+                    accessibilityRole="link"
+                    accessibilityLabel="Voir toutes les demandes de partenariat"
+                    {...lienVers('/admin/partner-requests')}
+                  >
                     <Text style={styles.cardLink}>Voir toutes →</Text>
                   </Pressable>
                 )}
@@ -214,9 +213,10 @@ export default function AdminOverview() {
                     <Pressable
                       key={r.id}
                       style={styles.requestRow}
-                      onPress={() => router.push('/admin/partner-requests')}
+                      accessibilityRole="link"
+                      {...lienVers('/admin/partner-requests')}
                     >
-                      <View style={styles.requestIcon}><Store size={14} color={colors.lave} /></View>
+                      <Store size={16} color={colors.lave} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.requestName} numberOfLines={1}>{r.establishment_name}</Text>
                         <Text style={styles.requestMeta}>
@@ -242,13 +242,20 @@ export default function AdminOverview() {
 // le DOM, il courait jusqu'a 1220 px alors que le contenu s'arretait a 900,
 // laissant le champ de recherche flotter 320 px au-dela. Le filet du bas
 // delimite desormais exactement la colonne.
-const ADMIN_MAX = 900;
+// La colonne est centrée : calée à gauche, elle laissait sur grand écran tout
+// le vide du même côté.
+const ADMIN_MAX = breakpoints.dashboardMax;
+
+// Hauteur de la ligne « Voir toutes » : le surplus de sa zone tactile est
+// annulé par une marge négative, pour ne pas épaissir l'en-tête de la carte.
+const HAUTEUR_LIEN = 16;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
-    maxWidth: ADMIN_MAX, width: '100%',
-    paddingTop: Platform.OS === 'web' ? 16 : 50,
+    maxWidth: ADMIN_MAX, width: '100%', alignSelf: 'center',
+    // La zone sûre est dégagée par le layout de l'admin (bandeau ou marge).
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.v20, paddingBottom: spacing.v12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -261,35 +268,31 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm,
   },
   searchPlaceholder: { ...typography.captionSm, color: colors.faint, },
-  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: ADMIN_MAX },
+  content: { padding: spacing.v20, gap: spacing.v12, width: '100%', maxWidth: ADMIN_MAX, alignSelf: 'center' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  statCard: {
-    flex: 1, minWidth: 140,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, padding: spacing.v12,
-  },
+  // Place dans la grille, et teinte des cartes mises en avant : le reste du
+  // dessin (rayon, filet, typographie) vient de StatCard.
+  statCard: { flex: 1, minWidth: 140 },
   statCardAccent: { backgroundColor: colors.laveSoft, borderColor: colors.laveBorder },
   statCardGreen: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   statCardAmber: { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder },
-  statLabel: { ...typography.captionSm, color: colors.muted, },
-  statValue: { ...typography.titleSm, color: colors.ink, marginTop: spacing.xs, },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  cardTitle: { ...typography.pillLabel, color: colors.ink, },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  cardTitle: { ...typography.pillLabel, color: colors.ink, flexShrink: 1 },
   cardHeaderTotal: { ...typography.captionMd, color: colors.lave, },
+  cardLinkZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -(cible.min - HAUTEUR_LIEN) / 2 },
   cardLink: { ...typography.captionMd, color: colors.lave, },
   todayRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.v12 },
   todayBox: { flex: 1, backgroundColor: colors.cream, borderRadius: radii.sm, padding: spacing.sm, alignItems: 'center' },
   todayValue: { ...typography.titleSm, },
   todayLabel: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   emptyText: { ...typography.bodyXs, color: colors.muted, marginTop: spacing.sm, },
-  estabRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.sm, backgroundColor: colors.cream, borderRadius: radii.sm },
-  estabIcon: { width: 30, height: 30, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
+  estabRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.v12, backgroundColor: colors.cream, borderRadius: radii.sm },
   estabName: { ...typography.caption, flex: 1, color: colors.ink, },
   miniBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
   miniBadgeText: { ...typography.captionMd, },
-  requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm },
-  requestIcon: { width: 30, height: 30, borderRadius: radii.sm, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  requestRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, paddingVertical: spacing.sm, paddingHorizontal: spacing.v12, backgroundColor: colors.laveSoft, borderRadius: radii.sm },
   requestName: { ...typography.caption, color: colors.ink, },
   requestMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   examineBtn: { backgroundColor: colors.lave, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.xs },

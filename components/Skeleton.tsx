@@ -64,6 +64,9 @@ export default function Skeleton({ width = '100%', height = 14, ratio, radius = 
 
   return (
     <Animated.View
+      // Un bloc d'attente n'a rien à dire. `aria-hidden` vaut pour le web, où
+      // react-native-web 0.21 ignore les deux propriétés natives qui suivent.
+      aria-hidden
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[
@@ -86,7 +89,12 @@ export default function Skeleton({ width = '100%', height = 14, ratio, radius = 
  */
 export function SkeletonCarte() {
   return (
-    <View style={styles.carte}>
+    <View
+      style={styles.carte}
+      aria-hidden
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <Skeleton ratio={ratios.carte} radius={0} />
       <View style={styles.carteTexte}>
         <Skeleton width="72%" height={13} radius={radii.pill} />

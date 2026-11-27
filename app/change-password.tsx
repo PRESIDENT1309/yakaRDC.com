@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
+  View, Text, TextInput, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/alert';
 import { goBack } from '../lib/navigation';
-import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints, cible } from '../lib/theme';
 import Button from '../components/Button';
+import BoutonIcone from '../components/BoutonIcone';
 import ScreenHeader from '../components/ScreenHeader';
 
 /** Longueur minimale — alignée sur le réglage par défaut de Supabase Auth. */
@@ -127,6 +128,7 @@ export default function ChangePasswordScreen() {
               onChangeText={setCurrent}
               placeholder={isForced ? 'Celui de l\'email' : 'Votre mot de passe actuel'}
               placeholderTextColor={colors.faint}
+              accessibilityLabel={isForced ? 'Mot de passe provisoire reçu par email' : 'Mot de passe actuel'}
               secureTextEntry={!visible}
               autoCapitalize="none"
               autoCorrect={false}
@@ -142,15 +144,19 @@ export default function ChangePasswordScreen() {
               onChangeText={setPassword}
               placeholder={`Au moins ${MIN_LENGTH} caractères`}
               placeholderTextColor={colors.faint}
+              accessibilityLabel="Nouveau mot de passe"
               secureTextEntry={!visible}
               autoCapitalize="none"
               autoComplete="new-password"
             />
-            <Pressable accessibilityRole="button" accessibilityLabel={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setVisible(v => !v)} hitSlop={8}>
-              {visible
+            <BoutonIcone
+              icon={visible
                 ? <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />
                 : <Eye size={16} color={colors.faint} strokeWidth={1.75} />}
-            </Pressable>
+              label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              onPress={() => setVisible(v => !v)}
+              taille={16}
+            />
           </View>
 
           <Text style={styles.label}>Confirmer</Text>
@@ -161,13 +167,16 @@ export default function ChangePasswordScreen() {
               onChangeText={setConfirm}
               placeholder="Saisissez-le à nouveau"
               placeholderTextColor={colors.faint}
+              accessibilityLabel="Confirmer le nouveau mot de passe"
               secureTextEntry={!visible}
               autoCapitalize="none"
               autoComplete="new-password"
             />
           </View>
 
-          {!!error && <Text style={styles.error}>{error}</Text>}
+          {!!error && (
+            <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+          )}
 
           <Button
             label="Enregistrer"
@@ -194,8 +203,9 @@ const styles = StyleSheet.create({
   label: { ...typography.badgeSm, color: colors.faint, marginTop: spacing.md, marginBottom: spacing.sm },
   field: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   input: { flex: 1, ...typography.body, color: colors.ink },
   error: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },

@@ -14,11 +14,17 @@ import {
   UtensilsCrossed, Ticket, Clock, Users, AlertTriangle,
 } from 'lucide-react-native';
 import LogoYaka from '../../components/LogoYaka';
+import BoutonIcone from '../../components/BoutonIcone';
+import Button from '../../components/Button';
+import FormField from '../../components/FormField';
+import StatCard from '../../components/StatCard';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { photoAssezGrande, LARGEUR_MINIMALE } from '../../lib/images';
+import { uploadToStorage, COTE_MAX } from '../../lib/photo-upload';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, spacing, radii, breakpoints } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { colors, fonts, typography, spacing, radii, breakpoints, cible } from '../../lib/theme';
 import { getCitySubdivisions } from '../../lib/geography';
 import OfferManager from '../../components/OfferManager';
 import type { Establishment, ListingPhoto, EstablishmentType } from '../../lib/types';
@@ -35,7 +41,7 @@ function CardTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <View style={styles.cardTitleRow}>
       {icon}
-      <Text style={styles.cardTitleText}>{label}</Text>
+      <Text style={styles.cardTitleText} accessibilityRole="header" aria-level={2}>{label}</Text>
     </View>
   );
 }
@@ -66,25 +72,10 @@ const ALL_AMENITIES = [
   'Sécurité 24h', 'Générateur', 'Eau chaude', 'TV satellite',
 ];
 
-function Field({ label, value, onChange, placeholder, multiline = false, keyboardType = 'default' }:
-  { label: string; value: string; onChange: (v: string) => void;
-    placeholder?: string; multiline?: boolean; keyboardType?: any }) {
-  return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.fieldInput, multiline && styles.fieldInputMulti]}
-        value={value} onChangeText={onChange} placeholder={placeholder}
-        placeholderTextColor={colors.faint} multiline={multiline}
-        numberOfLines={multiline ? 4 : 1} keyboardType={keyboardType}
-      />
-    </View>
-  );
-}
-
 export default function EstablishmentScreen() {
   const { profile } = useAuth();
   const confirm = useConfirm();
+  const { haut, bas } = useZonesSures();
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -219,30 +210,13 @@ export default function EstablishmentScreen() {
     return result.assets[0].uri;
   }
 
-  // Envoie un fichier local vers Supabase Storage et retourne son URL publique
-  async function uploadToStorage(uri: string, path: string): Promise<string | null> {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const { error } = await supabase.storage
-        .from('establishment-photos')
-        .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
-      if (error) throw error;
-      const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
-      return data.publicUrl;
-    } catch {
-      Alert.alert('Erreur', "L'envoi de l'image a échoué. Vérifiez votre connexion et réessayez.");
-      return null;
-    }
-  }
-
   async function handlePickLogo() {
     if (!establishment) return;
     const uri = await pickImage();
     if (!uri) return;
     setUploadingLogo(true);
     const path = `${establishment.id}/logo-${Date.now()}.jpg`;
-    const publicUrl = await uploadToStorage(uri, path);
+    const publicUrl = await uploadToStorage(uri, path, COTE_MAX.vignette);
     if (publicUrl) {
       // L'image est déjà dans le stockage, mais tant que cette ligne n'est pas
       // écrite elle n'est rattachée à rien. Afficher le nouveau logo sans
@@ -526,6 +500,8 @@ export default function EstablishmentScreen() {
   const currentViewerPhoto = viewerIndex !== null ? photos[viewerIndex] : null;
   const currentMenuViewerPhoto = menuViewerIndex !== null ? menuPhotos[menuViewerIndex] : null;
   const menuSectionTitle = menuCategory === 'menu' ? 'Photos du menu' : 'Tarifs des attractions';
+  // Complément des libellés lus à voix haute (« Supprimer la photo 2 du menu »).
+  const menuPhotoNom = menuCategory === 'menu' ? 'du menu' : 'des tarifs';
   const menuSectionHint = menuCategory === 'menu'
     ? 'Prenez en photo votre carte ou votre menu — les voyageurs la verront sur votre fiche.'
     : "Prenez en photo votre grille tarifaire — les voyageurs la verront sur votre fiche.";
@@ -533,16 +509,28 @@ export default function EstablishmentScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.screen}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: haut }]}>
           <View style={styles.headerInner}>
-          <View>
-            <Text style={styles.headerTitle}>Mon établissement</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Mon établissement</Text>
             <Text style={styles.headerSub}>Modifications visibles par les voyageurs</Text>
           </View>
-          <Pressable style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color={colors.cream} size="small" /> :
-             saved ? <><Check size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegardé ✓</Text></> :
-             <><Save size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegarder</Text></>}
+          {/* La confirmation s'affiche dans le bouton lui-même : la zone est
+              déclarée vivante pour que « Sauvegardé » soit aussi annoncé. */}
+          <Pressable
+            style={styles.saveZone}
+            accessibilityRole="button"
+            accessibilityLabel={saving ? 'Sauvegarde en cours' : saved ? 'Modifications sauvegardées' : 'Sauvegarder'}
+            aria-disabled={saving} aria-busy={saving}
+            accessibilityLiveRegion="polite"
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <View style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+              {saving ? <ActivityIndicator color={colors.cream} size="small" /> :
+               saved ? <><Check size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegardé</Text></> :
+               <><Save size={14} color={colors.cream} /><Text style={styles.saveBtnText}>Sauvegarder</Text></>}
+            </View>
           </Pressable>
           </View>
         </View>
@@ -552,23 +540,19 @@ export default function EstablishmentScreen() {
 
           {/* Stats */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={[styles.statVal, { color: colors.lave }]}>{pendingCount}</Text>
-              <Text style={styles.statLabel}>En attente</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={[styles.statVal, { color: colors.success }]}>{confirmedCount}</Text>
-              <Text style={styles.statLabel}>Confirmées</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={[styles.statVal, { color: colors.ink }]}>{checkinCount}</Text>
-              <Text style={styles.statLabel}>Check-ins</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: colors.warningSoft, borderColor: colors.warningBorder }]}>
-              <Text style={[styles.statVal, { color: colors.warning, fontSize: 15 }]}>
-                {price ? `${price}$` : '—'}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.warning }]}>/{unitLabel}</Text>
+            <StatCard value={pendingCount} label="En attente" couleur={colors.lave} style={styles.statCard} />
+            <StatCard value={confirmedCount} label="Confirmées" couleur={colors.success} style={styles.statCard} />
+            <StatCard value={checkinCount} label="Check-ins" style={styles.statCard} />
+            {/* Le prix reste une carte locale : `StatCard` fixe le chiffre à
+                19 px, et un tarif à quatre chiffres ne tient plus dans un
+                quart de la largeur d'un téléphone. */}
+            <View
+              style={styles.priceCard}
+              accessible
+              accessibilityLabel={price ? `À partir de ${price} $ par ${unitLabel}` : 'Prix non renseigné'}
+            >
+              <Text style={styles.priceVal}>{price ? `${price}$` : '—'}</Text>
+              <Text style={styles.priceLabel}>/{unitLabel}</Text>
             </View>
           </View>
 
@@ -578,7 +562,14 @@ export default function EstablishmentScreen() {
             <View style={{ flexDirection: 'row', gap: spacing.v12, alignItems: 'flex-start' }}>
               <View style={{ alignItems: 'center', gap: spacing.xs }}>
                 <Text style={styles.subLabel}>Logo</Text>
-                <Pressable style={styles.logoBox} onPress={handlePickLogo} disabled={uploadingLogo}>
+                <Pressable
+                  style={styles.logoBox}
+                  accessibilityRole="button"
+                  accessibilityLabel="Changer le logo"
+                  aria-disabled={uploadingLogo} aria-busy={uploadingLogo}
+                  onPress={handlePickLogo}
+                  disabled={uploadingLogo}
+                >
                   {uploadingLogo ? (
                     <ActivityIndicator color={colors.lave} size="small" />
                   ) : logoUrl ? (
@@ -590,7 +581,7 @@ export default function EstablishmentScreen() {
                     // désormais la charte comme les quatre autres.
                     <LogoYaka size={40} plateRadius={20} />
                   )}
-                  <Text style={{ fontSize: 9, color: colors.lave, marginTop: spacing.xs }}>Changer</Text>
+                  <Text style={styles.logoAction}>Changer</Text>
                 </Pressable>
               </View>
               <View style={{ flex: 1 }}>
@@ -605,24 +596,39 @@ export default function EstablishmentScreen() {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                   {photos.map((photo, index) => (
                     <View key={photo.id} style={styles.photoThumbWrap}>
-                      <Pressable onPress={() => setViewerIndex(index)}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Agrandir la photo ${index + 1}`}
+                        onPress={() => setViewerIndex(index)}
+                      >
                         <Image source={{ uri: photo.url }} style={styles.photoThumb} />
                       </Pressable>
-                      <Pressable accessibilityRole="button" accessibilityLabel="Supprimer la photo" style={styles.photoDeleteBtn} onPress={() => handleDeletePhoto(photo)} hitSlop={12}>
-                        <X size={11} color={colors.white} />
-                      </Pressable>
+                      <BoutonIcone
+                        icon={<X size={11} color={colors.white} />}
+                        label={`Supprimer la photo ${index + 1}`}
+                        taille={20}
+                        fond={colors.danger}
+                        bordure={colors.cream}
+                        onPress={() => handleDeletePhoto(photo)}
+                        style={styles.photoDeleteBtn}
+                      />
                     </View>
                   ))}
                   {photos.length < 10 && (
-                    <Pressable style={styles.addPhotoBtn} onPress={handleAddPhoto} disabled={uploadingPhoto}>
+                    <Pressable
+                      style={styles.addPhotoBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ajouter une photo"
+                      aria-disabled={uploadingPhoto} aria-busy={uploadingPhoto}
+                      onPress={handleAddPhoto}
+                      disabled={uploadingPhoto}
+                    >
                       {uploadingPhoto ? (
                         <ActivityIndicator color={colors.faint} size="small" />
                       ) : (
                         <>
                           <Camera size={20} color={colors.faint} />
-                          <Text style={{ fontSize: 10, color: colors.faint, marginTop: spacing.xs, textAlign: 'center' }}>
-                            Ajouter
-                          </Text>
+                          <Text style={styles.addPhotoText}>Ajouter</Text>
                         </>
                       )}
                     </Pressable>
@@ -655,28 +661,43 @@ export default function EstablishmentScreen() {
                 establishmentType={menuCategory === 'menu' ? 'restaurant' : 'site'}
               />
 
-              <Text style={styles.menuPhotoLabel}>{menuSectionTitle}</Text>
+              <Text style={styles.menuPhotoLabel} accessibilityRole="header" aria-level={3}>{menuSectionTitle}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                 {menuPhotos.map((photo, index) => (
                   <View key={photo.id} style={styles.photoThumbWrap}>
-                    <Pressable onPress={() => setMenuViewerIndex(index)}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Agrandir la photo ${index + 1} ${menuPhotoNom}`}
+                      onPress={() => setMenuViewerIndex(index)}
+                    >
                       <Image source={{ uri: photo.url }} style={styles.photoThumb} />
                     </Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Supprimer la photo du menu" style={styles.photoDeleteBtn} onPress={() => handleDeleteMenuPhoto(photo)} hitSlop={12}>
-                      <X size={11} color={colors.white} />
-                    </Pressable>
+                    <BoutonIcone
+                      icon={<X size={11} color={colors.white} />}
+                      label={`Supprimer la photo ${index + 1} ${menuPhotoNom}`}
+                      taille={20}
+                      fond={colors.danger}
+                      bordure={colors.cream}
+                      onPress={() => handleDeleteMenuPhoto(photo)}
+                      style={styles.photoDeleteBtn}
+                    />
                   </View>
                 ))}
                 {menuPhotos.length < 10 && (
-                  <Pressable style={styles.addPhotoBtn} onPress={handleAddMenuPhoto} disabled={uploadingMenuPhoto}>
+                  <Pressable
+                    style={styles.addPhotoBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ajouter une photo ${menuPhotoNom}`}
+                    aria-disabled={uploadingMenuPhoto} aria-busy={uploadingMenuPhoto}
+                    onPress={handleAddMenuPhoto}
+                    disabled={uploadingMenuPhoto}
+                  >
                     {uploadingMenuPhoto ? (
                       <ActivityIndicator color={colors.faint} size="small" />
                     ) : (
                       <>
                         <Camera size={20} color={colors.faint} />
-                        <Text style={{ fontSize: 10, color: colors.faint, marginTop: spacing.xs, textAlign: 'center' }}>
-                          Ajouter
-                        </Text>
+                        <Text style={styles.addPhotoText}>Ajouter</Text>
                       </>
                     )}
                   </Pressable>
@@ -692,21 +713,21 @@ export default function EstablishmentScreen() {
           {/* Infos générales */}
           <View style={styles.card}>
             <CardTitle icon={<Info {...SECTION_ICON} />} label="Informations générales" />
-            <Field label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
-            <Field label="Description" value={description} onChange={setDescription}
-              placeholder="Décrivez votre établissement en quelques phrases..." multiline />
+            <FormField label="Nom de l'établissement" value={name} onChange={setName} placeholder="Ex : Hôtel Wenge" />
+            <FormField label="Description" value={description} onChange={setDescription}
+              placeholder="Décrivez votre établissement en quelques phrases..." multiline lines={4} />
           </View>
 
           {/* Contact */}
           <View style={styles.card}>
             <CardTitle icon={<Contact {...SECTION_ICON} />} label="Contact & Réseaux sociaux" />
             <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="Téléphone" value={phone} onChange={setPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" /></View>
-              <View style={{ flex: 1 }}><Field label="Email" value={email} onChange={setEmail} placeholder="contact@exemple.cd" keyboardType="email-address" /></View>
+              <View style={{ flex: 1 }}><FormField label="Téléphone" value={phone} onChange={setPhone} placeholder="+243 8xx xxx xxx" keyboardType="phone-pad" autoComplete="tel" /></View>
+              <View style={{ flex: 1 }}><FormField label="Email" value={email} onChange={setEmail} placeholder="contact@exemple.cd" keyboardType="email-address" autoComplete="email" autoCapitalize="none" /></View>
             </View>
             <View style={styles.row}>
-              <View style={{ flex: 1 }}><Field label="Instagram" value={instagram} onChange={setInstagram} placeholder="@votre_compte" /></View>
-              <View style={{ flex: 1 }}><Field label="TikTok" value={tiktok} onChange={setTiktok} placeholder="@votre_compte" /></View>
+              <View style={{ flex: 1 }}><FormField label="Instagram" value={instagram} onChange={setInstagram} placeholder="@votre_compte" /></View>
+              <View style={{ flex: 1 }}><FormField label="TikTok" value={tiktok} onChange={setTiktok} placeholder="@votre_compte" /></View>
             </View>
           </View>
 
@@ -717,34 +738,38 @@ export default function EstablishmentScreen() {
               <View style={styles.fieldWrap}>
                 <Text style={styles.fieldLabel}>Commune</Text>
                 {isUnknownCommune && (
-                  <View style={styles.communeWarning}>
+                  <View style={styles.communeWarning} accessibilityRole="alert" accessibilityLiveRegion="polite">
                     <Text style={styles.communeWarningText}>
                       Valeur actuelle non reconnue : « {commune} ».{'\n'}Sélectionnez une commune pour mettre à jour cette information.
                     </Text>
                   </View>
                 )}
-                <View style={styles.amenitiesGrid}>
+                <View style={styles.amenitiesGrid} accessibilityRole="radiogroup" accessibilityLabel="Commune">
                   {subdivisions.all.map(c => {
                     const active = commune === c;
                     return (
                       <Pressable
                         key={c}
-                        style={[styles.communeChip, active && styles.communeChipActive]}
+                        style={styles.chipZone}
+                        accessibilityRole="radio"
+                        aria-checked={active}
                         onPress={() => setCommune(c)}
                       >
-                        <Text style={[styles.communeChipText, active && styles.communeChipTextActive]}>{c}</Text>
+                        <View style={[styles.communeChip, active && styles.communeChipActive]}>
+                          <Text style={[styles.communeChipText, active && styles.communeChipTextActive]}>{c}</Text>
+                        </View>
                       </Pressable>
                     );
                   })}
                 </View>
               </View>
             )}
-            <Field label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
+            <FormField label="Quartier" value={neighborhood} onChange={setNeighborhood} placeholder="Ex : Centre-ville" />
             <View style={styles.row}>
-              <View style={{ flex: 2 }}><Field label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
-              <View style={{ flex: 1 }}><Field label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
+              <View style={{ flex: 2 }}><FormField label="Avenue" value={avenue} onChange={setAvenue} placeholder="Ex : Roi Baudouin" /></View>
+              <View style={{ flex: 1 }}><FormField label="Numéro" value={numero} onChange={setNumero} placeholder="Ex : 14" /></View>
             </View>
-            <Field label="Référence / point de repère" value={reference} onChange={setReference}
+            <FormField label="Référence / point de repère" value={reference} onChange={setReference}
               placeholder="Ex : En face de la Banque Centrale" />
           </View>
 
@@ -756,10 +781,14 @@ export default function EstablishmentScreen() {
                 const active = amenities.includes(a);
                 return (
                   <Pressable key={a}
-                    style={[styles.amenityChip, active && styles.amenityChipActive]}
+                    style={styles.chipZone}
+                    accessibilityRole="checkbox"
+                    aria-checked={active}
                     onPress={() => toggleAmenity(a)}>
-                    {active && <Check size={11} color={colors.success} />}
-                    <Text style={[styles.amenityText, active && styles.amenityTextActive]}>{a}</Text>
+                    <View style={[styles.amenityChip, active && styles.amenityChipActive]}>
+                      {active && <Check size={11} color={colors.success} />}
+                      <Text style={[styles.amenityText, active && styles.amenityTextActive]}>{a}</Text>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -774,10 +803,10 @@ export default function EstablishmentScreen() {
             </Text>
             <View style={styles.row}>
               <View style={{ flex: 1 }}>
-                <Field label="Réduction (%)" value={discountPercent} onChange={setDiscountPercent} placeholder="Ex : 20" keyboardType="decimal-pad" />
+                <FormField label="Réduction (%)" value={discountPercent} onChange={setDiscountPercent} placeholder="Ex : 20" keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 2 }}>
-                <Field label="Libellé (optionnel)" value={discountLabel} onChange={setDiscountLabel} placeholder="Ex : Happy hour -20%" />
+                <FormField label="Libellé (optionnel)" value={discountLabel} onChange={setDiscountLabel} placeholder="Ex : Happy hour -20%" />
               </View>
             </View>
           </View>
@@ -790,7 +819,7 @@ export default function EstablishmentScreen() {
                 Tant qu'ils sont vides, l'établissement n'est pas réservable —
                 il faut le dire ici, pas le laisser découvrir. */}
             {!hoursPublished && (
-              <View style={styles.hoursWarning}>
+              <View style={styles.hoursWarning} accessibilityRole="alert" accessibilityLiveRegion="polite">
                 <AlertTriangle size={14} color={colors.warning} strokeWidth={2} />
                 <Text style={styles.hoursWarningText}>
                   {needsSlots
@@ -800,7 +829,12 @@ export default function EstablishmentScreen() {
               </View>
             )}
 
-            <Pressable style={styles.hoursToggleRow} onPress={() => setAlwaysOpen(v => !v)}>
+            <Pressable
+              style={styles.hoursToggleRow}
+              accessibilityRole="checkbox"
+              aria-checked={alwaysOpen}
+              onPress={() => setAlwaysOpen(v => !v)}
+            >
               <View style={[styles.checkbox, alwaysOpen && styles.checkboxOn]}>
                 {alwaysOpen && <Check size={12} color={colors.cream} strokeWidth={2.5} />}
               </View>
@@ -809,7 +843,7 @@ export default function EstablishmentScreen() {
 
             {!alwaysOpen && (
               <>
-                <Pressable style={styles.applyAllBtn} onPress={applyMondayToAll}>
+                <Pressable style={styles.applyAllBtn} accessibilityRole="button" onPress={applyMondayToAll}>
                   <Text style={styles.applyAllText}>Appliquer lundi à tous les jours</Text>
                 </Pressable>
 
@@ -818,7 +852,14 @@ export default function EstablishmentScreen() {
                   const isOpen = !!dh;
                   return (
                     <View key={d.key} style={styles.dayRow}>
-                      <Pressable style={styles.dayToggle} onPress={() => toggleDay(d.key)}>
+                      {/* Le nom du jour seul ne dit pas ce que la case coche. */}
+                      <Pressable
+                        style={styles.dayToggle}
+                        accessibilityRole="checkbox"
+                        accessibilityLabel={`${d.label} : ouvert`}
+                        aria-checked={isOpen}
+                        onPress={() => toggleDay(d.key)}
+                      >
                         <View style={[styles.checkbox, isOpen && styles.checkboxOn]}>
                           {isOpen && <Check size={12} color={colors.cream} strokeWidth={2.5} />}
                         </View>
@@ -836,8 +877,9 @@ export default function EstablishmentScreen() {
                             maxLength={5}
                             keyboardType="number-pad"
                             selectTextOnFocus
+                            accessibilityLabel={`${d.label}, heure d'ouverture`}
                           />
-                          <Text style={styles.timeSeparator}>→</Text>
+                          <Text style={styles.timeSeparator} aria-hidden>→</Text>
                           <TextInput
                             style={styles.timeInput}
                             value={dh!.to}
@@ -847,6 +889,7 @@ export default function EstablishmentScreen() {
                             maxLength={5}
                             keyboardType="number-pad"
                             selectTextOnFocus
+                            accessibilityLabel={`${d.label}, heure de fermeture`}
                           />
                         </View>
                       ) : (
@@ -877,10 +920,12 @@ export default function EstablishmentScreen() {
           </View>
 
 
-          <Pressable style={[styles.saveBtnFull, saving && { opacity: 0.7 }]} onPress={handleSave} disabled={saving}>
-            {saving ? <ActivityIndicator color={colors.cream} /> :
-             <><Save size={16} color={colors.cream} /><Text style={styles.saveBtnFullText}>Sauvegarder les modifications</Text></>}
-          </Pressable>
+          <Button
+            label="Sauvegarder les modifications"
+            onPress={handleSave}
+            loading={saving}
+            icon={<Save size={16} color={colors.cream} />}
+          />
         </ScrollView>
 
         {/* Visionneuse plein écran : photos générales */}
@@ -891,13 +936,16 @@ export default function EstablishmentScreen() {
           onRequestClose={() => setViewerIndex(null)}
         >
           <View style={styles.viewerOverlay}>
-            <View style={styles.viewerHeader}>
+            <View style={[styles.viewerHeader, { paddingTop: haut }]}>
               <Text style={styles.viewerCounter}>
                 {viewerIndex !== null ? `${viewerIndex + 1} / ${photos.length}` : ''}
               </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie" onPress={() => setViewerIndex(null)} hitSlop={12}>
-                <X size={22} color={colors.white} />
-              </Pressable>
+              <BoutonIcone
+                icon={<X size={22} color={colors.white} />}
+                label="Fermer la galerie"
+                taille={22}
+                onPress={() => setViewerIndex(null)}
+              />
             </View>
 
             <View style={styles.viewerImageWrap}>
@@ -906,12 +954,14 @@ export default function EstablishmentScreen() {
                   source={{ uri: currentViewerPhoto.url }}
                   style={{ width: '100%', height: '100%' }}
                   resizeMode="contain"
+                  accessibilityLabel={`Photo ${(viewerIndex ?? 0) + 1} sur ${photos.length}`}
                 />
               )}
             </View>
 
-            <View style={styles.viewerFooter}>
+            <View style={[styles.viewerFooter, { paddingBottom: bas }]}>
               <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
+                aria-disabled={viewerIndex === 0}
                 style={[styles.viewerNavBtn, viewerIndex === 0 && styles.viewerNavBtnDisabled]}
                 onPress={() => setViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
                 disabled={viewerIndex === 0}
@@ -922,6 +972,8 @@ export default function EstablishmentScreen() {
 
               <Pressable
                 style={styles.viewerDeleteBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Supprimer cette photo"
                 onPress={() => currentViewerPhoto && handleDeletePhoto(currentViewerPhoto)}
               >
                 <Trash2 size={15} color={colors.white} />
@@ -929,6 +981,7 @@ export default function EstablishmentScreen() {
               </Pressable>
 
               <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
+                aria-disabled={viewerIndex === photos.length - 1}
                 style={[styles.viewerNavBtn, viewerIndex === photos.length - 1 && styles.viewerNavBtnDisabled]}
                 onPress={() => setViewerIndex(i => (i !== null && i < photos.length - 1 ? i + 1 : i))}
                 disabled={viewerIndex === photos.length - 1}
@@ -948,13 +1001,16 @@ export default function EstablishmentScreen() {
           onRequestClose={() => setMenuViewerIndex(null)}
         >
           <View style={styles.viewerOverlay}>
-            <View style={styles.viewerHeader}>
+            <View style={[styles.viewerHeader, { paddingTop: haut }]}>
               <Text style={styles.viewerCounter}>
                 {menuViewerIndex !== null ? `${menuViewerIndex + 1} / ${menuPhotos.length}` : ''}
               </Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie du menu" onPress={() => setMenuViewerIndex(null)} hitSlop={12}>
-                <X size={22} color={colors.white} />
-              </Pressable>
+              <BoutonIcone
+                icon={<X size={22} color={colors.white} />}
+                label="Fermer la galerie du menu"
+                taille={22}
+                onPress={() => setMenuViewerIndex(null)}
+              />
             </View>
 
             <View style={styles.viewerImageWrap}>
@@ -963,12 +1019,14 @@ export default function EstablishmentScreen() {
                   source={{ uri: currentMenuViewerPhoto.url }}
                   style={{ width: '100%', height: '100%' }}
                   resizeMode="contain"
+                  accessibilityLabel={`Photo ${(menuViewerIndex ?? 0) + 1} sur ${menuPhotos.length} ${menuPhotoNom}`}
                 />
               )}
             </View>
 
-            <View style={styles.viewerFooter}>
+            <View style={[styles.viewerFooter, { paddingBottom: bas }]}>
               <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
+                aria-disabled={menuViewerIndex === 0}
                 style={[styles.viewerNavBtn, menuViewerIndex === 0 && styles.viewerNavBtnDisabled]}
                 onPress={() => setMenuViewerIndex(i => (i !== null && i > 0 ? i - 1 : i))}
                 disabled={menuViewerIndex === 0}
@@ -979,6 +1037,8 @@ export default function EstablishmentScreen() {
 
               <Pressable
                 style={styles.viewerDeleteBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Supprimer cette photo"
                 onPress={() => currentMenuViewerPhoto && handleDeleteMenuPhoto(currentMenuViewerPhoto)}
               >
                 <Trash2 size={15} color={colors.white} />
@@ -986,6 +1046,7 @@ export default function EstablishmentScreen() {
               </Pressable>
 
               <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
+                aria-disabled={menuViewerIndex === menuPhotos.length - 1}
                 style={[styles.viewerNavBtn, menuViewerIndex === menuPhotos.length - 1 && styles.viewerNavBtnDisabled]}
                 onPress={() => setMenuViewerIndex(i => (i !== null && i < menuPhotos.length - 1 ? i + 1 : i))}
                 disabled={menuViewerIndex === menuPhotos.length - 1}
@@ -1005,17 +1066,23 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.v12, backgroundColor: colors.cream },
   emptyText: { ...typography.body, color: colors.muted, },
+  // Le retrait haut est ajouté à l'appel : il dépend de l'appareil (zone sûre).
   header: {
-    backgroundColor: colors.lave, paddingTop: Platform.OS === 'ios' ? 56 : 24,
+    backgroundColor: colors.lave,
     paddingBottom: spacing.md,
   },
   headerInner: {
     maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.gutter, gap: spacing.v12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
+  // Sans `flex`, le sous-titre poussait le bouton hors d'un écran étroit.
+  headerText: { flex: 1 },
   headerTitle: { ...typography.titleSm, color: colors.cream, },
-  headerSub: { ...typography.captionSm, color: 'rgba(250,248,244,0.7)', marginTop: spacing.v2, },
+  headerSub: { ...typography.captionSm, color: colors.onBrandMuted, marginTop: spacing.v2, },
+  // Zone tactile de 44 px autour du bouton dessiné, qui garde sa taille. La
+  // marge négative rend le surplus : l'en-tête ne grandit pas.
+  saveZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -spacing.xs },
   saveBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radii.sm,
@@ -1024,9 +1091,13 @@ const styles = StyleSheet.create({
   saveBtnText: { ...typography.caption, color: colors.cream, },
   content: { maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center', padding: spacing.md, gap: spacing.v12, paddingBottom: 40 },
   statsRow: { flexDirection: 'row', gap: spacing.sm },
-  statCard: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
-  statVal: { ...typography.titleLg, },
-  statLabel: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  statCard: { flex: 1 },
+  priceCard: {
+    flex: 1, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder,
+    borderRadius: radii.md, padding: spacing.v12, gap: spacing.v2,
+  },
+  priceVal: { fontFamily: fonts.sansSemiBold, fontSize: 15, color: colors.warning },
+  priceLabel: { ...typography.captionSm, color: colors.warning },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.v12, },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.v12 },
@@ -1036,7 +1107,7 @@ const styles = StyleSheet.create({
     ...typography.badgeSm, color: colors.faint,
     marginTop: spacing.lg, marginBottom: spacing.sm,
   },
-  hoursToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
+  hoursToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, minHeight: cible.min },
   hoursWarning: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm,
     backgroundColor: colors.warningSoft, borderRadius: radii.sm,
@@ -1049,19 +1120,22 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: colors.lave, borderColor: colors.lave },
-  applyAllBtn: { alignSelf: 'flex-start', paddingVertical: spacing.sm },
+  applyAllBtn: { alignSelf: 'flex-start', paddingVertical: spacing.sm, minHeight: cible.min, justifyContent: 'center' },
   applyAllText: { ...typography.caption, color: colors.lave, textDecorationLine: 'underline' },
+  // La case et les deux champs font 44 px de haut ; le retrait vertical de la
+  // ligne est réduit d'autant, pour qu'un jour ouvert garde sa hauteur.
   dayRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingVertical: spacing.xs, borderTopWidth: 1, borderTopColor: colors.border,
   },
-  dayToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+  dayToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1, minHeight: cible.min },
   dayLabel: { ...typography.body, color: colors.ink },
   dayTimes: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   timeInput: {
     ...typography.caption, color: colors.ink, textAlign: 'center',
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, width: 66,
+    minHeight: cible.min,
   },
   timeSeparator: { ...typography.caption, color: colors.faint },
   dayClosed: { ...typography.caption, color: colors.faint },
@@ -1070,46 +1144,47 @@ const styles = StyleSheet.create({
   consignePhoto: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, marginBottom: spacing.sm, lineHeight: 15 },
   logoBox: { width: 70, height: 70, borderRadius: radii.md, backgroundColor: colors.laveSoft, borderWidth: 1, borderColor: colors.laveBorder, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: '100%', height: '100%', borderRadius: radii.md },
+  logoAction: { ...typography.captionSm, color: colors.lave, marginTop: spacing.xs },
   addPhotoBtn: { width: 72, height: 72, borderRadius: radii.md, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  addPhotoText: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, textAlign: 'center' },
   photoThumbWrap: { width: 72, height: 72, borderRadius: radii.md, overflow: 'visible', position: 'relative' },
   photoThumb: { width: 72, height: 72, borderRadius: radii.md, backgroundColor: colors.surfaceSunken },
-  photoDeleteBtn: {
-    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: radii.md,
-    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.cream,
-  },
+  // Position de la pastille ; son dessin et sa zone tactile viennent de BoutonIcone.
+  photoDeleteBtn: { position: 'absolute', top: -6, right: -6 },
   hint: { ...typography.captionSm, color: colors.faint, marginTop: spacing.sm, },
   promoHint: { ...typography.captionSm, color: colors.muted, marginBottom: spacing.v12, },
   row: { flexDirection: 'row', gap: spacing.v12 },
+  // Libellé d'un groupe de choix : mêmes valeurs que celui de FormField, pour
+  // qu'il ne se distingue pas des champs voisins.
   fieldWrap: { marginBottom: spacing.v12 },
-  fieldLabel: { ...typography.captionMd, color: colors.muted, marginBottom: spacing.xs, },
-  fieldInput: { ...typography.bodySm, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, color: colors.ink, },
-  fieldInputMulti: { height: 80, textAlignVertical: 'top' },
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
   amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Zone tactile de 44 px autour d'une pastille qui garde sa taille ; la marge
+  // négative empêche les rangées de s'écarter d'autant.
+  chipZone: { minHeight: cible.min, minWidth: cible.min, justifyContent: 'center', marginVertical: -spacing.xs },
   amenityChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm },
   amenityChipActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   amenityText: { ...typography.captionSm, color: colors.muted, },
-  amenityTextActive: { color: colors.success, fontWeight: '500' },
+  amenityTextActive: { color: colors.success, fontFamily: fonts.sansMedium },
   communeChip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   communeChipActive: { backgroundColor: colors.laveSoft, borderColor: colors.lave },
   communeChipText: { ...typography.captionSm, color: colors.muted, },
-  communeChipTextActive: { color: colors.lave, fontWeight: '500' },
+  communeChipTextActive: { color: colors.lave, fontFamily: fonts.sansMedium },
   communeWarning: { backgroundColor: colors.orSoft, borderRadius: radii.sm, padding: spacing.v12, marginBottom: spacing.v12 },
   communeWarningText: { ...typography.captionSm, color: colors.or, },
-  saveBtnFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.v12, marginTop: spacing.xs },
-  saveBtnFullText: { ...typography.sheetOption, color: colors.cream, },
 
-  // Visionneuse plein écran
-  viewerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.94)' },
+  // Visionneuse plein écran. Les retraits haut et bas sont ajoutés à l'appel
+  // (zone sûre de l'appareil).
+  viewerOverlay: { flex: 1, backgroundColor: colors.nuit },
   viewerHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 24, paddingHorizontal: 18, paddingBottom: spacing.v12,
+    paddingHorizontal: spacing.gutter, paddingBottom: spacing.v12,
   },
   viewerCounter: { ...typography.pillLabel, color: colors.white, },
   viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v12 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: spacing.v12,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.v12,
   },
   viewerNavBtn: {
     width: 44, height: 44, borderRadius: radii.lg,
@@ -1118,7 +1193,7 @@ const styles = StyleSheet.create({
   viewerNavBtnDisabled: { opacity: 0.3 },
   viewerDeleteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: 'rgba(192,57,43,0.9)', borderRadius: radii.md,
+    backgroundColor: colors.danger, borderRadius: radii.md, minHeight: cible.min,
     paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   viewerDeleteText: { ...typography.pillLabel, color: colors.white, },

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, useWindowDimensions,
+  TextInput, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import {
@@ -10,10 +10,13 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import { useConfirm } from '../../lib/confirm-context';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
+import { colors, categoryColors, typography, radii, spacing, fonts, cible } from '../../lib/theme';
 import type { Establishment, EstablishmentType, EstablishmentWarning, Profile } from '../../lib/types';
 import { useAdminResponsive } from '../../lib/responsive';
+import StatCard from '../../components/StatCard';
+import { etatBascule } from '../../lib/a11y';
 
 type CategoryFilter = EstablishmentType | 'all';
 type StatusFilter = 'all' | 'active' | 'suspended';
@@ -49,6 +52,7 @@ interface Stats {
 
 export default function EstablishmentsScreen() {
   const { profile: currentAdmin } = useAuth();
+  const confirm = useConfirm();
   // Largeur utile, barre laterale de l'admin deduite : la fenetre seule
   // faisait croire a une vue bureau alors que le detail etait ecrase.
   const { isMobile } = useAdminResponsive();
@@ -185,35 +189,37 @@ export default function EstablishmentsScreen() {
 
   async function handleReactivate() {
     if (!selected || !currentAdmin?.id) return;
-    Alert.alert('Réactiver cet établissement', `${selected.name} redeviendra visible dans l'app.`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Réactiver', onPress: async () => {
-        setProcessing(true);
-        const reactive = await ecrire(
-          supabase.from('establishments').update({ suspended_at: null, suspension_reason: null }).eq('id', selected.id),
-          'Réactivation',
-        );
-        if (!reactive) { setProcessing(false); return; }
-        await supabase.from('admin_activity_log').insert({
-          actor_id: currentAdmin.id,
-          action: 'establishment_reactivated',
-          target_type: 'establishment',
-          target_id: selected.id,
-          details: { establishment_name: selected.name },
-        });
-        setProcessing(false);
-        const updated = { ...selected, suspended_at: null, suspension_reason: null };
-        setSelected(updated);
-        fetchList();
-      }},
-    ]);
+    const ok = await confirm({
+      title: 'Réactiver cet établissement ?',
+      message: `${selected.name} redeviendra visible dans l'application.`,
+      confirmLabel: 'Réactiver',
+    });
+    if (!ok) return;
+
+    setProcessing(true);
+    const reactive = await ecrire(
+      supabase.from('establishments').update({ suspended_at: null, suspension_reason: null }).eq('id', selected.id),
+      'Réactivation',
+    );
+    if (!reactive) { setProcessing(false); return; }
+    await supabase.from('admin_activity_log').insert({
+      actor_id: currentAdmin.id,
+      action: 'establishment_reactivated',
+      target_type: 'establishment',
+      target_id: selected.id,
+      details: { establishment_name: selected.name },
+    });
+    setProcessing(false);
+    const updated = { ...selected, suspended_at: null, suspension_reason: null };
+    setSelected(updated);
+    fetchList();
   }
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Établissements</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Établissements</Text>
           <Text style={styles.headerSub}>{establishments.length} établissement{establishments.length !== 1 ? 's' : ''}</Text>
         </View>
         <View style={styles.searchBox}>
@@ -224,26 +230,57 @@ export default function EstablishmentsScreen() {
             onChangeText={setQuery}
             placeholder="Rechercher par nom..."
             placeholderTextColor={colors.faint}
+            accessibilityLabel="Rechercher un établissement par nom"
           />
         </View>
       </View>
 
       <View style={styles.filtersRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-          {CATEGORY_FILTERS.map(f => (
-            <Pressable key={f.key} style={[styles.pill, categoryFilter === f.key && styles.pillActive]} onPress={() => setCategoryFilter(f.key)}>
-              <Text style={[styles.pillText, categoryFilter === f.key && styles.pillTextActive]}>{f.label}</Text>
-            </Pressable>
-          ))}
+        {/* La pastille visible garde sa taille ; c'est la zone qui l'entoure
+            qui atteint 44 px. Dans la rangée défilante, la marge négative est
+            portée par la rangée : posée sur les zones, elle serait rognée. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.pillScroll}
+          contentContainerStyle={{ gap: spacing.sm }}
+        >
+          {CATEGORY_FILTERS.map(f => {
+            const actif = categoryFilter === f.key;
+            return (
+              <Pressable
+                key={f.key}
+                style={styles.pillZone}
+                accessibilityRole="button"
+                {...etatBascule(actif)}
+                onPress={() => setCategoryFilter(f.key)}
+              >
+                <View style={[styles.pill, actif && styles.pillActive]}>
+                  <Text style={[styles.pillText, actif && styles.pillTextActive]}>{f.label}</Text>
+                </View>
+              </Pressable>
+            );
+          })}
         </ScrollView>
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          {(['all', 'active', 'suspended'] as StatusFilter[]).map(s => (
-            <Pressable key={s} style={[styles.pill, statusFilter === s && styles.pillActive]} onPress={() => setStatusFilter(s)}>
-              <Text style={[styles.pillText, statusFilter === s && styles.pillTextActive]}>
-                {s === 'all' ? 'Tous statuts' : s === 'active' ? 'Actifs' : 'Suspendus'}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.pillRow}>
+          {(['all', 'active', 'suspended'] as StatusFilter[]).map(s => {
+            const actif = statusFilter === s;
+            return (
+              <Pressable
+                key={s}
+                style={styles.pillZone}
+                accessibilityRole="button"
+                {...etatBascule(actif)}
+                onPress={() => setStatusFilter(s)}
+              >
+                <View style={[styles.pill, actif && styles.pillActive]}>
+                  <Text style={[styles.pillText, actif && styles.pillTextActive]}>
+                    {s === 'all' ? 'Tous statuts' : s === 'active' ? 'Actifs' : 'Suspendus'}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -258,11 +295,11 @@ export default function EstablishmentsScreen() {
                 <Pressable
                   key={e.id}
                   style={[styles.listCard, selected?.id === e.id && styles.listCardActive, e.suspended_at && styles.listCardSuspended]}
+                  accessibilityRole="button"
+                  {...etatBascule(selected?.id === e.id)}
                   onPress={() => openDetail(e)}
                 >
-                  <View style={[styles.listIcon, { backgroundColor: categoryColors[e.type]?.soft ?? colors.laveSoft }]}>
-                    <TypeIcon type={e.type} />
-                  </View>
+                  <TypeIcon type={e.type} />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.listName} numberOfLines={1}>{e.name}</Text>
                     <Text style={styles.listMeta}>{TYPE_LABELS[e.type]} · {e.neighborhood ?? e.city}</Text>
@@ -274,7 +311,8 @@ export default function EstablishmentsScreen() {
                       <View style={styles.activeBadge}><Text style={styles.activeText}>Actif</Text></View>
                     )}
                     {e.warning_count > 0 && (
-                      <View style={styles.warningBadge}>
+                      // Le chiffre seul ne dit pas ce qu'il compte.
+                      <View style={styles.warningBadge} accessible accessibilityLabel={`${e.warning_count} avertissement${e.warning_count > 1 ? 's' : ''}`}>
                         <AlertTriangle size={9} color={colors.warning} />
                         <Text style={styles.warningBadgeText}>{e.warning_count}</Text>
                       </View>
@@ -297,17 +335,15 @@ export default function EstablishmentsScreen() {
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.v20 }}>
               {isMobile && (
-                <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
+                <Pressable style={styles.backToListBtn} accessibilityRole="button" onPress={() => setSelected(null)}>
                   <ArrowLeft size={15} color={colors.lave} />
                   <Text style={styles.backToListText}>Retour à la liste</Text>
                 </Pressable>
               )}
               <View style={styles.detailHeader}>
-                <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.type]?.soft ?? colors.laveSoft }]}>
-                  <TypeIcon type={selected.type} size={22} />
-                </View>
+                <TypeIcon type={selected.type} size={22} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.detailName}>{selected.name}</Text>
+                  <Text style={styles.detailName} accessibilityRole="header" aria-level={2}>{selected.name}</Text>
                   <Text style={styles.detailMeta}>{TYPE_LABELS[selected.type]} · {selected.neighborhood ?? selected.city}</Text>
                 </View>
                 {selected.suspended_at ? (
@@ -325,12 +361,19 @@ export default function EstablishmentsScreen() {
               )}
 
               {/* Stats */}
-              <Text style={styles.sectionLabel}>Statistiques</Text>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Statistiques</Text>
               <View style={styles.statsGrid}>
-                <View style={styles.statBox}><Text style={styles.statValue}>{stats?.pending ?? 0}</Text><Text style={styles.statLabel}>En attente</Text></View>
-                <View style={styles.statBox}><Text style={[styles.statValue, { color: colors.success }]}>{stats?.confirmed ?? 0}</Text><Text style={styles.statLabel}>Confirmées</Text></View>
-                <View style={styles.statBox}><Text style={styles.statValue}>{stats?.checkedIn ?? 0}</Text><Text style={styles.statLabel}>Check-ins</Text></View>
-                <View style={styles.statBox}>
+                <StatCard style={styles.statCell} align="center" value={stats?.pending ?? 0} label="En attente" />
+                <StatCard style={styles.statCell} align="center" couleur={colors.success} value={stats?.confirmed ?? 0} label="Confirmées" />
+                <StatCard style={styles.statCell} align="center" value={stats?.checkedIn ?? 0} label="Check-ins" />
+                {/* Carte locale, alignée sur ses voisines : StatCard pose son
+                    icône au-dessus du chiffre, alors qu'ici l'étoile se lit sur
+                    la même ligne que la note. */}
+                <View
+                  style={styles.statBox}
+                  accessible
+                  accessibilityLabel={`Note moyenne : ${stats?.avgRating ? stats.avgRating.toFixed(1) : 'aucune'}, ${stats?.reviewCount ?? 0} avis`}
+                >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.v2 }}>
                     <Star size={13} color={colors.warning} fill={colors.warning} />
                     <Text style={styles.statValue}>{stats?.avgRating ? stats.avgRating.toFixed(1) : '—'}</Text>
@@ -340,9 +383,9 @@ export default function EstablishmentsScreen() {
               </View>
 
               {/* Propriétaire */}
-              <Text style={styles.sectionLabel}>Propriétaire</Text>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Propriétaire</Text>
               <View style={styles.ownerCard}>
-                <View style={styles.ownerAvatar}><UserIcon size={14} color={colors.lave} /></View>
+                <UserIcon size={16} color={colors.lave} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.ownerName}>{owner?.full_name ?? 'Inconnu'}</Text>
                   <Text style={styles.ownerContact}>{owner?.email ?? owner?.phone ?? '—'}</Text>
@@ -351,7 +394,7 @@ export default function EstablishmentsScreen() {
 
               {/* Avertissements */}
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionLabel}>Avertissements ({warnings.length})</Text>
+                <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Avertissements ({warnings.length})</Text>
               </View>
               {warnings.length === 0 ? (
                 <Text style={styles.emptyInlineText}>Aucun avertissement émis.</Text>
@@ -372,17 +415,17 @@ export default function EstablishmentsScreen() {
               {/* Actions */}
               {!warningMode && !suspendMode && (
                 <View style={styles.actionsRow}>
-                  <Pressable style={styles.warnBtn} onPress={() => setWarningMode(true)}>
+                  <Pressable style={styles.warnBtn} accessibilityRole="button" onPress={() => setWarningMode(true)}>
                     <AlertTriangle size={14} color={colors.warning} />
                     <Text style={styles.warnBtnText}>Avertir</Text>
                   </Pressable>
                   {selected.suspended_at ? (
-                    <Pressable style={styles.reactivateBtn} onPress={handleReactivate}>
+                    <Pressable style={styles.reactivateBtn} accessibilityRole="button" onPress={handleReactivate}>
                       <CheckCircle size={14} color={colors.success} />
                       <Text style={styles.reactivateBtnText}>Réactiver</Text>
                     </Pressable>
                   ) : (
-                    <Pressable style={styles.suspendBtn} onPress={() => setSuspendMode(true)}>
+                    <Pressable style={styles.suspendBtn} accessibilityRole="button" onPress={() => setSuspendMode(true)}>
                       <Ban size={14} color={colors.danger} />
                       <Text style={styles.suspendBtnText}>Suspendre</Text>
                     </Pressable>
@@ -400,12 +443,21 @@ export default function EstablishmentsScreen() {
                     placeholder="Ex : réponses tardives aux réservations, informations inexactes..."
                     placeholderTextColor={colors.faint}
                     multiline
+                    accessibilityLabel="Motif de l'avertissement"
                   />
                   <View style={styles.actionsRow}>
-                    <Pressable style={[styles.confirmWarnBtn, (!warningReason.trim() || processing) && { opacity: 0.5 }]} onPress={handleSendWarning} disabled={!warningReason.trim() || processing}>
+                    <Pressable
+                      style={[styles.confirmWarnBtn, (!warningReason.trim() || processing) && { opacity: 0.5 }]}
+                      // Libellé répété : le texte laisse place à l'indicateur pendant l'envoi.
+                      accessibilityRole="button"
+                      accessibilityLabel="Envoyer l'avertissement"
+                      aria-disabled={!warningReason.trim() || processing} aria-busy={processing}
+                      onPress={handleSendWarning}
+                      disabled={!warningReason.trim() || processing}
+                    >
                       {processing ? <ActivityIndicator color={colors.cream} size="small" /> : <Text style={styles.confirmBtnText}>Envoyer l'avertissement</Text>}
                     </Pressable>
-                    <Pressable style={styles.cancelBtn} onPress={() => setWarningMode(false)}>
+                    <Pressable style={styles.cancelBtn} accessibilityRole="button" onPress={() => setWarningMode(false)}>
                       <Text style={styles.cancelBtnText}>Annuler</Text>
                     </Pressable>
                   </View>
@@ -422,12 +474,20 @@ export default function EstablishmentsScreen() {
                     placeholder="Ex : non-respect répété des conditions, plaintes multiples..."
                     placeholderTextColor={colors.faint}
                     multiline
+                    accessibilityLabel="Motif de la suspension"
                   />
                   <View style={styles.actionsRow}>
-                    <Pressable style={[styles.confirmSuspendBtn, processing && { opacity: 0.5 }]} onPress={handleSuspend} disabled={processing}>
+                    <Pressable
+                      style={[styles.confirmSuspendBtn, processing && { opacity: 0.5 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Confirmer la suspension"
+                      aria-disabled={processing} aria-busy={processing}
+                      onPress={handleSuspend}
+                      disabled={processing}
+                    >
                       {processing ? <ActivityIndicator color={colors.cream} size="small" /> : <Text style={styles.confirmBtnText}>Confirmer la suspension</Text>}
                     </Pressable>
-                    <Pressable style={styles.cancelBtn} onPress={() => setSuspendMode(false)}>
+                    <Pressable style={styles.cancelBtn} accessibilityRole="button" onPress={() => setSuspendMode(false)}>
                       <Text style={styles.cancelBtnText}>Annuler</Text>
                     </Pressable>
                   </View>
@@ -442,30 +502,42 @@ export default function EstablishmentsScreen() {
   );
 }
 
+// Hauteur d'une pastille de filtre (texte de 15, retraits de 8, filet) : sa
+// zone tactile en fait 44, et le surplus est repris en marge négative pour
+// que la rangée garde sa hauteur.
+const HAUTEUR_PASTILLE = 33;
+const DEBORD_PASTILLE = (cible.min - HAUTEUR_PASTILLE) / 2;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  // La zone sûre est dégagée par le layout de l'admin (bandeau ou marge).
+  header: { paddingTop: spacing.md, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, maxWidth: 260 },
-  searchInput: { ...typography.bodyXs, flex: 1, color: colors.ink, },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField, borderRadius: radii.sm, paddingHorizontal: spacing.v12, minHeight: cible.min, maxWidth: 260 },
+  // La saisie occupe toute la hauteur de la barre (44 px) : un appui n'importe
+  // où dans la barre tombe dans le champ.
+  searchInput: { ...typography.bodyXs, flex: 1, alignSelf: 'stretch', color: colors.ink },
   filtersRow: { paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border, gap: spacing.sm },
+  pillScroll: { flexGrow: 0, marginVertical: -DEBORD_PASTILLE },
+  pillRow: { flexDirection: 'row', gap: spacing.sm, marginVertical: -DEBORD_PASTILLE },
+  pillZone: { minHeight: cible.min, justifyContent: 'center' },
   pill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   pillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   pillText: { ...typography.captionSm, color: colors.muted, },
-  pillTextActive: { color: colors.cream, fontWeight: '500' },
+  pillTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   body: { flex: 1, flexDirection: 'row' },
   bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
   listMobile: { width: '100%', borderRightWidth: 0 },
-  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  // 44 px de zone tactile ; les marges compensent pour que la ligne reste où elle était.
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: cible.min, marginTop: -spacing.v12, marginBottom: spacing.xs },
   backToListText: { ...typography.pillLabel, color: colors.lave, },
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
   listCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   listCardActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
   listCardSuspended: { opacity: 0.7 },
-  listIcon: { width: 32, height: 32, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   activeBadge: { backgroundColor: colors.successSoft, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.v2 },
@@ -478,7 +550,6 @@ const styles = StyleSheet.create({
   detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.v12 },
   detailEmptyText: { ...typography.bodySm, color: colors.muted, },
   detailHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.v12 },
-  detailIcon: { width: 46, height: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   detailName: { ...typography.titleSm, color: colors.ink, },
   detailMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   activeBadgeLg: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.successSoft, borderRadius: radii.pill, paddingHorizontal: spacing.v12, paddingVertical: spacing.xs },
@@ -491,11 +562,13 @@ const styles = StyleSheet.create({
   sectionLabel: { ...typography.captionMd, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: spacing.sm, },
   sectionHeaderRow: { marginTop: spacing.sm },
   statsGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  statBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, alignItems: 'center' },
-  statValue: { ...typography.titleSm, color: colors.ink, },
-  statLabel: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
+  statCell: { flex: 1 },
+  // Mêmes mesures que StatCard, pour que la carte de la note ne se distingue
+  // de ses voisines que par son étoile.
+  statBox: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, alignItems: 'center', gap: spacing.v2 },
+  statValue: { ...typography.titleMd, color: colors.ink, },
+  statLabel: { ...typography.captionSm, color: colors.muted, },
   ownerCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, marginBottom: spacing.md },
-  ownerAvatar: { width: 30, height: 30, borderRadius: radii.v16, backgroundColor: colors.laveSoft, alignItems: 'center', justifyContent: 'center' },
   ownerName: { ...typography.caption, color: colors.ink, },
   ownerContact: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   emptyInlineText: { ...typography.captionSm, color: colors.muted, marginBottom: spacing.v12, },
@@ -503,17 +576,17 @@ const styles = StyleSheet.create({
   warningReason: { ...typography.captionSm, color: colors.ink, },
   warningDate: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2, },
   actionsRow: { flexDirection: 'row', gap: spacing.v12, marginTop: spacing.sm },
-  warnBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  warnBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.warningSoft, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   warnBtnText: { ...typography.caption, color: colors.warning, },
-  suspendBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  suspendBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.dangerBorder, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   suspendBtnText: { ...typography.caption, color: colors.danger, },
-  reactivateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: colors.successBorder, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  reactivateBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.successSoft, borderWidth: 1, borderColor: colors.successBorder, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   reactivateBtnText: { ...typography.caption, color: colors.success, },
   formBox: { marginTop: spacing.xs },
-  textArea: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
-  confirmWarnBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.warning, borderRadius: radii.md, paddingVertical: spacing.v12 },
-  confirmSuspendBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  textArea: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField, borderRadius: radii.md, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
+  confirmWarnBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.warning, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
+  confirmSuspendBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   confirmBtnText: { ...typography.caption, color: colors.cream, },
-  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   cancelBtnText: { ...typography.bodyXs, color: colors.ink, },
 });

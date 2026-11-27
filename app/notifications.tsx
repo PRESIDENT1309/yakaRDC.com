@@ -10,7 +10,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors, typography, radii, spacing } from '../lib/theme';
+import { colors, categoryColors, typography, radii, spacing, fonts, breakpoints } from '../lib/theme';
+import { lienVers } from '../lib/liens';
 import type { Booking, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
 import EmptyState from '../components/EmptyState';
@@ -30,11 +31,11 @@ function TypeIcon({ type }: { type: EstablishmentType }) {
 
 function statusInfo(status: Booking['status']) {
   switch (status) {
-    case 'confirmed': return { icon: CheckCircle, color: colors.success, bg: colors.successSoft, text: 'a été confirmée' };
-    case 'rejected': return { icon: XCircle, color: colors.danger, bg: colors.dangerSoft, text: 'a été refusée' };
-    case 'checked_in': return { icon: CheckCircle, color: colors.fleuveDark, bg: colors.fleuveSoft, text: 'a été utilisée (check-in)' };
-    case 'cancelled': return { icon: XCircle, color: colors.muted, bg: colors.surfaceSunken, text: 'a été annulée' };
-    default: return { icon: Clock, color: colors.warning, bg: colors.warningSoft, text: 'est en attente de confirmation' };
+    case 'confirmed': return { icon: CheckCircle, color: colors.success, text: 'a été confirmée' };
+    case 'rejected': return { icon: XCircle, color: colors.danger, text: 'a été refusée' };
+    case 'checked_in': return { icon: CheckCircle, color: colors.fleuveDark, text: 'a été utilisée (check-in)' };
+    case 'cancelled': return { icon: XCircle, color: colors.muted, text: 'a été annulée' };
+    default: return { icon: Clock, color: colors.warning, text: 'est en attente de confirmation' };
   }
 }
 
@@ -62,11 +63,11 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Notifications" backFallback="/(tabs)" />
+      <ScreenHeader title="Notifications" backFallback="/(tabs)" contentMaxWidth={breakpoints.panelMax} />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} accessibilityLabel="Chargement de vos notifications" />
         ) : !session?.user ? (
           <EmptyState
             icon={<Clock size={44} color={colors.borderStrong} strokeWidth={1.75} />}
@@ -96,17 +97,18 @@ export default function NotificationsScreen() {
               const info = statusInfo(b.status);
               const Icon = info.icon;
               return (
+                // Chaque ligne mène aux réservations : c'est un lien, et sur le
+                // web un vrai `<a>`, qu'on peut ouvrir dans un nouvel onglet.
                 <Pressable
                   key={b.id}
                   style={styles.row}
-                  onPress={() => router.push('/(tabs)/bookings')}
+                  accessibilityRole="link"
+                  {...lienVers('/bookings')}
                 >
-                  <View style={[styles.iconBox, { backgroundColor: info.bg }]}>
-                    <Icon size={16} color={info.color} />
-                  </View>
+                  <Icon size={20} color={info.color} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowText}>
-                      Votre réservation à <Text style={{ fontWeight: '500' }}>{b.establishment?.name}</Text> {info.text}
+                      Votre réservation à <Text style={styles.rowName}>{b.establishment?.name}</Text> {info.text}
                     </Text>
                     <Text style={styles.rowDate}>
                       {new Date(b.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
@@ -125,13 +127,17 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.md },
+  // Une liste à une colonne ne s'étire pas sur toute la largeur d'un grand
+  // écran : elle se centre sur la largeur d'un panneau, comme son en-tête.
+  content: { padding: spacing.md, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.md, padding: spacing.v12,
   },
-  iconBox: { width: 34, height: 34, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { ...typography.bodyXs, color: colors.ink, },
+  // La graisse passe par la famille : avec expo-font, `fontWeight` ne donne
+  // qu'un faux gras sur le web.
+  rowName: { fontFamily: fonts.sansMedium },
   rowDate: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, },
 });

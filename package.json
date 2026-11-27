@@ -48,7 +48,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:web": "expo export -p web && node scripts/fix-html-lang.mjs"
+    "build:web": "expo export -p web && node scripts/postbuild-web.mjs",
+    "local:serveur": "node --disable-warning=ExperimentalWarning local/serveur.mjs",
+    "local:reset": "node --disable-warning=ExperimentalWarning local/serveur.mjs --reinitialiser",
+    "web:local": "node --disable-warning=ExperimentalWarning local/demarrer.mjs web",
+    "start:local": "node --disable-warning=ExperimentalWarning local/demarrer.mjs start",
+    "build:web:local": "node --disable-warning=ExperimentalWarning local/demarrer.mjs build",
+    "local:essai": "node --disable-warning=ExperimentalWarning local/essai.mjs"
   },
   "private": true
 }

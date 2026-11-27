@@ -18,6 +18,11 @@ import { Animated, Easing, AccessibilityInfo } from 'react-native';
  * déjà employée par le carrousel de l'accueil, suffit largement à ces deux
  * mouvements. « Déjà installé » n'est pas « gratuit ».
  *
+ * La règle vaut pour TOUT le projet : il suffit qu'un seul fichier atteint
+ * depuis `app/` importe `react-native-reanimated` pour que la bibliothèque
+ * entière soit embarquée. L'audit du 26/11/2026 en a trouvé deux — l'écran de
+ * chargement et l'onglet Culture — repassés depuis à l'API `Animated`.
+ *
  * Conséquence assumée : pas de `useReducedMotion` fourni par la bibliothèque.
  * On lit donc le réglage système via `AccessibilityInfo`, ce que fait déjà
  * `components/Skeleton.tsx`, et ce que ce fichier centralise désormais.
@@ -156,6 +161,45 @@ export function useEntreeListe(index: number) {
         inputRange: [0, 1],
         outputRange: [MONTEE_ENTREE, 0],
       }),
+    }],
+  };
+}
+
+/**
+ * Entrée en scène d'un bloc isolé : il monte en apparaissant, après un retard
+ * choisi par l'appelant. Pour les écrans narratifs (onglet Culture), où les
+ * phrases arrivent l'une après l'autre.
+ *
+ * Même mouvement que `FadeInDown` de Reanimated, que cet écran employait —
+ * et qui suffisait à embarquer toute la bibliothèque dans le paquet web.
+ *
+ * @param delai  retard avant le départ, en ms
+ * @param temps  durée du mouvement, en ms
+ */
+export function useEntree(delai = 0, temps = 700) {
+  const reduit = useMouvementReduit();
+  const progression = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reduit) {
+      progression.setValue(1);
+      return;
+    }
+    const animation = Animated.timing(progression, {
+      toValue: 1,
+      duration: temps,
+      delay: delai,
+      easing: courbe.sortie,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [reduit, delai, temps, progression]);
+
+  return {
+    opacity: progression,
+    transform: [{
+      translateY: progression.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }),
     }],
   };
 }

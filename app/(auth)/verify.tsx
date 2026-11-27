@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { colors, fonts, radii, typography, breakpoints, spacing } from '../../lib/theme';
+import { messageErreur } from '../../lib/erreurs';
+import Button from '../../components/Button';
 
 export default function VerifyScreen() {
   const { method, identifier } = useLocalSearchParams<{ method: 'phone' | 'email'; identifier: string }>();
@@ -21,7 +23,7 @@ export default function VerifyScreen() {
 
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(messageErreur(error, "Ce code n'a pas pu être vérifié. Réessayez dans un instant."));
       return;
     }
     router.replace('/(tabs)');
@@ -30,7 +32,7 @@ export default function VerifyScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.inner}>
-        <Text style={styles.title}>Entre le code reçu</Text>
+        <Text style={styles.title} accessibilityRole="header" aria-level={1}>Entrez le code reçu</Text>
         <Text style={styles.subtitle}>Envoyé à {identifier}</Text>
 
         <TextInput
@@ -38,16 +40,20 @@ export default function VerifyScreen() {
           value={code}
           onChangeText={setCode}
           placeholder="000000"
+          placeholderTextColor={colors.faint}
+          accessibilityLabel="Code de vérification à 6 chiffres"
           keyboardType="number-pad"
+          // Laisse le téléphone proposer le code reçu par SMS au-dessus du clavier.
+          autoComplete="one-time-code"
           maxLength={6}
           autoFocus
         />
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && (
+          <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+        )}
 
-        <Pressable style={styles.button} onPress={handleVerify} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Vérification...' : 'Confirmer'}</Text>
-        </Pressable>
+        <Button label="Confirmer" onPress={handleVerify} loading={loading} />
       </View>
     </View>
   );
@@ -63,7 +69,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: colors.borderField,
     borderRadius: radii.md,
     padding: spacing.v12,
     // Saisie de code : l'espacement de 6 separe visuellement les chiffres.
@@ -75,7 +81,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: spacing.md,
   },
-  error: { ...typography.bodyXs, color: colors.lave, marginBottom: spacing.v12, },
-  button: { backgroundColor: colors.lave, borderRadius: radii.lg, padding: spacing.md, alignItems: 'center' },
-  buttonText: { ...typography.sheetOption, color: colors.white, },
+  // `danger`, pas `lave` : la couleur de marque sert aux boutons et aux liens ;
+  // une erreur écrite dans la même teinte se lisait comme une information.
+  error: { ...typography.bodyXs, color: colors.danger, marginBottom: spacing.v12, },
 });

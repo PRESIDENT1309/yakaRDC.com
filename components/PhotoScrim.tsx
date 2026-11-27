@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { colors } from '../lib/theme';
@@ -15,15 +16,19 @@ interface Props {
 // dégradés/overlays ad hoc par section.
 export default function PhotoScrim({ from = 'bottom', intensity = 0.55 }: Props) {
   const [y1, y2] = from === 'bottom' ? ['0%', '100%'] : ['100%', '0%'];
+  // Un identifiant par voile. Ils s'appelaient tous « scrim » : sur le web,
+  // où le SVG vit dans la page, `url(#scrim)` désigne le premier dégradé du
+  // document — deux voiles de sens ou d'intensité différents dessinaient le même.
+  const id = `scrim${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
       <Defs>
-        <LinearGradient id="scrim" x1="0" y1={y1} x2="0" y2={y2}>
+        <LinearGradient id={id} x1="0" y1={y1} x2="0" y2={y2}>
           <Stop offset="0%" stopColor={colors.nuit} stopOpacity={0} />
           <Stop offset="100%" stopColor={colors.nuit} stopOpacity={intensity} />
         </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#scrim)" />
+      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
     </Svg>
   );
 }

@@ -1,5 +1,6 @@
+import { installerStyleFocus } from '../lib/focus-web';
 import { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
   PlayfairDisplay_400Regular_Italic,
@@ -13,11 +14,13 @@ import {
   Manrope_600SemiBold,
   Manrope_700Bold,
 } from '@expo-google-fonts/manrope';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { AuthProvider, useAuth } from '../lib/auth-context';
+import { appliquerMetaDeRoute } from '../lib/seo';
 import { CityProvider } from '../lib/city-context';
 import { ConfirmProvider } from '../lib/confirm-context';
-import { colors } from '../lib/theme';
+import { colors, typography, spacing } from '../lib/theme';
+import { BASE_DE_TEST } from '../lib/supabase';
 import SplashLoader from '../components/SplashLoader';
 
 // Ce composant vit DANS les providers : useAuth() ne fonctionne pas dans
@@ -26,8 +29,24 @@ function AppShell({ fontsLoaded }: { fontsLoaded: boolean }) {
   const { loading } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
 
+  // Titre d'onglet, description et balises de partage suivent la navigation.
+  // Posé ici plutôt que dans chaque écran : une seule ligne couvre toutes les
+  // routes, y compris celles qu'on ajoutera sans y penser. Sans effet hors web.
+  const pathname = usePathname();
+  useEffect(() => {
+    appliquerMetaDeRoute(pathname);
+  }, [pathname]);
+
   return (
     <View style={{ flex: 1 }}>
+      {/* Bandeau de la base de test : absent dès que l'app parle à Supabase. */}
+      {BASE_DE_TEST && (
+        <View style={{ backgroundColor: colors.nuit, paddingVertical: spacing.xs, paddingHorizontal: spacing.v12 }}>
+          <Text style={{ ...typography.captionSm, color: colors.cream, textAlign: 'center' }}>
+            Base de test locale — rien de ce qui est fait ici ne touche Supabase
+          </Text>
+        </View>
+      )}
       {/* Les écrans n'apparaissent qu'une fois les polices prêtes, comme avant. */}
       {fontsLoaded && (
         <Stack
@@ -70,11 +89,12 @@ export default function RootLayout() {
   // l'anglais et retraduit une interface deja francaise, en la deformant :
   // « Enregistrer » devient « Economiser », et les messages d'erreur
   // deviennent illisibles. La compilation est corrigee par
-  // scripts/fix-html-lang.mjs ; ceci couvre le developpement.
+  // scripts/postbuild-web.mjs ; ceci couvre le developpement.
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.documentElement.lang = 'fr';
     }
+    installerStyleFocus();
   }, []);
 
   const [fontsLoaded] = useFonts({

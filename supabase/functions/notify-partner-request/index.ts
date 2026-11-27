@@ -1,7 +1,7 @@
 // Accusé de réception d'une demande de partenariat.
 //
 // POURQUOI UNE FONCTION
-// L'envoi exige la clé Resend, qui ne peut pas vivre dans l'application, et la
+// L'envoi exige la clé du service d'email, qui ne peut pas vivre dans l'application, et la
 // lecture de la demande exige de contourner les politiques d'accès : un
 // déposant anonyme ne peut pas relire sa propre demande. Les deux imposent le
 // serveur.

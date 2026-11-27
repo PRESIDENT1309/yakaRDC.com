@@ -35,7 +35,7 @@ const COTE = 44;
 
 // Cream à 70 % — sous-titre posé sur le bandeau de marque. Repris tel quel des
 // écrans d'origine plutôt que promu en jeton : il ne sert qu'ici.
-const CREAM_ATTENUE = 'rgba(250,248,244,0.7)';
+const CREAM_ATTENUE = colors.onBrandMuted;
 
 type Props = {
   /**
@@ -140,8 +140,12 @@ export default function ScreenHeader({
         <View style={styles.centre}>
           {center ?? (
             <>
+              {/* Titre de l'écran : niveau 1, pour que la lecture vocale et les
+                  moteurs de recherche trouvent la structure de la page. */}
               <Text
                 numberOfLines={1}
+                accessibilityRole="header"
+                aria-level={1}
                 style={[styles.titre, { color: marque ? colors.cream : colors.ink }]}
               >
                 {title}

@@ -4,9 +4,20 @@ import { Tabs, router } from 'expo-router';
 import { LayoutDashboard, CalendarCheck, QrCode, Building2, MoreHorizontal } from 'lucide-react-native';
 import { useAuth } from '../../lib/auth-context';
 import { colors, typography } from '../../lib/theme';
+import { useResponsive } from '../../lib/responsive';
+import BarreBureau, { type Destination } from '../../components/BarreBureau';
+
+const DESTINATIONS: Destination[] = [
+  { name: 'index', href: '/pro', label: 'Tableau de bord', Icon: LayoutDashboard },
+  { name: 'bookings', href: '/pro/bookings', label: 'Réservations', Icon: CalendarCheck },
+  { name: 'establishment', href: '/pro/establishment', label: 'Établissement', Icon: Building2 },
+  { name: 'scan', href: '/pro/scan', label: 'Scanner', Icon: QrCode },
+  { name: 'more', href: '/pro/more', label: 'Plus', Icon: MoreHorizontal },
+];
 
 export default function PartnerLayout() {
   const { profile, loading } = useAuth();
+  const { isDesktop } = useResponsive();
 
   useEffect(() => {
     if (loading) return;
@@ -28,8 +39,13 @@ export default function PartnerLayout() {
 
   return (
     <Tabs
+      // Même principe que l'espace voyageur : navigation en haut sur ordinateur.
+      tabBar={isDesktop
+        ? props => <BarreBureau {...props} destinations={DESTINATIONS} mention="Espace partenaire" />
+        : undefined}
       screenOptions={{
         headerShown: false,
+        tabBarPosition: isDesktop ? 'top' : 'bottom',
         tabBarActiveTintColor: colors.lave,
         tabBarInactiveTintColor: colors.faint,
         tabBarStyle: {
@@ -37,7 +53,10 @@ export default function PartnerLayout() {
           backgroundColor: colors.cream,
           height: Platform.OS === 'web' ? 60 : undefined,
         },
-        tabBarLabelStyle: { ...typography.captionSm, },
+        // `fontWeight: 'normal'` n'ajoute pas de graisse : il retire le 500 que
+        // react-navigation pose d'office sur ses libellés. Sans cela le
+        // navigateur épaissit artificiellement Manrope Regular (faux gras).
+        tabBarLabelStyle: { ...typography.captionSm, fontWeight: 'normal' },
       }}
     >
       <Tabs.Screen

@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  Platform,
   Modal,
   Image,
   ActivityIndicator,
@@ -28,16 +27,30 @@ import {
   Store,
   Camera,
   KeyRound,
+  FileText,
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { useConfirm } from '../../lib/confirm-context';
-import { colors, fonts, typography, breakpoints, radii, spacing } from '../../lib/theme';
+import { ecrire } from '../../lib/db';
+import { uploadToStorage, COTE_MAX } from '../../lib/photo-upload';
+import LogoYaka from '../../components/LogoYaka';
+import BoutonIcone from '../../components/BoutonIcone';
+import { colors, fonts, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { lienVers } from '../../lib/liens';
+
+// Icône d'une ligne de menu, posée nue : sans le carré coloré qui la portait,
+// elle gagne 3 px pour garder sa présence.
+const ICONE_MENU = 18;
+
+// Blanc à 15 % : pastille du bouton Paramètres sur le bandeau de marque.
+const VOILE_CLAIR = 'rgba(255,255,255,0.15)';
 
 function MenuSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{title}</Text>
+      <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={2}>{title}</Text>
       <View style={styles.sectionCard}>{children}</View>
     </View>
   );
@@ -45,16 +58,18 @@ function MenuSection({ title, children }: { title: string; children: React.React
 
 function MenuItem({
   icon,
-  iconBg,
   label,
   value,
+  href,
   onPress,
   last,
 }: {
   icon: React.ReactNode;
-  iconBg: string;
   label: string;
   value?: string;
+  /** Écran ouvert par la ligne : elle devient un vrai lien sur le web. */
+  href?: string;
+  /** Action sans destination (message d'information). */
   onPress?: () => void;
   last?: boolean;
 }) {
@@ -65,9 +80,10 @@ function MenuItem({
         !last && styles.menuItemBorder,
         pressed && { backgroundColor: colors.cream },
       ]}
-      onPress={onPress}
+      accessibilityRole={href ? 'link' : 'button'}
+      {...(href ? lienVers(href) : { onPress })}
     >
-      <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>{icon}</View>
+      {icon}
       <Text style={styles.menuLabel}>{label}</Text>
       {value && <Text style={styles.menuValue}>{value}</Text>}
       <ChevronRight size={15} color={colors.borderStrong} />
@@ -78,9 +94,13 @@ function MenuItem({
 export default function ProfileScreen() {
   const { profile, session, refreshProfile } = useAuth();
   const confirm = useConfirm();
-  const [bookingCount, setBookingCount] = useState(0);
-  const [favoriteCount, setFavoriteCount] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
+  const { haut } = useZonesSures();
+  // `null` : compte inconnu (pas encore chargé, ou requête en échec). Afficher
+  // « 0 » dans ce cas annonçait à l'utilisateur qu'il n'avait aucune
+  // réservation alors que c'était le réseau qui n'avait pas répondu.
+  const [bookingCount, setBookingCount] = useState<number | null>(null);
+  const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
+  const [reviewCount, setReviewCount] = useState<number | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const initial = profile?.full_name
@@ -96,17 +116,17 @@ export default function ProfileScreen() {
       .from('bookings')
       .select('id', { count: 'exact', head: true })
       .eq('traveler_id', session.user.id)
-      .then(({ count }) => setBookingCount(count ?? 0));
+      .then(({ count, error }) => setBookingCount(error ? null : count ?? 0));
     supabase
       .from('favorites')
       .select('id', { count: 'exact', head: true })
       .eq('traveler_id', session.user.id)
-      .then(({ count }) => setFavoriteCount(count ?? 0));
+      .then(({ count, error }) => setFavoriteCount(error ? null : count ?? 0));
     supabase
       .from('reviews')
       .select('id', { count: 'exact', head: true })
       .eq('traveler_id', session.user.id)
-      .then(({ count }) => setReviewCount(count ?? 0));
+      .then(({ count, error }) => setReviewCount(error ? null : count ?? 0));
   }, [session?.user?.id]);
 
   async function handleChangeAvatar() {
@@ -125,25 +145,21 @@ export default function ProfileScreen() {
     if (result.canceled || !result.assets?.[0]) return;
 
     setUploadingAvatar(true);
-    try {
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
-      const path = `avatars/${session.user.id}/avatar-${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('establishment-photos')
-        .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
-
-      if (uploadError) {
-        Alert.alert('Erreur', uploadError.message);
-        setUploadingAvatar(false);
-        return;
-      }
-
-      const { data } = supabase.storage.from('establishment-photos').getPublicUrl(path);
-      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id);
-      await refreshProfile();
-    } catch (e: any) {
-      Alert.alert('Erreur', e?.message ?? "L'envoi de la photo a échoué.");
+    // 512 px suffisent : la photo n'est jamais affichée au-delà de 84 points.
+    // `uploadToStorage` prévient lui-même en cas d'échec.
+    const url = await uploadToStorage(
+      result.assets[0].uri,
+      `avatars/${session.user.id}/avatar-${Date.now()}.jpg`,
+      COTE_MAX.vignette,
+    );
+    if (url) {
+      // L'enregistrement n'était pas vérifié : un refus de la base laissait
+      // l'ancienne photo en place sans rien dire.
+      const enregistre = await ecrire(
+        supabase.from('profiles').update({ avatar_url: url }).eq('id', session.user.id),
+        'Enregistrement de la photo de profil',
+      );
+      if (enregistre) await refreshProfile();
     }
     setUploadingAvatar(false);
   }
@@ -164,6 +180,12 @@ export default function ProfileScreen() {
     Alert.alert(feature, 'Cette fonctionnalité arrive bientôt sur YakaRDC.');
   }
 
+  const connecte = !!session?.user;
+  const versConnexion = () => router.push({
+    pathname: '/(auth)/login',
+    params: { redirect: '/(tabs)/profile' },
+  });
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -171,90 +193,146 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* ── En-tête ── */}
-        <View style={styles.header}>
-          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Paramètres" style={styles.settingsBtn} onPress={() => showComingSoon('Paramètres')}>
-            <Settings size={16} color={colors.cream} />
-          </Pressable>
+        {/* Le plancher de 32 redonne le dégagement d'origine là où il n'y a pas
+            d'encoche (web) ; ailleurs, c'est la barre d'état réelle qui compte. */}
+        <View style={[styles.header, { paddingTop: Math.max(haut, spacing.xl) }]}>
+          {connecte && (
+            <BoutonIcone
+              label="Paramètres"
+              taille={32}
+              fond={VOILE_CLAIR}
+              onPress={() => showComingSoon('Paramètres')}
+              icon={<Settings size={16} color={colors.cream} />}
+              style={[styles.settingsBtn, { top: haut }]}
+            />
+          )}
 
-          {/* Photo de profil, modifiable au clic */}
-          <Pressable style={styles.avatarWrapper} onPress={handleChangeAvatar} disabled={uploadingAvatar}>
-            <View style={styles.avatar}>
-              {uploadingAvatar ? (
-                <ActivityIndicator color={colors.lave} />
-              ) : profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{initial}</Text>
-              )}
-            </View>
-            <View style={styles.cameraBadge}>
-              <Camera size={12} color={colors.lave} />
-            </View>
-          </Pressable>
+          {connecte ? (
+            <>
+              {/* Photo de profil, modifiable au clic */}
+              <Pressable
+                style={styles.avatarWrapper}
+                onPress={handleChangeAvatar}
+                disabled={uploadingAvatar}
+                accessibilityRole="button"
+                accessibilityLabel="Changer la photo de profil"
+                aria-disabled={uploadingAvatar} aria-busy={uploadingAvatar}
+              >
+                <View style={styles.avatar}>
+                  {uploadingAvatar ? (
+                    <ActivityIndicator color={colors.lave} />
+                  ) : profile?.avatar_url ? (
+                    <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} accessibilityLabel="Votre photo de profil" />
+                  ) : (
+                    <Text style={styles.avatarText}>{initial}</Text>
+                  )}
+                </View>
+                <View style={styles.cameraBadge}>
+                  <Camera size={12} color={colors.lave} />
+                </View>
+              </Pressable>
 
-          <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.contact}>{displayEmail}</Text>
+              <Text style={styles.name} accessibilityRole="header" aria-level={1}>{displayName}</Text>
+              <Text style={styles.contact}>{displayEmail}</Text>
 
-          <View style={styles.statsRow}>
-            <Pressable style={styles.stat} onPress={() => router.push('/(tabs)/bookings')}>
-              <Text style={styles.statValue}>{bookingCount}</Text>
-              <Text style={styles.statLabel}>Réservations</Text>
-            </Pressable>
-            <View style={styles.statDivider} />
-            <Pressable style={styles.stat} onPress={() => router.push('/favorites')}>
-              <Text style={styles.statValue}>{favoriteCount}</Text>
-              <Text style={styles.statLabel}>Favoris</Text>
-            </Pressable>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{reviewCount}</Text>
-              <Text style={styles.statLabel}>Avis</Text>
-            </View>
-          </View>
+              {/* Chaque compteur est annoncé d'un bloc, chiffre et libellé
+                  ensemble ; un tiret seul ne dirait rien à la lecture vocale. */}
+              <View style={styles.statsRow}>
+                <Pressable
+                  style={styles.stat}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Réservations : ${bookingCount ?? 'nombre indisponible'}`}
+                  {...lienVers('/bookings')}
+                >
+                  <Text style={styles.statValue}>{bookingCount ?? '—'}</Text>
+                  <Text style={styles.statLabel}>Réservations</Text>
+                </Pressable>
+                <View style={styles.statDivider} />
+                <Pressable
+                  style={styles.stat}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Favoris : ${favoriteCount ?? 'nombre indisponible'}`}
+                  {...lienVers('/favorites')}
+                >
+                  <Text style={styles.statValue}>{favoriteCount ?? '—'}</Text>
+                  <Text style={styles.statLabel}>Favoris</Text>
+                </Pressable>
+                <View style={styles.statDivider} />
+                <View
+                  style={styles.stat}
+                  accessible
+                  accessibilityLabel={`Avis : ${reviewCount ?? 'nombre indisponible'}`}
+                >
+                  <Text style={styles.statValue}>{reviewCount ?? '—'}</Text>
+                  <Text style={styles.statLabel}>Avis</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            /* Sans compte, cet écran affichait « Utilisateur », trois compteurs
+               à zéro et un bouton « Se déconnecter » : le portrait d'un compte
+               qui n'existe pas. Il dit maintenant ce qu'un compte apporte, et
+               comment en ouvrir un. */
+            <>
+              <View style={styles.avatarWrapper}>
+                <LogoYaka size={64} />
+              </View>
+              <Text style={styles.name} accessibilityRole="header" aria-level={1}>Bienvenue sur YakaRDC</Text>
+              <Text style={[styles.contact, styles.guestText]}>
+                Connectez-vous pour réserver, retrouver vos favoris et suivre vos demandes.
+              </Text>
+              <View style={styles.guestActions}>
+                <Pressable style={styles.guestPrimary} onPress={versConnexion} accessibilityRole="button">
+                  <Text style={styles.guestPrimaryText}>Se connecter</Text>
+                </Pressable>
+                <Pressable style={styles.guestSecondary} onPress={() => router.push('/(auth)/register')} accessibilityRole="button">
+                  <Text style={styles.guestSecondaryText}>Créer un compte</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.content}>
           {/* ── Mon compte ── */}
+          {connecte && (
           <MenuSection title="MON COMPTE">
             <MenuItem
-              icon={<User size={15} color={colors.lave} />}
-              iconBg={colors.laveSoft}
+              icon={<User size={ICONE_MENU} color={colors.lave} />}
               label="Modifier le profil"
-              onPress={() => router.push('/edit-profile')}
+              href="/edit-profile"
             />
             <MenuItem
-              icon={<KeyRound size={15} color={colors.lave} />}
-              iconBg={colors.laveSoft}
+              icon={<KeyRound size={ICONE_MENU} color={colors.lave} />}
               label="Mot de passe"
-              onPress={() => router.push('/change-password')}
+              href="/change-password"
             />
             <MenuItem
-              icon={<Heart size={15} color={colors.lave} />}
-              iconBg={colors.laveSoft}
+              icon={<Heart size={ICONE_MENU} color={colors.lave} />}
               label="Mes favoris"
-              value={favoriteCount > 0 ? String(favoriteCount) : undefined}
-              onPress={() => router.push('/favorites')}
+              value={favoriteCount ? String(favoriteCount) : undefined}
+              href="/favorites"
             />
             <MenuItem
-              icon={<CalendarCheck size={15} color={colors.lave} />}
-              iconBg={colors.laveSoft}
+              icon={<CalendarCheck size={ICONE_MENU} color={colors.lave} />}
               label="Historique des réservations"
-              onPress={() => router.push('/(tabs)/bookings')}
+              href="/bookings"
               last
             />
           </MenuSection>
+          )}
 
           {/* ── Préférences ── */}
           <MenuSection title="PRÉFÉRENCES">
+            {connecte && (
+              <MenuItem
+                icon={<Bell size={ICONE_MENU} color={colors.fleuveDark} />}
+                label="Notifications"
+                href="/notifications"
+              />
+            )}
             <MenuItem
-              icon={<Bell size={15} color={colors.fleuveDark} />}
-              iconBg={colors.fleuveSoft}
-              label="Notifications"
-              onPress={() => router.push('/notifications')}
-            />
-            <MenuItem
-              icon={<Languages size={15} color={colors.fleuveDark} />}
-              iconBg={colors.fleuveSoft}
+              icon={<Languages size={ICONE_MENU} color={colors.fleuveDark} />}
               label="Langue"
               value="Français"
               onPress={() =>
@@ -270,10 +348,9 @@ export default function ProfileScreen() {
           {/* ── Devenir partenaire ── */}
           <MenuSection title="VOUS AVEZ UN ÉTABLISSEMENT ?">
             <MenuItem
-              icon={<Store size={15} color={colors.warning} />}
-              iconBg={colors.warningSoft}
+              icon={<Store size={ICONE_MENU} color={colors.warning} />}
               label="Devenir partenaire"
-              onPress={() => router.push('/become-partner')}
+              href="/become-partner"
               last
             />
           </MenuSection>
@@ -281,25 +358,30 @@ export default function ProfileScreen() {
           {/* ── Assistance ── */}
           <MenuSection title="ASSISTANCE">
             <MenuItem
-              icon={<HelpCircle size={15} color={colors.warning} />}
-              iconBg={colors.warningSoft}
+              icon={<HelpCircle size={ICONE_MENU} color={colors.warning} />}
               label="Centre d'aide"
               onPress={() => showComingSoon("Centre d'aide")}
             />
             <MenuItem
-              icon={<Shield size={15} color={colors.warning} />}
-              iconBg={colors.warningSoft}
-              label="Confidentialité"
-              onPress={() => showComingSoon('Politique de confidentialité')}
+              icon={<Shield size={ICONE_MENU} color={colors.warning} />}
+              label="Politique de confidentialité"
+              href="/confidentialite"
+            />
+            <MenuItem
+              icon={<FileText size={ICONE_MENU} color={colors.warning} />}
+              label="Conditions d'utilisation"
+              href="/conditions"
               last
             />
           </MenuSection>
 
           {/* ── Déconnexion ── */}
-          <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut color={colors.danger} size={15} />
-            <Text style={styles.logoutText}>Se déconnecter</Text>
-          </Pressable>
+          {connecte && (
+            <Pressable style={styles.logoutButton} onPress={handleLogout} accessibilityRole="button">
+              <LogOut color={colors.danger} size={15} />
+              <Text style={styles.logoutText}>Se déconnecter</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -310,23 +392,17 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
     backgroundColor: colors.lave,
-    paddingTop: Platform.OS === 'ios' ? 60 : 32,
-    paddingBottom: 26,
+    // Le retrait haut est posé à l'appel, d'après la zone sûre de l'appareil.
+    paddingBottom: spacing.lg,
     alignItems: 'center',
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
+    borderBottomLeftRadius: radii.lg,
+    borderBottomRightRadius: radii.lg,
     position: 'relative',
   },
+  // Position seulement : la pastille et sa zone de 44 px viennent de BoutonIcone.
   settingsBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 58 : 18,
-    right: 18,
-    width: 32,
-    height: 32,
-    borderRadius: radii.v16,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    right: spacing.gutter,
   },
   avatarWrapper: {
     marginBottom: spacing.v12,
@@ -335,7 +411,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 84,
     height: 84,
-    borderRadius: 42,
+    borderRadius: radii.pill,
     backgroundColor: colors.amber,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
@@ -369,22 +445,37 @@ const styles = StyleSheet.create({
   },
   contact: {
     ...typography.captionSm,
-    color: 'rgba(250,248,244,0.7)',
+    color: colors.onBrandMuted,
     marginBottom: spacing.v20,
   },
+  // État invité
+  guestText: { textAlign: 'center', maxWidth: 300, paddingHorizontal: spacing.md, lineHeight: 17 },
+  guestActions: { flexDirection: 'row', gap: spacing.v12 },
+  guestPrimary: {
+    backgroundColor: colors.amber, borderRadius: radii.pill,
+    paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
+    minHeight: cible.min, justifyContent: 'center',
+  },
+  guestPrimaryText: { ...typography.pillLabel, color: colors.laveDeep },
+  guestSecondary: {
+    borderWidth: 1, borderColor: 'rgba(250,248,244,0.5)', borderRadius: radii.pill,
+    paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
+    minHeight: cible.min, justifyContent: 'center',
+  },
+  guestSecondaryText: { ...typography.pillLabel, color: colors.cream },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.v20,
   },
-  stat: { alignItems: 'center' },
+  stat: { alignItems: 'center', justifyContent: 'center', minWidth: cible.min, minHeight: cible.min },
   statValue: {
     ...typography.titleMd,
     color: colors.cream,
   },
   statLabel: {
     ...typography.captionSm,
-    color: 'rgba(250,248,244,0.65)',
+    color: colors.onBrandMuted,
     marginTop: spacing.v2,
   },
   statDivider: {
@@ -413,7 +504,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: radii.v16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colors.nuit,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -424,18 +515,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.v12,
     paddingHorizontal: spacing.v12,
-    paddingVertical: spacing.v12,
+    // 16 et non plus 12 : le carré de 30 px qui portait l'icône donnait sa
+    // hauteur à la ligne. Sans lui, ce retrait la maintient vers 51 px.
+    paddingVertical: spacing.md,
+    minHeight: cible.min,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceSunken,
-  },
-  menuIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   menuLabel: {
     ...typography.bodySm,
@@ -455,12 +542,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: radii.md,
     paddingVertical: spacing.v12,
+    minHeight: cible.min,
     marginTop: spacing.v2,
   },
   logoutText: { ...typography.pillLabel, color: colors.danger },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,

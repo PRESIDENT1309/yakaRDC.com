@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput, Modal, useWindowDimensions,
+  ActivityIndicator, TextInput, Modal, useWindowDimensions,
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { ArrowLeft } from 'lucide-react-native';
@@ -12,9 +12,10 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, typography, radii, spacing } from '../../lib/theme';
+import { colors, categoryColors, typography, radii, spacing, fonts, cible } from '../../lib/theme';
 import type { PartnerRequest, EstablishmentType, PartnerRequestStatus } from '../../lib/types';
-import { useAdminResponsive } from '../../lib/responsive';
+import { useAdminResponsive } from '../../lib/responsive';
+import { etatBascule } from '../../lib/a11y';
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all';
 
@@ -276,7 +277,7 @@ export default function PartnerRequestsScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Demandes de partenariat</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Demandes de partenariat</Text>
           <Text style={styles.headerSub}>{requests.length} demande{requests.length !== 1 ? 's' : ''}</Text>
         </View>
       </View>
@@ -309,15 +310,24 @@ export default function PartnerRequestsScreen() {
       )}
 
       <View style={styles.filterRow}>
-        {FILTERS.map(f => (
-          <Pressable
-            key={f.key}
-            style={[styles.filterPill, filter === f.key && styles.filterPillActive]}
-            onPress={() => setFilter(f.key)}
-          >
-            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.label}</Text>
-          </Pressable>
-        ))}
+        {/* La pastille visible garde sa taille ; c'est la zone qui l'entoure
+            qui atteint 44 px. */}
+        {FILTERS.map(f => {
+          const actif = filter === f.key;
+          return (
+            <Pressable
+              key={f.key}
+              style={styles.filterZone}
+              accessibilityRole="button"
+              {...etatBascule(actif)}
+              onPress={() => setFilter(f.key)}
+            >
+              <View style={[styles.filterPill, actif && styles.filterPillActive]}>
+                <Text style={[styles.filterText, actif && styles.filterTextActive]}>{f.label}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={[styles.body, isMobile && styles.bodyMobile]}>
@@ -337,11 +347,11 @@ export default function PartnerRequestsScreen() {
                   <Pressable
                     key={r.id}
                     style={[styles.listCard, selected?.id === r.id && styles.listCardActive]}
+                    accessibilityRole="button"
+                    {...etatBascule(selected?.id === r.id)}
                     onPress={() => { setSelected(r); setRejecting(false); }}
                   >
-                    <View style={[styles.listIcon, { backgroundColor: categoryColors[r.establishment_type]?.soft ?? colors.laveSoft }]}>
-                      <TypeIcon type={r.establishment_type} size={16} />
-                    </View>
+                    <TypeIcon type={r.establishment_type} size={16} />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={styles.listName} numberOfLines={1}>{r.establishment_name}</Text>
                       <Text style={styles.listMeta}>
@@ -377,17 +387,15 @@ export default function PartnerRequestsScreen() {
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.v20 }}>
                 {isMobile && (
-                  <Pressable style={styles.backToListBtn} onPress={() => setSelected(null)}>
+                  <Pressable style={styles.backToListBtn} accessibilityRole="button" onPress={() => setSelected(null)}>
                     <ArrowLeft size={15} color={colors.lave} />
                     <Text style={styles.backToListText}>Retour à la liste</Text>
                   </Pressable>
                 )}
                 <View style={styles.detailHeader}>
-                  <View style={[styles.detailIcon, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? colors.laveSoft }]}>
-                    <TypeIcon type={selected.establishment_type} size={22} />
-                  </View>
+                  <TypeIcon type={selected.establishment_type} size={22} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.detailName}>{selected.establishment_name}</Text>
+                    <Text style={styles.detailName} accessibilityRole="header" aria-level={2}>{selected.establishment_name}</Text>
                     <Text style={styles.detailDate}>
                       Soumis le {new Date(selected.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </Text>
@@ -399,13 +407,20 @@ export default function PartnerRequestsScreen() {
                 <View style={[styles.typeBanner, { backgroundColor: categoryColors[selected.establishment_type]?.soft ?? colors.warningSoft }]}>
                 <TypeIcon type={selected.establishment_type} size={15} />
                 <Text style={[styles.typeBannerText, { color: categoryColors[selected.establishment_type]?.accent ?? colors.lave }]}>
-                  Type d'établissement : <Text style={{ fontWeight: '500' }}>{TYPE_LABELS[selected.establishment_type]}</Text>
+                  Type d'établissement : <Text style={{ fontFamily: fonts.sansMedium }}>{TYPE_LABELS[selected.establishment_type]}</Text>
                 </Text>
               </View>
 
               {/* Photos */}
-              <Text style={styles.sectionLabel}>Photos soumises</Text>
-              <View style={styles.photosRow}>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Photos soumises</Text>
+              {/* Le nombre de photos ne se lisait qu'au nombre de vignettes. */}
+              <View
+                style={styles.photosRow}
+                accessible
+                accessibilityLabel={selected.photo_urls.length === 0
+                  ? 'Aucune photo'
+                  : `${selected.photo_urls.length} photo${selected.photo_urls.length > 1 ? 's' : ''}`}
+              >
                 {selected.photo_urls.length === 0 ? (
                   <View style={styles.photoPlaceholder}>
                     <Camera size={18} color={colors.faint} />
@@ -422,7 +437,7 @@ export default function PartnerRequestsScreen() {
               {/* Description */}
               {selected.description && (
                 <>
-                  <Text style={styles.sectionLabel}>Description soumise</Text>
+                  <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Description soumise</Text>
                   <View style={styles.descBox}>
                     <Text style={styles.descText}>{selected.description}</Text>
                   </View>
@@ -430,7 +445,7 @@ export default function PartnerRequestsScreen() {
               )}
 
               {/* Localisation */}
-              <Text style={styles.sectionLabel}>Localisation</Text>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Localisation</Text>
               <View style={styles.infoGrid}>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoLabel}>Commune</Text>
@@ -451,7 +466,7 @@ export default function PartnerRequestsScreen() {
               </View>
 
               {/* Responsable */}
-              <Text style={styles.sectionLabel}>Responsable</Text>
+              <Text style={styles.sectionLabel} accessibilityRole="header" aria-level={3}>Responsable</Text>
               <View style={styles.infoGrid}>
                 <View style={styles.infoBox}>
                   <Text style={styles.infoLabel}>Nom</Text>
@@ -510,6 +525,7 @@ export default function PartnerRequestsScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Renvoyer les identifiants"
                       style={[styles.credsBtn, resending && { opacity: 0.6 }]}
+                      aria-disabled={resending} aria-busy={resending}
                       onPress={handleResendCredentials}
                       disabled={resending}
                     >
@@ -528,6 +544,11 @@ export default function PartnerRequestsScreen() {
                     <View style={styles.actionsRow}>
                       <Pressable
                         style={[styles.approveBtn, processing && { opacity: 0.6 }]}
+                        // Libellé explicite : le texte laisse place à l'indicateur
+                        // pendant le traitement, et « Approuver » seul ne dit pas quoi.
+                        accessibilityRole="button"
+                        accessibilityLabel={`Approuver la demande de ${selected.establishment_name}`}
+                        aria-disabled={processing} aria-busy={processing}
                         onPress={() => handleApprove(selected)}
                         disabled={processing}
                       >
@@ -535,7 +556,12 @@ export default function PartnerRequestsScreen() {
                           ? <ActivityIndicator color={colors.cream} size="small" />
                           : <><Check size={15} color={colors.cream} /><Text style={styles.approveBtnText}>Approuver</Text></>}
                       </Pressable>
-                      <Pressable style={styles.rejectBtn} onPress={() => setRejecting(true)}>
+                      <Pressable
+                        style={styles.rejectBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Refuser la demande de ${selected.establishment_name}`}
+                        onPress={() => setRejecting(true)}
+                      >
                         <X size={15} color={colors.danger} />
                         <Text style={styles.rejectBtnText}>Refuser</Text>
                       </Pressable>
@@ -550,10 +576,14 @@ export default function PartnerRequestsScreen() {
                         placeholder="Ex : photos manquantes, informations incomplètes..."
                         placeholderTextColor={colors.faint}
                         multiline
+                        accessibilityLabel="Motif du refus (optionnel)"
                       />
                       <View style={styles.actionsRow}>
                         <Pressable
                           style={[styles.rejectConfirmBtn, processing && { opacity: 0.6 }]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Confirmer le refus"
+                          aria-disabled={processing} aria-busy={processing}
                           onPress={handleReject}
                           disabled={processing}
                         >
@@ -561,7 +591,7 @@ export default function PartnerRequestsScreen() {
                             ? <ActivityIndicator color={colors.cream} size="small" />
                             : <Text style={styles.approveBtnText}>Confirmer le refus</Text>}
                         </Pressable>
-                        <Pressable style={styles.cancelBtn} onPress={() => setRejecting(false)}>
+                        <Pressable style={styles.cancelBtn} accessibilityRole="button" onPress={() => setRejecting(false)}>
                           <Text style={styles.cancelBtnText}>Annuler</Text>
                         </Pressable>
                       </View>
@@ -578,30 +608,38 @@ export default function PartnerRequestsScreen() {
   );
 }
 
+// Hauteur d'une pastille de filtre : texte de 15, retraits de 8, filet.
+const HAUTEUR_PASTILLE = 33;
+const DEBORD_PASTILLE = (cible.min - HAUTEUR_PASTILLE) / 2;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   header: {
-    paddingTop: Platform.OS === 'web' ? 16 : 50,
+    // La zone sûre est dégagée par le layout de l'admin (bandeau ou marge).
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.v20, paddingBottom: spacing.v12,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   filterRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  // Le surplus de la zone tactile est repris en marge négative : la rangée
+  // garde la hauteur de ses pastilles.
+  filterZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -DEBORD_PASTILLE },
   filterPill: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   filterPillActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   filterText: { ...typography.captionSm, color: colors.muted, },
-  filterTextActive: { color: colors.cream, fontWeight: '500' },
+  filterTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   body: { flex: 1, flexDirection: 'row' },
   bodyMobile: { flexDirection: 'column' },
   list: { width: 320, borderRightWidth: 1, borderRightColor: colors.border },
   listMobile: { width: '100%', borderRightWidth: 0 },
-  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  // 44 px de zone tactile ; les marges compensent pour que la ligne reste où elle était.
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: cible.min, marginTop: -spacing.v12, marginBottom: spacing.xs },
   backToListText: { ...typography.pillLabel, color: colors.lave, },
   empty: { alignItems: 'center', paddingTop: 60, gap: spacing.v12 },
   emptyText: { ...typography.bodyXs, color: colors.muted, },
   listCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   listCardActive: { borderColor: colors.lave, backgroundColor: colors.laveSoft },
-  listIcon: { width: 32, height: 32, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   listName: { ...typography.caption, color: colors.ink, },
   listMeta: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   listAlerte: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2 },
@@ -630,7 +668,8 @@ const styles = StyleSheet.create({
   credsHint: { ...typography.captionSm, color: colors.muted },
   credsBtn: {
     backgroundColor: colors.warning, borderRadius: radii.md,
-    paddingVertical: spacing.v12, alignItems: 'center', marginTop: spacing.xs,
+    paddingVertical: spacing.v12, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xs,
+    minHeight: cible.min,
   },
   credsBtnText: { ...typography.pillLabel, color: colors.cream },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.v2, borderRadius: radii.pill },
@@ -639,7 +678,6 @@ const styles = StyleSheet.create({
   detailEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.v12 },
   detailEmptyText: { ...typography.bodySm, color: colors.muted, },
   detailHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, marginBottom: spacing.v12 },
-  detailIcon: { width: 46, height: 46, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   detailName: { ...typography.titleSm, color: colors.ink, },
   detailDate: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
   typeBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radii.md, padding: spacing.v12, marginBottom: spacing.md },
@@ -657,13 +695,13 @@ const styles = StyleSheet.create({
   rejectionLabel: { ...typography.captionMd, color: colors.danger, marginBottom: spacing.xs, },
   rejectionText: { ...typography.bodyXs, color: colors.danger, },
   actionsRow: { flexDirection: 'row', gap: spacing.v12, marginTop: spacing.sm },
-  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.success, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.success, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   approveBtnText: { ...typography.pillLabel, color: colors.cream, },
-  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   rejectBtnText: { ...typography.bodySm, color: colors.danger, },
   rejectForm: { marginTop: spacing.xs },
-  rejectInput: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
-  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.md, paddingVertical: spacing.v12 },
-  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12 },
+  rejectInput: { ...typography.bodySm, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField, borderRadius: radii.md, padding: spacing.v12, color: colors.ink, height: 80, textAlignVertical: 'top', marginBottom: spacing.v12, },
+  rejectConfirmBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.danger, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radii.md, paddingVertical: spacing.v12, minHeight: cible.min },
   cancelBtnText: { ...typography.bodySm, color: colors.ink, },
 });

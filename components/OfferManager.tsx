@@ -4,8 +4,10 @@ import { Plus, Pencil, Trash2, Camera, Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/alert';
 import { useConfirm } from '../lib/confirm-context';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, breakpoints } from '../lib/theme';
 import { pickImage, uploadToStorage, removeFromStorage } from '../lib/photo-upload';
+import { messageErreur } from '../lib/erreurs';
+import BoutonIcone from './BoutonIcone';
 import Sheet from './Sheet';
 import FormField from './FormField';
 import Button from './Button';
@@ -69,6 +71,9 @@ interface Draft {
   maxGuests: string;
   amenities: string[];
 }
+
+// Côté visible d'un bouton d'action de ligne : icône de 16 et 4 de retrait.
+const TAILLE_ACTION = 24;
 
 const EMPTY_DRAFT: Draft = {
   id: null, categoryId: '', customLabel: '', description: '',
@@ -169,7 +174,7 @@ export default function OfferManager({
       : await supabase.from('establishment_offers').insert({ ...payload, position: offers.length });
 
     setSaving(false);
-    if (error) { Alert.alert('Erreur', error.message); return; }
+    if (error) { Alert.alert('Enregistrement impossible', messageErreur(error, "L'offre n'a pas pu être enregistrée. Réessayez dans un instant.")); return; }
     setDraft(null);
     await load();
     onChanged?.();
@@ -204,7 +209,7 @@ export default function OfferManager({
     if (!o.is_active) {
       const { error } = await supabase.from('establishment_offers')
         .update({ is_active: true }).eq('id', o.id);
-      if (error) { Alert.alert('Erreur', error.message); return; }
+      if (error) { Alert.alert('Modification impossible', messageErreur(error, "L'offre n'a pas pu être réactivée. Réessayez dans un instant.")); return; }
       await load(); onChanged?.();
       return;
     }
@@ -239,14 +244,14 @@ export default function OfferManager({
       if (cancelError) {
         // On ne masque pas l'offre si les annulations ont échoué : mieux vaut
         // un état inchangé qu'une offre invisible avec des demandes ouvertes.
-        Alert.alert('Annulation impossible', cancelError.message);
+        Alert.alert('Annulation impossible', messageErreur(cancelError, "Les réservations concernées n'ont pas pu être annulées. L'offre reste visible."));
         return;
       }
     }
 
     const { error } = await supabase.from('establishment_offers')
       .update({ is_active: false }).eq('id', o.id);
-    if (error) { Alert.alert('Erreur', error.message); return; }
+    if (error) { Alert.alert('Masquage impossible', messageErreur(error, "L'offre n'a pas pu être masquée. Réessayez dans un instant.")); return; }
     await load();
     onChanged?.();
     if (affected.length > 0) {
@@ -287,7 +292,7 @@ export default function OfferManager({
 
     const photo = photoOf(o.id);
     const { error } = await supabase.from('establishment_offers').delete().eq('id', o.id);
-    if (error) { Alert.alert('Erreur', error.message); return; }
+    if (error) { Alert.alert('Suppression impossible', messageErreur(error, "L'offre n'a pas pu être supprimée. Réessayez dans un instant.")); return; }
     if (photo) await removeFromStorage(photo.url);
     await load();
     onChanged?.();
@@ -314,11 +319,11 @@ export default function OfferManager({
     setUploading(false);
   }
 
-  if (loading) return <ActivityIndicator color={colors.lave} style={{ marginVertical: spacing.lg }} />;
+  if (loading) return <ActivityIndicator color={colors.lave} style={{ marginVertical: spacing.lg }} accessibilityLabel="Chargement des offres" />;
 
   if (missingTables) {
     return (
-      <Text style={styles.hint}>
+      <Text style={styles.hint} accessibilityRole="alert" accessibilityLiveRegion="polite">
         Le catalogue d&apos;offres n&apos;est pas encore disponible : la base de données doit être
         mise à jour (migration 0007). Vos tarifs actuels restent inchangés.
       </Text>
@@ -337,9 +342,17 @@ export default function OfferManager({
         <View style={{ gap: spacing.sm }}>
           {offers.map(o => {
             const photo = photoOf(o.id);
+            // Chaque ligne porte les mêmes quatre boutons : sans le nom de
+            // l'offre, la lecture vocale ne dit pas laquelle on va supprimer.
+            const titre = offerLabel(o, categoryOf(o));
             return (
               <View key={o.id} style={[styles.row, !o.is_active && styles.rowHidden]}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Changer la photo de l'offre" onPress={() => attachPhoto(o.id)} style={styles.thumb}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={photo ? `Changer la photo de l'offre ${titre}` : `Ajouter une photo à l'offre ${titre}`}
+                  onPress={() => attachPhoto(o.id)}
+                  style={styles.thumb}
+                >
                   {photo ? (
                     <Image source={{ uri: photo.url }} style={styles.thumbImg} />
                   ) : (
@@ -348,7 +361,7 @@ export default function OfferManager({
                 </Pressable>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{offerLabel(o, categoryOf(o))}</Text>
+                  <Text style={styles.rowTitle}>{titre}</Text>
                   <Text style={styles.rowMeta}>
                     {o.price} {o.currency}
                     {o.quantity != null ? ` · ${o.quantity} dispo.` : ''}
@@ -356,24 +369,36 @@ export default function OfferManager({
                   </Text>
                 </View>
 
-                <Pressable accessibilityRole="button" accessibilityLabel={o.is_active ? 'Masquer cette offre' : 'Afficher cette offre'} onPress={() => toggleActive(o)} hitSlop={8} style={styles.iconBtn}>
-                  {o.is_active
+                {/* `taille` reprend les 24 px qu'occupait chaque bouton (icône et
+                    retrait) : la rangée ne bouge pas, la zone tactile passe à 44.
+                    `hitSlop`, employé jusqu'ici, n'agrandit rien sur le web. */}
+                <BoutonIcone
+                  label={o.is_active ? `Masquer l'offre ${titre}` : `Afficher l'offre ${titre}`}
+                  taille={TAILLE_ACTION}
+                  onPress={() => toggleActive(o)}
+                  icon={o.is_active
                     ? <Eye size={16} color={colors.muted} strokeWidth={1.75} />
                     : <EyeOff size={16} color={colors.faint} strokeWidth={1.75} />}
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Modifier l'offre" onPress={() => openEdit(o)} hitSlop={8} style={styles.iconBtn}>
-                  <Pencil size={15} color={colors.lave} strokeWidth={1.75} />
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Supprimer l'offre" onPress={() => remove(o)} hitSlop={8} style={styles.iconBtn}>
-                  <Trash2 size={15} color={colors.faint} strokeWidth={1.75} />
-                </Pressable>
+                />
+                <BoutonIcone
+                  label={`Modifier l'offre ${titre}`}
+                  taille={TAILLE_ACTION}
+                  onPress={() => openEdit(o)}
+                  icon={<Pencil size={15} color={colors.lave} strokeWidth={1.75} />}
+                />
+                <BoutonIcone
+                  label={`Supprimer l'offre ${titre}`}
+                  taille={TAILLE_ACTION}
+                  onPress={() => remove(o)}
+                  icon={<Trash2 size={15} color={colors.faint} strokeWidth={1.75} />}
+                />
               </View>
             );
           })}
         </View>
       )}
 
-      {uploading && <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.sm }} />}
+      {uploading && <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.sm }} accessibilityLabel="Envoi de la photo en cours" />}
 
       <View style={{ marginTop: spacing.md }}>
         <Button
@@ -390,7 +415,7 @@ export default function OfferManager({
         title={draft?.id ? 'Modifier' : ADD_LABEL[establishmentType]}
         subtitle={SECTION_TITLE[establishmentType]}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.corps}>
           <Text style={styles.fieldLabel}>Catégorie</Text>
           <View style={styles.chipWrap}>
             {categories.map(c => (
@@ -499,6 +524,9 @@ export default function OfferManager({
 }
 
 const styles = StyleSheet.create({
+  // Sur grand écran, la feuille prend toute la largeur de la fenêtre : sans
+  // limite, le champ du prix s'étirerait sur plus de mille pixels.
+  corps: { paddingBottom: spacing.lg, width: '100%', maxWidth: breakpoints.formMax, alignSelf: 'center' },
   hint: { ...typography.caption, color: colors.faint, lineHeight: 17, marginBottom: spacing.sm },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, marginTop: spacing.sm, },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
@@ -516,5 +544,4 @@ const styles = StyleSheet.create({
   thumbImg: { width: '100%', height: '100%' },
   rowTitle: { ...typography.cardTitle, color: colors.ink },
   rowMeta: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
-  iconBtn: { padding: spacing.xs },
 });

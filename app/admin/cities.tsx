@@ -1,12 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, TextInput, ActivityIndicator, } from 'react-native';
+  TextInput, ActivityIndicator, } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { MapPin, Plus, Check, X } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, radii, spacing } from '../../lib/theme';
+import { ecrire } from '../../lib/db';
+import { useConfirm } from '../../lib/confirm-context';
+import { messageErreur } from '../../lib/erreurs';
+import { colors, typography, radii, spacing, fonts, breakpoints, cible } from '../../lib/theme';
 import type { City, OfferCategory, EstablishmentType } from '../../lib/types';
+import BoutonIcone from '../../components/BoutonIcone';
+import { etatBascule } from '../../lib/a11y';
 
 const TYPE_LABELS: { key: EstablishmentType; label: string }[] = [
   { key: 'hotel', label: 'Hôtels' },
@@ -25,6 +30,7 @@ export default function CitiesScreen() {
   const [newCatType, setNewCatType] = useState<EstablishmentType>('hotel');
   const [newCatLabel, setNewCatLabel] = useState('');
   const [addingCat, setAddingCat] = useState(false);
+  const confirm = useConfirm();
 
   const fetchCities = useCallback(async () => {
     setLoading(true);
@@ -46,7 +52,9 @@ export default function CitiesScreen() {
       is_active: true,
     });
     if (error) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert('Ajout impossible', error.code === '23505'
+        ? 'Cette ville figure déjà dans la liste.'
+        : messageErreur(error, "La ville n'a pas pu être ajoutée. Réessayez dans un instant."));
     } else {
       setNewCity('');
       fetchCities();
@@ -55,25 +63,25 @@ export default function CitiesScreen() {
   }
 
   async function toggleCity(city: City) {
-    await supabase
-      .from('cities')
-      .update({ is_active: !city.is_active })
-      .eq('id', city.id);
+    // L'échec n'était pas regardé : la bascule revenait à sa position sans
+    // qu'on sache pourquoi.
+    await ecrire(
+      supabase.from('cities').update({ is_active: !city.is_active }).eq('id', city.id),
+      city.is_active ? 'Désactivation de la ville' : 'Activation de la ville',
+    );
     fetchCities();
   }
 
   async function deleteCity(city: City) {
-    Alert.alert(
-      'Supprimer cette ville',
-      `Supprimer "${city.name}" ? Les établissements associés resteront mais ne seront plus accessibles par ville.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: async () => {
-          await supabase.from('cities').delete().eq('id', city.id);
-          fetchCities();
-        }},
-      ]
-    );
+    const ok = await confirm({
+      title: 'Supprimer cette ville ?',
+      message: `« ${city.name} » sera retirée de la liste. Ses établissements resteront enregistrés, mais ne seront plus accessibles par ville.`,
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+    if (!ok) return;
+    await ecrire(supabase.from('cities').delete().eq('id', city.id), 'Suppression de la ville');
+    fetchCities();
   }
 
   // ── Catégories d'offres ──
@@ -95,7 +103,7 @@ export default function CitiesScreen() {
   async function toggleCategory(c: OfferCategory) {
     const { error } = await supabase.from('offer_categories')
       .update({ is_active: !c.is_active }).eq('id', c.id);
-    if (error) { Alert.alert('Erreur', error.message); return; }
+    if (error) { Alert.alert('Modification impossible', messageErreur(error, "La catégorie n'a pas pu être modifiée. Réessayez dans un instant.")); return; }
     fetchCategories();
   }
 
@@ -116,9 +124,9 @@ export default function CitiesScreen() {
       is_active: true,
     });
     if (error) {
-      Alert.alert('Erreur', error.code === '23505'
+      Alert.alert('Ajout impossible', error.code === '23505'
         ? 'Une catégorie porte déjà ce nom pour ce type d\'établissement.'
-        : error.message);
+        : messageErreur(error, "La catégorie n'a pas pu être ajoutée. Réessayez dans un instant."));
     } else {
       setNewCatLabel('');
       fetchCategories();
@@ -132,7 +140,7 @@ export default function CitiesScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Villes & catégories</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Villes & catégories</Text>
           <Text style={styles.headerSub}>{cities.length} villes · {activeCount} actives</Text>
         </View>
       </View>
@@ -140,7 +148,7 @@ export default function CitiesScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Ajouter une ville */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ajouter une ville</Text>
+          <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Ajouter une ville</Text>
           <View style={styles.addRow}>
             <View style={styles.addInput}>
               <MapPin size={14} color={colors.faint} />
@@ -151,10 +159,15 @@ export default function CitiesScreen() {
                 placeholder="Ex : Lubumbashi, Goma, Bukavu..."
                 placeholderTextColor={colors.faint}
                 onSubmitEditing={handleAddCity}
+                accessibilityLabel="Nom de la ville à ajouter"
               />
             </View>
             <Pressable
               style={[styles.addBtn, (!newCity.trim() || adding) && { opacity: 0.5 }]}
+              // Libellé répété : le texte laisse place à l'indicateur pendant l'ajout.
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter la ville"
+              aria-disabled={!newCity.trim() || adding} aria-busy={adding}
               onPress={handleAddCity}
               disabled={!newCity.trim() || adding}
             >
@@ -168,7 +181,7 @@ export default function CitiesScreen() {
 
         {/* Liste des villes */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Villes configurées</Text>
+          <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Villes configurées</Text>
           {loading ? (
             <ActivityIndicator color={colors.lave} style={{ marginTop: spacing.v12 }} />
           ) : cities.length === 0 ? (
@@ -183,18 +196,30 @@ export default function CitiesScreen() {
                   <View style={[styles.cityDot, { backgroundColor: city.is_active ? colors.success : colors.borderStrong }]} />
                   <Text style={[styles.cityName, !city.is_active && styles.cityNameInactive]}>{city.name}</Text>
                   <View style={styles.cityActions}>
+                    {/* Une bascule : annoncée comme telle, avec la ville qu'elle
+                        concerne — « Active » seul ne dit pas de quoi. La zone
+                        tactile fait 44 px, la pastille garde sa taille. */}
                     <Pressable
-                      style={[styles.toggleBtn, city.is_active ? styles.toggleBtnActive : styles.toggleBtnInactive]}
+                      style={styles.toggleZone}
+                      accessibilityRole="switch"
+                      accessibilityLabel={`${city.name}, ville active`}
+                      aria-checked={city.is_active}
                       onPress={() => toggleCity(city)}
                     >
-                      {city.is_active
-                        ? <><Check size={11} color={colors.success} /><Text style={[styles.toggleText, { color: colors.success }]}>Active</Text></>
-                        : <Text style={[styles.toggleText, { color: colors.muted }]}>Inactive</Text>
-                      }
+                      <View style={[styles.toggleBtn, city.is_active ? styles.toggleBtnActive : styles.toggleBtnInactive]}>
+                        {city.is_active
+                          ? <><Check size={11} color={colors.success} /><Text style={[styles.toggleText, { color: colors.success }]}>Active</Text></>
+                          : <Text style={[styles.toggleText, { color: colors.muted }]}>Inactive</Text>
+                        }
+                      </View>
                     </Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel={'Supprimer ' + city.name} style={styles.deleteBtn} onPress={() => deleteCity(city)} hitSlop={9}>
-                      <X size={13} color={colors.danger} />
-                    </Pressable>
+                    <BoutonIcone
+                      label={'Supprimer ' + city.name}
+                      taille={26}
+                      fond={colors.dangerSoft}
+                      onPress={() => deleteCity(city)}
+                      icon={<X size={13} color={colors.danger} />}
+                    />
                   </View>
                 </View>
               ))}
@@ -204,25 +229,32 @@ export default function CitiesScreen() {
 
         {/* Catégories d'offres — référentiel dans lequel les partenaires piochent */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Catégories d&apos;offres</Text>
+          <Text style={styles.cardTitle} accessibilityRole="header" aria-level={2}>Catégories d&apos;offres</Text>
           {categoriesMissing ? (
-            <Text style={styles.emptyText}>
+            <Text style={styles.emptyText} accessibilityRole="alert" accessibilityLiveRegion="polite">
               Référentiel indisponible : la migration 0007 n&apos;a pas encore été appliquée.
             </Text>
           ) : (
             <>
               <View style={styles.typeRow}>
-                {TYPE_LABELS.map(t => (
-                  <Pressable
-                    key={t.key}
-                    style={[styles.typeBtn, newCatType === t.key && styles.typeBtnActive]}
-                    onPress={() => setNewCatType(t.key)}
-                  >
-                    <Text style={[styles.typeBtnText, newCatType === t.key && styles.typeBtnTextActive]}>
-                      {t.label}
-                    </Text>
-                  </Pressable>
-                ))}
+                {TYPE_LABELS.map(t => {
+                  const actif = newCatType === t.key;
+                  return (
+                    <Pressable
+                      key={t.key}
+                      style={styles.typeZone}
+                      accessibilityRole="button"
+                      {...etatBascule(actif)}
+                      onPress={() => setNewCatType(t.key)}
+                    >
+                      <View style={[styles.typeBtn, actif && styles.typeBtnActive]}>
+                        <Text style={[styles.typeBtnText, actif && styles.typeBtnTextActive]}>
+                          {t.label}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               <View style={styles.addRow}>
@@ -234,10 +266,14 @@ export default function CitiesScreen() {
                     placeholder="Ex : Suite Junior Vue Fleuve"
                     placeholderTextColor={colors.faint}
                     onSubmitEditing={handleAddCategory}
+                    accessibilityLabel="Nom de la catégorie à ajouter"
                   />
                 </View>
                 <Pressable
                   style={[styles.addBtn, (!newCatLabel.trim() || addingCat) && { opacity: 0.5 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ajouter la catégorie"
+                  aria-disabled={!newCatLabel.trim() || addingCat} aria-busy={addingCat}
                   onPress={handleAddCategory}
                   disabled={!newCatLabel.trim() || addingCat}
                 >
@@ -256,12 +292,17 @@ export default function CitiesScreen() {
                       {!!c.description_hint && <Text style={styles.hintText}>{c.description_hint}</Text>}
                     </View>
                     <Pressable
-                      style={[styles.toggleBtn, c.is_active ? styles.toggleBtnActive : styles.toggleBtnInactive]}
+                      style={styles.toggleZone}
+                      accessibilityRole="switch"
+                      accessibilityLabel={`${c.label}, catégorie active`}
+                      aria-checked={c.is_active}
                       onPress={() => toggleCategory(c)}
                     >
-                      <Text style={[styles.toggleText, { color: c.is_active ? colors.success : colors.muted }]}>
-                        {c.is_active ? 'Active' : 'Inactive'}
-                      </Text>
+                      <View style={[styles.toggleBtn, c.is_active ? styles.toggleBtnActive : styles.toggleBtnInactive]}>
+                        <Text style={[styles.toggleText, { color: c.is_active ? colors.success : colors.muted }]}>
+                          {c.is_active ? 'Active' : 'Inactive'}
+                        </Text>
+                      </View>
                     </Pressable>
                   </View>
                 ))}
@@ -276,7 +317,7 @@ export default function CitiesScreen() {
 
         {/* Info catégories */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Catégories d'établissements</Text>
+          <Text style={styles.infoTitle} accessibilityRole="header" aria-level={2}>Catégories d'établissements</Text>
           <Text style={styles.infoText}>
             Les 4 catégories (Hôtels, Maisons meublées, Restaurants, Sites touristiques) sont définies dans le schéma de la base de données. Pour en ajouter de nouvelles, une migration SQL est nécessaire — contacte l'équipe technique.
           </Text>
@@ -302,28 +343,32 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
+  // La colonne est centrée : calée à gauche, elle laissait sur grand écran tout
+  // le vide du même côté. La zone sûre, elle, est dégagée par le layout de l'admin.
   header: {
-    maxWidth: 600, width: '100%',
-    paddingTop: Platform.OS === 'web' ? 16 : 50,
+    maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center',
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.v20, paddingBottom: spacing.v12,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  content: { padding: spacing.v20, gap: spacing.v12, maxWidth: 600 },
+  content: { padding: spacing.v20, gap: spacing.v12, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   cardTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.v12, },
   addRow: { flexDirection: 'row', gap: spacing.v12, alignItems: 'center' },
   addInput: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   input: { ...typography.bodySm, flex: 1, color: colors.ink, },
   addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: colors.lave, borderRadius: radii.sm,
     paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   addBtnText: { ...typography.caption, color: colors.cream, },
   empty: { alignItems: 'center', paddingVertical: spacing.v20, gap: spacing.sm },
@@ -335,11 +380,16 @@ const styles = StyleSheet.create({
   cityNameInactive: { color: colors.muted, textDecorationLine: 'line-through' },
   hintText: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.v12, marginBottom: spacing.v12 },
+  // Zones tactiles de 44 px autour de pastilles plus petites (35 pour un type,
+  // 26 pour une bascule) : la marge négative reprend le surplus, la rangée
+  // garde sa hauteur.
+  typeZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -(cible.min - 35) / 2 },
   typeBtn: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderStrong },
   typeBtnActive: { backgroundColor: colors.lave, borderColor: colors.lave },
   typeBtnText: { ...typography.bodyXs, color: colors.muted, },
-  typeBtnTextActive: { color: colors.cream, fontWeight: '500' },
+  typeBtnTextActive: { color: colors.cream, fontFamily: fonts.sansMedium },
   cityActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  toggleZone: { minHeight: cible.min, minWidth: cible.min, alignItems: 'center', justifyContent: 'center', marginVertical: -(cible.min - 26) / 2 },
   toggleBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
     paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radii.pill, borderWidth: 1,
@@ -347,10 +397,6 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: colors.successSoft, borderColor: colors.successBorder },
   toggleBtnInactive: { backgroundColor: colors.surfaceSunken, borderColor: colors.borderStrong },
   toggleText: { ...typography.captionMd, },
-  deleteBtn: {
-    width: 26, height: 26, borderRadius: radii.sm,
-    backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center',
-  },
   infoCard: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.md },
   infoTitle: { ...typography.pillLabel, color: colors.ink, marginBottom: spacing.sm, },
   infoText: { ...typography.bodyXs, color: colors.muted, marginBottom: spacing.v12, },

@@ -44,3 +44,6 @@ example
 
 .vercel
 .env*
+
+# base de test locale : données et fichiers créés par local/serveur.mjs
+local/donnees/

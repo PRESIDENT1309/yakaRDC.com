@@ -3,6 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+
+/**
+ * Vrai quand l'application parle à la base de test de la machine (dossier
+ * `local/`, lancée par `npm run web:local`) et non au projet Supabase.
+ *
+ * Sert à l'afficher à l'écran : les deux se ressemblent trait pour trait, et
+ * l'on ne doit jamais se demander dans laquelle on vient de créer un compte
+ * ou de valider une demande.
+ */
+export const BASE_DE_TEST = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(SUPABASE_URL ?? '');
 /**
  * Clé publique du client.
  *

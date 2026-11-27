@@ -18,7 +18,9 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
     confirmed: { label: 'Confirmée', bg: colors.successSoft, color: colors.success },
     checked_in: { label: 'Utilisée', bg: colors.fleuveSoft, color: colors.fleuveDark },
     rejected: { label: 'Refusée', bg: colors.dangerSoft, color: colors.danger },
-    cancelled: { label: 'Annulée', bg: colors.surfaceSunken, color: colors.faint },
+    // `muted` et non `faint` : sur `surfaceSunken`, ce dernier tombait à 4,30
+    // de contraste, sous le seuil de 4,5 pour un texte de 11 px.
+    cancelled: { label: 'Annulée', bg: colors.surfaceSunken, color: colors.muted },
   };
   const c = config[status] ?? config.pending;
   return (

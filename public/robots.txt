@@ -1,0 +1,22 @@
+# YakaRDC — consignes pour les robots d'indexation.
+#
+# Le catalogue (recherche, fiches, culture) est public. Les espaces ci-dessous
+# exigent un compte et n'ont rien à montrer à un moteur de recherche.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /pro
+Disallow: /bookings
+Disallow: /profile
+Disallow: /favorites
+Disallow: /notifications
+Disallow: /edit-profile
+Disallow: /change-password
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /callback
+Disallow: /verify
+Disallow: /planner
+
+Sitemap: https://www.yakardc.com/sitemap.xml

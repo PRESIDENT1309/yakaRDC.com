@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Minus, Plus, Send, Info } from 'lucide-react-native';
-import { colors, spacing, typography, radii } from '../lib/theme';
+import { colors, spacing, typography, radii, fonts, cible, breakpoints } from '../lib/theme';
 import { unitLabel } from '../lib/listing-format';
 import { slotStateFor } from '../lib/booking-slots';
 import type { TimeSlot } from '../lib/booking-slots';
@@ -38,21 +39,131 @@ import TimeField from './TimeField';
  * styles, les mêmes props.
  */
 
-export function Counter({ label, value, onDec, onInc, accent }:
-  { label: string; value: number; onDec: () => void; onInc: () => void; accent: string }) {
+// Côté de la pastille des boutons + et −, et hauteur d'une puce de choix
+// (retraits, interligne du libellé, filets). La zone tactile de 44 px déborde
+// autour de ces deux dessins sans les grossir ni les déplacer.
+const PASTILLE_COMPTEUR = 26;
+const HAUTEUR_PUCE = 2 * spacing.sm + typography.caption.lineHeight + 2;
+const DEBORD_PUCE = (cible.min - HAUTEUR_PUCE) / 2;
+
+/**
+ * Bouton + ou − d'un compteur.
+ *
+ * La pastille garde ses 26 px ; c'est la zone qui la porte qui en fait 44, la
+ * marge négative annulant le surplus. Même principe que `BoutonIcone`, dont la
+ * pastille ronde ne convenait pas à ce carré arrondi. `hitSlop`, employé
+ * jusqu'ici, n'agrandit rien sur le web.
+ */
+function BoutonCompteur({ sens, label, onPress, accent, disabled = false }:
+  { sens: 'moins' | 'plus'; label: string; onPress: () => void; accent: string; disabled?: boolean }) {
+  const plus = sens === 'plus';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      aria-disabled={disabled}
+      onPress={onPress}
+      disabled={disabled}
+      style={styles.counterZone}
+    >
+      <View
+        style={[
+          styles.counterBtn,
+          plus ? { backgroundColor: disabled ? colors.border : accent } : styles.counterBtnMuted,
+          !plus && disabled && styles.counterBtnInactif,
+        ]}
+      >
+        {plus
+          ? <Plus size={14} color={disabled ? colors.faint : colors.cream} />
+          : <Minus size={14} color={colors.muted} />}
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Valeur d'un compteur. Lue seule, « 2 » ne dit pas ce qu'elle compte : la
+ * lecture vocale reçoit « Adultes : 2 », et l'annonce à chaque changement.
+ *
+ * Le libellé n'est posé que hors du web : un navigateur n'en tient pas compte
+ * sur un texte sans rôle. Le chiffre y suffit, annoncé juste après l'appui sur
+ * le bouton qui vient de le modifier.
+ */
+function ValeurCompteur({ value, lecture }: { value: number; lecture: string }) {
+  return (
+    <Text
+      style={styles.counterValue}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={Platform.OS === 'web' ? undefined : lecture}
+    >
+      {value}
+    </Text>
+  );
+}
+
+export function Counter({ label, value, onDec, onInc, accent, min, decLabel, incLabel }:
+  { label: string; value: number; onDec: () => void; onInc: () => void; accent: string;
+    /** Plancher : une fois atteint, le bouton − est annoncé et montré inactif. */
+    min?: number;
+    /** Ce que font les boutons, dit en clair (« Retirer un adulte »). */
+    decLabel?: string; incLabel?: string }) {
   return (
     <View style={styles.counter}>
       <Text style={styles.counterLabel}>{label}</Text>
       <View style={styles.counterRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Diminuer : ' + label} style={[styles.counterBtn, styles.counterBtnMuted]} onPress={onDec} hitSlop={9}>
-          <Minus size={14} color={colors.muted} />
-        </Pressable>
-        <Text style={styles.counterValue}>{value}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Augmenter : ' + label} style={[styles.counterBtn, { backgroundColor: accent }]} onPress={onInc} hitSlop={9}>
-          <Plus size={14} color={colors.cream} />
-        </Pressable>
+        <BoutonCompteur
+          sens="moins" label={decLabel ?? 'Diminuer : ' + label} accent={accent}
+          onPress={onDec} disabled={min !== undefined && value <= min}
+        />
+        <ValeurCompteur value={value} lecture={`${label} : ${value}`} />
+        <BoutonCompteur sens="plus" label={incLabel ?? 'Augmenter : ' + label} accent={accent} onPress={onInc} />
       </View>
     </View>
+  );
+}
+
+/**
+ * Option d'un choix unique : créneau, paiement, occasion, type de visite.
+ *
+ * Annoncée comme un bouton radio, coché ou non — la couleur portait seule le
+ * choix en cours.
+ *
+ * La puce fait 35 px de haut ; la zone qui la porte en fait 44, le surplus
+ * étant repris sur ses marges pour ne rien décaler.
+ */
+function Choix({ label, actif, onPress, accent, etire = false }:
+  { label: string; actif: boolean; onPress: () => void; accent: string;
+    /** Prend toute la largeur offerte, libellé centré : choix à deux options. */
+    etire?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      aria-checked={actif}
+      onPress={onPress}
+      style={[styles.chipZone, etire && styles.chipZoneEtiree]}
+    >
+      <View style={[styles.chip, actif && { backgroundColor: accent, borderColor: accent }]}>
+        <Text style={[styles.chipText, etire && styles.chipTextCentre, actif && styles.chipTextActif]}>{label}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Indication sous un champ, annoncée quand elle apparaît ou change : sans
+ * cela, choisir une date où l'établissement est fermé ne produisait aucun
+ * retour pour qui ne voit pas l'écran. `alerte` la signale comme un
+ * empêchement plutôt que comme une simple précision.
+ */
+function Indication({ children, alerte = false }: { children: ReactNode; alerte?: boolean }) {
+  return (
+    <Text
+      style={styles.slotHint}
+      accessibilityRole={alerte ? 'alert' : undefined}
+      accessibilityLiveRegion="polite"
+    >
+      {children}
+    </Text>
   );
 }
 
@@ -70,24 +181,15 @@ export function Counter({ label, value, onDec, onInc, accent }:
  * `remainingForSlot` et affichée sur chaque carte. Ce composant ne fait plus
  * que ce qu'il sait faire : présenter les créneaux ouverts.
  */
-export function SlotPicker({ slots, selected, onSelect, accent }:
-  { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string }) {
+export function SlotPicker({ slots, selected, onSelect, accent, label = 'Créneau horaire' }:
+  { slots: TimeSlot[]; selected: string; onSelect: (s: string) => void; accent: string;
+    /** Nom du groupe pour la lecture vocale. */
+    label?: string }) {
   return (
-    <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
-      {slots.map(s => {
-        const isSelected = selected === s;
-        return (
-          <Pressable
-            key={s}
-            style={[styles.chip, isSelected && { backgroundColor: accent, borderColor: accent }]}
-            onPress={() => onSelect(s)}
-          >
-            <Text style={[styles.chipText, isSelected && { color: colors.cream, fontWeight: '500' }]}>
-              {s}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.choix} accessibilityRole="radiogroup" accessibilityLabel={label}>
+      {slots.map(s => (
+        <Choix key={s} label={s} actif={selected === s} onPress={() => onSelect(s)} accent={accent} />
+      ))}
     </View>
   );
 }
@@ -122,11 +224,11 @@ export function HotelBookingForm({ accent, form, setForm, onSubmit, loading, off
   const shown = skipChoice ? step - 1 : step;
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.corps}>
       <StepProgress labels={labels} current={shown} accent={accent} onGoBack={i => setStep(skipChoice ? i + 1 : i)} />
 
       {step === 0 && (
-        <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.sm }} accessibilityRole="radiogroup" accessibilityLabel={isHouse ? 'Logement' : 'Chambre'}>
           {offerCtx.offers.map(o => {
             const rest = offerCtx.remainingFor(o, nights);
             return (
@@ -138,6 +240,7 @@ export function HotelBookingForm({ accent, form, setForm, onSubmit, loading, off
                 remaining={nights.length && rest !== null ? rest : undefined}
                 selected={form.offerId === o.id}
                 accent={accent}
+                accessibilityRole="radio"
                 onPress={() => { setForm({ ...form, offerId: o.id }); setStep(1); }}
               />
             );
@@ -177,17 +280,17 @@ export function HotelBookingForm({ accent, form, setForm, onSubmit, loading, off
 
           <Text style={styles.fieldLabel}>Voyageurs</Text>
           <View style={styles.formRow}>
-            <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-            <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+            <Counter label="Adultes" value={form.adults} accent={accent} min={1} decLabel="Retirer un adulte" incLabel="Ajouter un adulte" onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+            <Counter label="Enfants" value={form.children} accent={accent} min={0} decLabel="Retirer un enfant" incLabel="Ajouter un enfant" onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
           </View>
 
           {/* Un groupe plus grand que la capacité d'une unité en occupe
               plusieurs — on le dit avant l'envoi plutôt que de refuser. */}
           {selected?.max_guests != null && units > 1 && (
-            <Text style={styles.slotHint}>
+            <Indication>
               {guests} personnes pour {selected.max_guests} par {isHouse ? 'logement' : 'chambre'} :
               {' '}{units} {isHouse ? 'logements seront réservés' : 'chambres seront réservées'}.
-            </Text>
+            </Indication>
           )}
 
           <Button
@@ -202,23 +305,21 @@ export function HotelBookingForm({ accent, form, setForm, onSubmit, loading, off
       {step === 2 && (
         <>
           <View style={styles.formRow}>
-            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Jean" /></View>
-            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Mbeki" /></View>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} autoComplete="given-name" placeholder="Jean" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} autoComplete="family-name" placeholder="Mbeki" /></View>
           </View>
-          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} autoComplete="additional-name" placeholder="Kabasele" />
           <PhoneField
             label="Téléphone" dial={form.phoneDial}
             onDialChange={v => setForm({ ...form, phoneDial: v })}
             value={form.phone} onChange={v => setForm({ ...form, phone: v })}
           />
-          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="jean@exemple.cd" keyboardType="email-address" autoComplete="email" />
 
           <Text style={styles.fieldLabel}>Mode de paiement</Text>
-          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
+          <View style={styles.choix} accessibilityRole="radiogroup" accessibilityLabel="Mode de paiement">
             {PAYMENTS.map(p => (
-              <Pressable key={p.key} style={[styles.chip, form.paymentMethod === p.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, paymentMethod: p.key as any })}>
-                <Text style={[styles.chipText, form.paymentMethod === p.key && { color: colors.cream, fontWeight: '500' }]}>{p.label}</Text>
-              </Pressable>
+              <Choix key={p.key} label={p.label} actif={form.paymentMethod === p.key} accent={accent} onPress={() => setForm({ ...form, paymentMethod: p.key as any })} />
             ))}
           </View>
           <FormField label="Demandes spéciales (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Chambre calme, lit king size..." multiline />
@@ -272,7 +373,7 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
   const slotState = slotStateFor(venue.openingHours, form.visitDate, RESTAURANT_SLOT_STEP_MIN);
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.corps}>
       <StepProgress
         labels={['Votre table', 'Vos informations']}
         current={step} accent={accent} onGoBack={setStep}
@@ -296,20 +397,23 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
               un restaurant ouvert 24h/24 n'a pas la même disponibilité qu'un
               autre ouvert de midi à 15h six jours sur sept. */}
           {slotState.message ? (
-            <Text style={styles.slotHint}>{slotState.message}</Text>
+            // Tant qu'aucune date n'est choisie, le message est une consigne ;
+            // ensuite, il dit pourquoi aucun créneau n'est proposé.
+            <Indication alerte={!!form.visitDate}>{slotState.message}</Indication>
           ) : (
             <SlotPicker
               slots={slotState.slots}
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
+              label="Créneau horaire"
             />
           )}
 
           <Text style={styles.fieldLabel}>Couverts</Text>
           <View style={styles.formRow}>
-            <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-            <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+            <Counter label="Adultes" value={form.adults} accent={accent} min={1} decLabel="Retirer un adulte" incLabel="Ajouter un adulte" onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+            <Counter label="Enfants" value={form.children} accent={accent} min={0} decLabel="Retirer un enfant" incLabel="Ajouter un enfant" onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
           </View>
 
           {/* Formule facultative : on réserve une table, pas un menu. « À la
@@ -319,15 +423,8 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
           {offerCtx.offers.length > 0 && (
             <>
               <Text style={styles.fieldLabel}>Formule (facultatif)</Text>
-              <View style={{ gap: spacing.sm }}>
-                <Pressable
-                  style={[styles.chip, !form.offerId && { backgroundColor: accent, borderColor: accent }]}
-                  onPress={() => setForm({ ...form, offerId: '' })}
-                >
-                  <Text style={[styles.chipText, !form.offerId && { color: colors.cream, fontWeight: '500' }]}>
-                    À la carte
-                  </Text>
-                </Pressable>
+              <View style={{ gap: spacing.sm }} accessibilityRole="radiogroup" accessibilityLabel="Formule">
+                <Choix label="À la carte" actif={!form.offerId} accent={accent} onPress={() => setForm({ ...form, offerId: '' })} />
                 {offerCtx.offers.map(o => (
                   <OfferCard
                     key={o.id}
@@ -336,6 +433,7 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
                     photoUrl={offerCtx.photoOf(o.id)}
                     selected={form.offerId === o.id}
                     accent={accent}
+                    accessibilityRole="radio"
                     onPress={() => setForm({ ...form, offerId: o.id })}
                   />
                 ))}
@@ -344,11 +442,9 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
           )}
 
           <Text style={styles.fieldLabel}>Occasion</Text>
-          <View style={[styles.formRow, { flexWrap: 'wrap', gap: spacing.sm }]}>
+          <View style={styles.choix} accessibilityRole="radiogroup" accessibilityLabel="Occasion">
             {OCCASIONS.map(o => (
-              <Pressable key={o.key} style={[styles.chip, form.occasion === o.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, occasion: o.key as any })}>
-                <Text style={[styles.chipText, form.occasion === o.key && { color: colors.cream, fontWeight: '500' }]}>{o.label}</Text>
-              </Pressable>
+              <Choix key={o.key} label={o.label} actif={form.occasion === o.key} accent={accent} onPress={() => setForm({ ...form, occasion: o.key as any })} />
             ))}
           </View>
 
@@ -362,10 +458,10 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
       {step === 1 && (
         <>
           <View style={styles.formRow}>
-            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Marie" /></View>
-            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Kalala" /></View>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} autoComplete="given-name" placeholder="Marie" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} autoComplete="family-name" placeholder="Kalala" /></View>
           </View>
-          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} autoComplete="additional-name" placeholder="Kabasele" />
           <PhoneField
             label="Téléphone"
             dial={form.phoneDial}
@@ -373,7 +469,7 @@ export function RestaurantBookingForm({ accent, form, setForm, onSubmit, loading
             value={form.phone}
             onChange={v => setForm({ ...form, phone: v })}
           />
-          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="marie@exemple.cd" keyboardType="email-address" autoComplete="email" />
           <FormField label="Allergies / régimes (optionnel)" value={form.allergies} onChange={v => setForm({ ...form, allergies: v })} placeholder="Sans gluten, végétarien..." multiline />
 
           {/* Une formule se compte par personne : le total suit les couverts. */}
@@ -399,26 +495,27 @@ export function TicketRow({ offer, category, accent, quantity, onChange, remaini
     quantity: number; onChange: (n: number) => void; remaining: number | null }) {
   const full = remaining !== null && remaining <= 0;
   const atMax = remaining !== null && quantity >= remaining;
+  // Les boutons de chaque ligne se ressemblent tous : sans le nom du billet,
+  // la lecture vocale enchaînerait « Ajouter » autant de fois qu'il y a de tarifs.
+  const titre = offerLabel(offer, category);
   return (
     <View style={styles.ticketRow}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.ticketLabel}>{offerLabel(offer, category)}</Text>
+        <Text style={styles.ticketLabel}>{titre}</Text>
         {!!offer.description && <Text style={styles.ticketDesc} numberOfLines={2}>{offer.description}</Text>}
         <Text style={[styles.ticketPrice, { color: accent }]}>{offer.price} {offer.currency}</Text>
         {full && <Text style={styles.ticketFull}>Complet à cette date</Text>}
       </View>
       <View style={styles.counterRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Diminuer la quantité" style={[styles.counterBtn, styles.counterBtnMuted]} onPress={() => onChange(Math.max(0, quantity - 1))} hitSlop={9}>
-          <Minus size={14} color={colors.muted} />
-        </Pressable>
-        <Text style={styles.counterValue}>{quantity}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Augmenter la quantité"
-          style={[styles.counterBtn, { backgroundColor: atMax ? colors.border : accent }]}
-          onPress={() => { if (!atMax) onChange(quantity + 1); }}
-          hitSlop={9}
-        >
-          <Plus size={14} color={atMax ? colors.faint : colors.cream} />
-        </Pressable>
+        <BoutonCompteur
+          sens="moins" label={`Retirer un billet : ${titre}`} accent={accent}
+          onPress={() => onChange(Math.max(0, quantity - 1))} disabled={quantity <= 0}
+        />
+        <ValeurCompteur value={quantity} lecture={`${titre} : ${quantity}`} />
+        <BoutonCompteur
+          sens="plus" label={`Ajouter un billet : ${titre}`} accent={accent}
+          onPress={() => { if (!atMax) onChange(quantity + 1); }} disabled={atMax}
+        />
       </View>
     </View>
   );
@@ -449,7 +546,7 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
   const slotState = slotStateFor(venue.openingHours, form.visitDate, SITE_SLOT_STEP_MIN);
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.corps}>
       <StepProgress
         labels={labels} current={shown} accent={accent}
         onGoBack={i => setStep(hasTickets ? i : i + 1)}
@@ -498,13 +595,14 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
 
           <Text style={styles.fieldLabel}>Créneau d'entrée</Text>
           {slotState.message ? (
-            <Text style={styles.slotHint}>{slotState.message}</Text>
+            <Indication alerte={!!form.visitDate}>{slotState.message}</Indication>
           ) : (
             <SlotPicker
               slots={slotState.slots}
               selected={form.timeSlot}
               onSelect={s => setForm({ ...form, timeSlot: s })}
               accent={accent}
+              label="Créneau d'entrée"
             />
           )}
 
@@ -513,8 +611,8 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
             <>
               <Text style={styles.fieldLabel}>Composition du groupe</Text>
               <View style={styles.formRow}>
-                <Counter label="Adultes" value={form.adults} accent={accent} onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
-                <Counter label="Enfants" value={form.children} accent={accent} onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
+                <Counter label="Adultes" value={form.adults} accent={accent} min={1} decLabel="Retirer un adulte" incLabel="Ajouter un adulte" onDec={() => setForm({ ...form, adults: Math.max(1, form.adults - 1) })} onInc={() => setForm({ ...form, adults: form.adults + 1 })} />
+                <Counter label="Enfants" value={form.children} accent={accent} min={0} decLabel="Retirer un enfant" incLabel="Ajouter un enfant" onDec={() => setForm({ ...form, children: Math.max(0, form.children - 1) })} onInc={() => setForm({ ...form, children: form.children + 1 })} />
               </View>
             </>
           )}
@@ -526,26 +624,22 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
             const rest = ticketsLeft(o);
             return want > 0 && rest !== null && rest < want;
           }) && (
-            <Text style={styles.slotHint}>
+            <Indication alerte>
               Certains billets ne sont plus disponibles en quantité suffisante sur ce créneau.
               Revenez à l'étape « Billets » pour ajuster.
-            </Text>
+            </Indication>
           )}
 
           <Text style={styles.fieldLabel}>Type de visite</Text>
-          <View style={styles.formRow}>
+          <View style={styles.formRow} accessibilityRole="radiogroup" accessibilityLabel="Type de visite">
             {[{ key: 'guided', label: 'Guidée' }, { key: 'free', label: 'Libre' }].map(v => (
-              <Pressable key={v.key} style={[styles.chip, { flex: 1 }, form.visitType === v.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, visitType: v.key as any })}>
-                <Text style={[styles.chipText, { textAlign: 'center' }, form.visitType === v.key && { color: colors.cream, fontWeight: '500' }]}>{v.label}</Text>
-              </Pressable>
+              <Choix key={v.key} label={v.label} actif={form.visitType === v.key} accent={accent} etire onPress={() => setForm({ ...form, visitType: v.key as any })} />
             ))}
           </View>
           <Text style={styles.fieldLabel}>Nationalité</Text>
-          <View style={styles.formRow}>
+          <View style={styles.formRow} accessibilityRole="radiogroup" accessibilityLabel="Nationalité">
             {[{ key: 'congolaise', label: 'Congolaise' }, { key: 'etrangere', label: 'Étrangère' }].map(n => (
-              <Pressable key={n.key} style={[styles.chip, { flex: 1 }, form.nationality === n.key && { backgroundColor: accent, borderColor: accent }]} onPress={() => setForm({ ...form, nationality: n.key as any })}>
-                <Text style={[styles.chipText, { textAlign: 'center' }, form.nationality === n.key && { color: colors.cream, fontWeight: '500' }]}>{n.label}</Text>
-              </Pressable>
+              <Choix key={n.key} label={n.label} actif={form.nationality === n.key} accent={accent} etire onPress={() => setForm({ ...form, nationality: n.key as any })} />
             ))}
           </View>
 
@@ -559,10 +653,10 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
       {step === 2 && (
         <>
           <View style={styles.formRow}>
-            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} placeholder="Pierre" /></View>
-            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} placeholder="Tshimanga" /></View>
+            <View style={{ flex: 1 }}><FormField label="Prénom" value={form.firstName} onChange={v => setForm({ ...form, firstName: v })} autoComplete="given-name" placeholder="Pierre" /></View>
+            <View style={{ flex: 1 }}><FormField label="Nom" value={form.lastName} onChange={v => setForm({ ...form, lastName: v })} autoComplete="family-name" placeholder="Tshimanga" /></View>
           </View>
-          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} placeholder="Kabasele" />
+          <FormField label="Postnom (facultatif)" value={form.postName} onChange={v => setForm({ ...form, postName: v })} autoComplete="additional-name" placeholder="Kabasele" />
           <PhoneField
             label="Téléphone (responsable)"
             dial={form.phoneDial}
@@ -570,7 +664,7 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
             value={form.phone}
             onChange={v => setForm({ ...form, phone: v })}
           />
-          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" />
+          <FormField label="Email" value={form.email} onChange={v => setForm({ ...form, email: v })} placeholder="pierre@exemple.cd" keyboardType="email-address" autoComplete="email" />
           <FormField label="Remarques (optionnel)" value={form.notes} onChange={v => setForm({ ...form, notes: v })} placeholder="Accessibilité PMR, équipement spécial..." multiline />
 
           <BookingRecap lines={cartLines} currency={offerCtx.offers[0]?.currency ?? 'USD'} />
@@ -584,17 +678,34 @@ export function SiteBookingForm({ accent, form, setForm, onSubmit, loading, avai
 
 
 const styles = StyleSheet.create({
+  // Sur grand écran, la feuille occupe toute la largeur de la fenêtre : sans
+  // limite, un champ de prénom s'étirerait sur plus de mille pixels.
+  corps: { paddingBottom: spacing.lg, width: '100%', maxWidth: breakpoints.formMax, alignSelf: 'center' },
   chip: { paddingHorizontal: spacing.v12, paddingVertical: spacing.sm, borderRadius: radii.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.v12 },
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border },
   chipText: { ...typography.caption, color: colors.muted },
+  chipTextActif: { color: colors.cream },
+  chipTextCentre: { textAlign: 'center' },
+  // L'écart de 12 sous la puce est conservé : la zone en reprend sa part.
+  chipZone: { minHeight: cible.min, minWidth: cible.min, justifyContent: 'center',
+    marginTop: -DEBORD_PUCE, marginBottom: spacing.v12 - DEBORD_PUCE },
+  chipZoneEtiree: { flex: 1 },
+  choix: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   counter: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.sm, padding: spacing.v12, gap: spacing.xs, marginBottom: spacing.v12 },
-  counterBtn: { width: 26, height: 26, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
+  counterBtn: { width: PASTILLE_COMPTEUR, height: PASTILLE_COMPTEUR, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center' },
+  counterBtnInactif: { opacity: 0.5 },
   counterBtnMuted: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.border },
   counterLabel: { ...typography.overlineXs, color: colors.muted },
   counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  counterValue: { ...typography.sheetOption, color: colors.ink },
-  formRow: { flexDirection: 'row', gap: spacing.sm + 2 },
+  // Largeur plancher : sur une ligne de billet, où rien d'autre ne sépare les
+  // deux boutons, c'est elle qui empêche leurs zones tactiles de se recouvrir.
+  counterValue: { ...typography.sheetOption, color: colors.ink, minWidth: cible.min - PASTILLE_COMPTEUR, textAlign: 'center' },
+  counterZone: {
+    width: cible.min, height: cible.min, margin: -(cible.min - PASTILLE_COMPTEUR) / 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  formRow: { flexDirection: 'row', gap: spacing.v12 },
   recap: {
     borderTopWidth: 1, borderTopColor: colors.border,
     paddingTop: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.sm, gap: spacing.sm,
@@ -613,7 +724,7 @@ const styles = StyleSheet.create({
   ticketDesc: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
   ticketFull: { ...typography.badgeSm, color: colors.danger, marginTop: spacing.v2 },
   ticketLabel: { ...typography.cardTitle, color: colors.ink },
-  ticketPrice: { ...typography.caption, fontWeight: '600', marginTop: spacing.v2 },
+  ticketPrice: { ...typography.caption, fontFamily: fonts.sansSemiBold, marginTop: spacing.v2 },
   ticketRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.md,

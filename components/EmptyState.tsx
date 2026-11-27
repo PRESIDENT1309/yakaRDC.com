@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, typography, spacing } from '../lib/theme';
+import Button from './Button';
 
 export interface EmptyStateProps {
   icon?: ReactNode;
@@ -8,6 +9,11 @@ export interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /**
+   * Niveau du titre. 2 par défaut (l'état vide d'une liste, sous le titre de
+   * l'écran) ; 1 quand l'état vide tient lieu d'écran entier.
+   */
+  niveau?: 1 | 2 | 3;
 }
 
 // Source officielle pour tout état vide. L'icône reste nue — jamais de
@@ -16,16 +22,20 @@ export interface EmptyStateProps {
 // ligne (ex. section vide sur l'accueil), on peut n'afficher qu'un titre —
 // {icon} ne rend rien quand icon est absente, donc gap ne réserve pas
 // d'espace pour elle.
-export default function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+//
+// L'action passe par `Button` : ce composant dessinait le sien, sans rôle, si
+// bien que « Réessayer » — souvent la seule issue proposée — n'était pas
+// annoncé comme un bouton.
+export default function EmptyState({ icon, title, description, actionLabel, onAction, niveau = 2 }: EmptyStateProps) {
   return (
     <View style={styles.container}>
       {icon}
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header" aria-level={niveau}>{title}</Text>
       {description ? <Text style={styles.description}>{description}</Text> : null}
       {actionLabel && onAction ? (
-        <Pressable style={styles.actionBtn} onPress={onAction}>
-          <Text style={styles.actionText}>{actionLabel}</Text>
-        </Pressable>
+        <View style={styles.action}>
+          <Button label={actionLabel} onPress={onAction} />
+        </View>
       ) : null}
     </View>
   );
@@ -33,11 +43,7 @@ export default function EmptyState({ icon, title, description, actionLabel, onAc
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingTop: 60, paddingHorizontal: spacing.lg, gap: spacing.v12 },
-  // Ce style attendait un jeton qui n'existait pas encore. `titleSm` le porte
-  // désormais, avec exactement les mêmes valeurs (sansSemiBold 16) : le rendu
-  // ne bouge pas, mais la taille cesse d'être décidée ici.
-  title: { ...typography.titleSm, color: colors.ink },
-  description: { ...typography.body, color: colors.muted, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
-  actionBtn: { marginTop: spacing.sm, backgroundColor: colors.lave, borderRadius: radii.md, paddingHorizontal: spacing.v20, paddingVertical: spacing.v12 },
-  actionText: { ...typography.button, color: colors.cream },
+  title: { ...typography.titleSm, color: colors.ink, textAlign: 'center' },
+  description: { ...typography.body, color: colors.muted, textAlign: 'center', maxWidth: 280 },
+  action: { marginTop: spacing.sm },
 });

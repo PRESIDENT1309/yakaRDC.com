@@ -5,6 +5,10 @@ import type { City } from './types';
 interface CityContextValue {
   cities: City[];
   loading: boolean;
+  /** La liste des villes n'a pas pu être lue (à ne pas confondre avec « aucune ville »). */
+  erreur: boolean;
+  /** Relance la lecture des villes après un échec. */
+  recharger: () => void;
   selectedCity: City | null;
   setSelectedCity: (city: City) => void;
   // Un sélecteur de ville n'a de sens que s'il y a un vrai choix à faire.
@@ -14,6 +18,8 @@ interface CityContextValue {
 const CityContext = createContext<CityContextValue>({
   cities: [],
   loading: true,
+  erreur: false,
+  recharger: () => {},
   selectedCity: null,
   setSelectedCity: () => {},
   hasMultipleCities: false,
@@ -25,7 +31,7 @@ const CityContext = createContext<CityContextValue>({
 // ville active tant qu'il n'y en a qu'une — aucune ville codée en dur ici,
 // tout vient de `cities`.
 export function CityProvider({ children }: { children: ReactNode }) {
-  const { cities, loading } = useActiveCities();
+  const { cities, loading, erreur, recharger } = useActiveCities();
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
 
   useEffect(() => {
@@ -40,7 +46,7 @@ export function CityProvider({ children }: { children: ReactNode }) {
 
   return (
     <CityContext.Provider
-      value={{ cities, loading, selectedCity, setSelectedCity, hasMultipleCities: cities.length > 1 }}
+      value={{ cities, loading, erreur, recharger, selectedCity, setSelectedCity, hasMultipleCities: cities.length > 1 }}
     >
       {children}
     </CityContext.Provider>

@@ -30,13 +30,14 @@ export default function ConfirmDialog({
       <Pressable style={styles.overlay} onPress={onCancel}>
         {/* Le contenu absorbe la pression : on ne ferme qu'en touchant le voile */}
         <Pressable style={styles.dialog} onPress={() => {}}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} accessibilityRole="header" aria-level={2}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
           <View style={styles.actions}>
             <View style={styles.action}>
               <Button
                 label={cancelLabel}
                 variant="secondary"
+                remplir
                 onPress={onCancel}
                 color={colors.muted}
                 softColor={colors.surfaceSunken}
@@ -45,6 +46,7 @@ export default function ConfirmDialog({
             <View style={styles.action}>
               <Button
                 label={confirmLabel}
+                remplir
                 onPress={onConfirm}
                 color={destructive ? colors.danger : colors.lave}
               />
@@ -58,7 +60,7 @@ export default function ConfirmDialog({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    flex: 1, backgroundColor: colors.overlay,
     alignItems: 'center', justifyContent: 'center', padding: spacing.lg,
   },
   dialog: {

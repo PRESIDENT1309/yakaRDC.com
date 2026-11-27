@@ -4,16 +4,17 @@ import {
   Platform, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { goBack } from '../lib/navigation';
 import {
-  ArrowLeft, Heart, Building2, Home, UtensilsCrossed, Mountain, MapPin,
+  Heart, Building2, Home, UtensilsCrossed, Mountain, MapPin, WifiOff,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { ecrire } from '../lib/db';
+import { lienVers } from '../lib/liens';
 import { useAuth } from '../lib/auth-context';
-import { colors, categoryColors, typography, radii, spacing } from '../lib/theme';
+import { colors, categoryColors, typography, radii, spacing, breakpoints, cible } from '../lib/theme';
 import type { Favorite, Establishment, EstablishmentType } from '../lib/types';
 import ScreenHeader from '../components/ScreenHeader';
+import BoutonIcone from '../components/BoutonIcone';
 import EmptyState from '../components/EmptyState';
 
 type FavoriteWithEstablishment = Favorite & { establishment: Establishment };
@@ -33,6 +34,7 @@ export default function FavoritesScreen() {
   const { session } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteWithEstablishment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState(false);
 
   const fetchFavorites = useCallback(async () => {
     // Sans session, cette fonction sortait avant tout `setLoading(false)`,
@@ -40,14 +42,20 @@ export default function FavoritesScreen() {
     // devant un disque qui tournait indéfiniment. C'est le pire état d'attente
     // possible — il ne finit jamais et n'explique rien. On rend la main à
     // l'écran, qui sait dire qu'il faut un compte.
-    if (!session?.user) { setFavorites([]); setLoading(false); return; }
+    if (!session?.user) { setFavorites([]); setErreur(false); setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('favorites')
       .select('*, establishment:establishments(*)')
       .eq('traveler_id', session.user.id)
       .order('created_at', { ascending: false });
-    setFavorites((data as FavoriteWithEstablishment[]) ?? []);
+    // Une panne n'est pas « aucun favori » : on le dit, et on propose de
+    // réessayer, plutôt que d'inviter à refaire une liste qui existe déjà.
+    setErreur(!!error);
+    // Un favori peut pointer vers un établissement que l'utilisateur ne peut
+    // plus lire (retiré, ou dépublié) : la jointure revient alors vide. Ces
+    // lignes faisaient planter l'écran à l'appui (`e.id` sur `null`).
+    setFavorites(((data as FavoriteWithEstablishment[]) ?? []).filter(f => f.establishment));
     setLoading(false);
   }, [session?.user?.id]);
 
@@ -65,11 +73,11 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Mes favoris" backFallback="/(tabs)/profile" />
+      <ScreenHeader title="Mes favoris" backFallback="/(tabs)/profile" contentMaxWidth={breakpoints.panelMax} />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading ? (
-          <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={colors.lave} style={{ marginTop: 40 }} accessibilityLabel="Chargement de vos favoris" />
         ) : !session?.user ? (
           /* Deux vides distincts, longtemps confondus derrière le même disque :
              « pas encore de favori » et « pas de compte ». Le second n'appelle
@@ -84,6 +92,14 @@ export default function FavoritesScreen() {
               pathname: '/(auth)/login',
               params: { redirect: '/favorites', reason: 'Connectez-vous pour retrouver vos favoris.' },
             })}
+          />
+        ) : erreur ? (
+          <EmptyState
+            icon={<WifiOff size={44} color={colors.borderStrong} strokeWidth={1.75} />}
+            title="Chargement impossible"
+            description="Vos favoris n'ont pas pu être chargés. Vérifiez votre connexion, puis réessayez."
+            actionLabel="Réessayer"
+            onAction={fetchFavorites}
           />
         ) : favorites.length === 0 ? (
           /* Un écran vide qui explique sans proposer laisse l'utilisateur au
@@ -101,30 +117,32 @@ export default function FavoritesScreen() {
           <View style={{ gap: spacing.sm }}>
             {favorites.map(f => {
               const e = f.establishment;
-              const cat = categoryColors[e?.type];
               return (
-                <Pressable
-                  key={f.id}
-                  style={styles.row}
-                  onPress={() => router.push(`/listing/${e.id}`)}
-                >
-                  <View style={[styles.iconBox, { backgroundColor: cat?.soft ?? colors.laveSoft }]}>
-                    <TypeIcon type={e?.type} size={20} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowName} numberOfLines={1}>{e?.name}</Text>
-                    <View style={styles.locationRow}>
-                      <MapPin size={10} color={colors.faint} />
-                      <Text style={styles.rowLocation}>{e?.commune ?? e?.neighborhood ?? e?.city}</Text>
+                /* Deux cibles côte à côte, et non l'une dans l'autre : le cœur
+                   vivait à l'intérieur de la ligne pressable, ce qui donne sur
+                   le web un bouton dans un lien — invalide, et imprévisible au
+                   clavier comme au lecteur d'écran. */
+                <View key={f.id} style={styles.row}>
+                  <Pressable style={styles.rowLink} accessibilityRole="link" {...lienVers(`/listing/${e.id}`)}>
+                    <TypeIcon type={e.type} size={22} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowName} numberOfLines={1}>{e.name}</Text>
+                      <View style={styles.locationRow}>
+                        <MapPin size={10} color={colors.faint} />
+                        <Text style={styles.rowLocation}>{e.commune ?? e.neighborhood ?? e.city}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <Pressable
-                    onPress={(ev) => { ev.stopPropagation(); handleRemove(f.id); }}
-                    hitSlop={8}
-                  >
-                    <Heart size={18} color={colors.danger} fill={colors.danger} />
                   </Pressable>
-                </Pressable>
+                  {/* Le cœur ne mesurait que 18 px, élargi par un `hitSlop`
+                      que le web ignore. Sa zone passe à 44 px sans que la
+                      carte ne bouge : le dessin, lui, garde sa taille. */}
+                  <BoutonIcone
+                    label={`Retirer ${e.name} des favoris`}
+                    taille={18}
+                    onPress={() => handleRemove(f.id)}
+                    icon={<Heart size={18} color={colors.danger} fill={colors.danger} />}
+                  />
+                </View>
               );
             })}
           </View>
@@ -136,13 +154,15 @@ export default function FavoritesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { padding: spacing.md },
+  // Une liste à une colonne étirée sur 1200 px éloignait le cœur du nom qu'il
+  // concerne : elle se centre sur la largeur d'un panneau, comme son en-tête.
+  content: { padding: spacing.md, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.md, padding: spacing.v12,
   },
-  iconBox: { width: 40, height: 40, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
+  rowLink: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.v12, minHeight: cible.min },
   rowName: { ...typography.pillLabel, color: colors.ink, },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2, marginTop: spacing.v2 },
   rowLocation: { ...typography.captionSm, color: colors.faint, },

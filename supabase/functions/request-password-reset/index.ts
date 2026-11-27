@@ -4,7 +4,7 @@
 // L'appel intégré de Supabase passe par son SMTP, plafonné à quelques envois
 // par heure tant qu'un serveur personnalisé n'est pas configuré — et l'email
 // ne ressemble alors à aucun des deux autres que reçoit un partenaire. Ici on
-// génère le lien avec l'API Admin et on l'envoie par Resend, déjà en service.
+// génère le lien avec l'API Admin et on l'envoie par le service d'email (_shared/email.ts), déjà en service.
 //
 // CE QUI EST DÉLIBÉRÉ
 //   * la réponse est TOUJOURS un succès, que le compte existe ou non. Dire

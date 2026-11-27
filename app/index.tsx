@@ -22,7 +22,7 @@ export default function Index() {
 
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream }}>
-      <ActivityIndicator color={colors.lave} />
+      <ActivityIndicator color={colors.lave} accessibilityLabel="Chargement" />
     </View>
   );
 }

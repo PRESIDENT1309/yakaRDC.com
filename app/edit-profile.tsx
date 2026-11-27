@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  Platform, ActivityIndicator, KeyboardAvoidingView,
-} from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { goBack } from '../lib/navigation';
-import { ArrowLeft, Check } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth-context';
-import { colors, typography, breakpoints, radii, spacing } from '../lib/theme';
+import { colors, typography, breakpoints, radii, spacing, cible } from '../lib/theme';
 import ScreenHeader from '../components/ScreenHeader';
+import FormField from '../components/FormField';
+import Button from '../components/Button';
 
 export default function EditProfileScreen() {
   const { profile, refreshProfile } = useAuth();
@@ -36,43 +34,42 @@ export default function EditProfileScreen() {
         <ScreenHeader title="Modifier le profil" backFallback="/(tabs)/profile" contentMaxWidth={breakpoints.formMax} />
 
         <View style={styles.content}>
-          <Text style={styles.fieldLabel}>Nom complet</Text>
-          <TextInput
-            style={styles.fieldInput}
+          <FormField
+            label="Nom complet"
             value={fullName}
-            onChangeText={setFullName}
+            onChange={setFullName}
             placeholder="Votre nom complet"
-            placeholderTextColor={colors.faint}
             autoCapitalize="words"
+            autoComplete="name"
           />
 
-          <Text style={styles.fieldLabel}>Téléphone</Text>
-          <TextInput
-            style={styles.fieldInput}
+          <FormField
+            label="Téléphone"
             value={phone}
-            onChangeText={setPhone}
+            onChange={setPhone}
             placeholder="+243 8xx xxx xxx"
-            placeholderTextColor={colors.faint}
             keyboardType="phone-pad"
+            autoComplete="tel"
           />
 
+          {/* Pas un champ : une valeur affichée, que rien ne permet de saisir.
+              Elle garde le filet discret des séparateurs. */}
           <Text style={styles.fieldLabel}>Email</Text>
           <View style={[styles.fieldInput, styles.fieldInputDisabled]}>
             <Text style={styles.disabledText}>{profile?.email ?? '—'}</Text>
           </View>
           <Text style={styles.hint}>L'adresse email ne peut pas être modifiée ici.</Text>
 
-          <Pressable
-            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving
-              ? <ActivityIndicator color={colors.cream} />
-              : saved
-              ? <><Check size={16} color={colors.cream} /><Text style={styles.saveBtnText}>Enregistré</Text></>
-              : <Text style={styles.saveBtnText}>Enregistrer</Text>}
-          </Pressable>
+          {/* Le libellé passe à « Enregistré » sept dixièmes de seconde avant
+              le retour : la région annoncée le dit à qui ne le voit pas. */}
+          <View style={styles.saveWrap} accessibilityLiveRegion="polite">
+            <Button
+              label={saved ? 'Enregistré' : 'Enregistrer'}
+              icon={saved ? <Check size={16} color={colors.cream} /> : undefined}
+              onPress={handleSave}
+              loading={saving}
+            />
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -81,16 +78,20 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
-  content: { maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center', padding: spacing.v20 },
-  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.sm, marginTop: spacing.v12, },
-  fieldInput: { ...typography.body, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
+  content: {
+    maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
+    padding: spacing.v20, paddingTop: spacing.xl,
+  },
+  // Libellé et boîte de l'email reprennent les mesures de `FormField`, pour
+  // que les trois lignes du formulaire s'alignent.
+  fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs, },
+  fieldInput: {
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
+    minHeight: cible.min, justifyContent: 'center',
+  },
   fieldInputDisabled: { backgroundColor: colors.surfaceSunken },
   disabledText: { ...typography.body, color: colors.muted, },
   hint: { ...typography.captionSm, color: colors.faint, marginTop: spacing.xs, },
-  saveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    backgroundColor: colors.lave, borderRadius: radii.md, paddingVertical: spacing.md, marginTop: 28,
-  },
-  saveBtnText: { ...typography.sheetOption, color: colors.cream, },
+  saveWrap: { marginTop: 28 },
 });

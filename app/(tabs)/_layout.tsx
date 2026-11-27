@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet, type ColorValue } from 'react-native';
 import { Home, Search, BookOpen, CalendarCheck, User } from 'lucide-react-native';
-import { colors, radii, spacing } from '../../lib/theme';
+import { colors, radii, spacing, typography, fonts } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import BarreBureau, { type Destination } from '../../components/BarreBureau';
 
 // Barre à 5 destinations (Accueil, Recherche, Culture, Réservations, Profil).
 // V1 : l'onglet Culture prend la place de Planning. L'écran `planner` reste
@@ -27,14 +28,27 @@ function tabLabel(title: string) {
   );
 }
 
+// Les mêmes cinq destinations, pour la barre du haut sur grand écran.
+const DESTINATIONS: Destination[] = [
+  { name: 'index', href: '/', label: 'Accueil', Icon: Home },
+  { name: 'search', href: '/search', label: 'Recherche', Icon: Search },
+  { name: 'culture', href: '/culture', label: 'Culture', Icon: BookOpen },
+  { name: 'bookings', href: '/bookings', label: 'Réservations', Icon: CalendarCheck },
+  { name: 'profile', href: '/profile', label: 'Profil', Icon: User },
+];
+
 export default function TabsLayout() {
-  const { width, isDesktop } = useResponsive();
-  const railPadding = isDesktop ? Math.max(24, (width - 460) / 2) : 20;
+  const { isDesktop } = useResponsive();
 
   return (
     <Tabs
+      // Sur un ordinateur, la navigation passe en haut de page (voir
+      // components/BarreBureau). La barre du bas, recentrée sur 460 px, n'était
+      // qu'une interface de téléphone étirée.
+      tabBar={isDesktop ? props => <BarreBureau {...props} destinations={DESTINATIONS} /> : undefined}
       screenOptions={{
         headerShown: false,
+        tabBarPosition: isDesktop ? 'top' : 'bottom',
         tabBarActiveTintColor: colors.lave,
         tabBarInactiveTintColor: colors.faint,
         tabBarStyle: {
@@ -42,7 +56,7 @@ export default function TabsLayout() {
           backgroundColor: colors.cream,
           height: Platform.OS === 'web' ? 68 : 62,
           paddingTop: spacing.v12,
-          paddingHorizontal: railPadding,
+          paddingHorizontal: spacing.v20,
           // Séparation nette avec le contenu qui défile en dessous, sans
           // dépendre d'un simple filet — se voit pendant le scroll aussi.
           shadowColor: colors.nuit,
@@ -87,6 +101,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   iconWrapActive: { backgroundColor: colors.laveSoft },
-  label: { fontFamily: 'Manrope_500Medium', fontSize: 10.5, marginTop: spacing.v2 },
-  labelActive: { fontFamily: 'Manrope_600SemiBold' },
+  // 11 px et non 10,5 : le plancher de l'échelle typographique.
+  label: { ...typography.captionMd, marginTop: spacing.v2 },
+  labelActive: { fontFamily: fonts.sansSemiBold },
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { ChevronDown, Search } from 'lucide-react-native';
-import { colors, typography, radii, spacing } from '../lib/theme';
+import { colors, typography, radii, spacing, fonts, cible } from '../lib/theme';
 import { searchCountries, findByDial, PINNED_COUNT, DEFAULT_DIAL } from '../lib/countries';
 import Sheet from './Sheet';
 
@@ -40,7 +40,12 @@ export default function PhoneField({
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
-        <Pressable style={styles.dialBtn} onPress={() => setOpen(true)}>
+        <Pressable
+          style={styles.dialBtn}
+          onPress={() => setOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Indicatif du pays : ${current ? `${current.name}, ` : ''}${dial || DEFAULT_DIAL}`}
+        >
           <Text style={styles.dialText}>{dial || DEFAULT_DIAL}</Text>
           <ChevronDown size={13} color={colors.faint} strokeWidth={1.75} />
         </Pressable>
@@ -51,6 +56,10 @@ export default function PhoneField({
           placeholder={placeholder ?? '8xx xxx xxx'}
           placeholderTextColor={colors.faint}
           keyboardType="phone-pad"
+          // Le libellé visible n'est pas relié au champ : sans ceci, la lecture
+          // vocale annonce « zone de texte » sans dire ce qu'on y saisit.
+          accessibilityLabel={label}
+          autoComplete="tel-national"
         />
       </View>
 
@@ -69,6 +78,7 @@ export default function PhoneField({
             placeholder="Rechercher un pays ou un indicatif"
             placeholderTextColor={colors.faint}
             autoCorrect={false}
+            accessibilityLabel="Rechercher un pays ou un indicatif"
           />
         </View>
 
@@ -80,7 +90,13 @@ export default function PhoneField({
               <View key={c.code}>
                 {/* Séparateur après les pays épinglés, seulement hors recherche */}
                 {!query && i === PINNED_COUNT && <View style={styles.groupSep} />}
-                <Pressable style={styles.option} onPress={() => choose(c.dial)}>
+                <Pressable
+                  style={styles.option}
+                  onPress={() => choose(c.dial)}
+                  accessibilityRole="radio"
+                  aria-checked={c.dial === dial}
+                  accessibilityLabel={`${c.name}, ${c.dial}`}
+                >
                   <Text style={[styles.optionName, c.dial === dial && styles.optionActive]}>{c.name}</Text>
                   <Text style={[styles.optionDial, c.dial === dial && styles.optionActive]}>{c.dial}</Text>
                 </Pressable>
@@ -99,15 +115,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing.sm },
   dialBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12,
   },
   dialText: { ...typography.body, color: colors.ink },
-  input: { ...typography.body, flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+  input: { ...typography.body, flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, color: colors.ink, },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.white, borderWidth: 1, borderColor: colors.borderField,
     borderRadius: radii.md, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, marginBottom: spacing.sm,
   },
   searchInput: { ...typography.body, flex: 1, color: colors.ink },
@@ -115,10 +131,11 @@ const styles = StyleSheet.create({
   option: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingVertical: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border,
+    minHeight: cible.min,
   },
   optionName: { ...typography.sheetOption, color: colors.ink, flex: 1 },
   optionDial: { ...typography.sheetOption, color: colors.muted },
-  optionActive: { color: colors.lave, fontWeight: '600' },
+  optionActive: { color: colors.lave, fontFamily: fonts.sansSemiBold },
   groupSep: { height: 1, backgroundColor: colors.borderStrong, marginVertical: spacing.sm },
   noResult: { ...typography.body, color: colors.muted, paddingVertical: spacing.md },
 });

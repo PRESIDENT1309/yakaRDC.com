@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, Modal, TextInput,
-  ActivityIndicator, useWindowDimensions, Linking, Share,
+  Platform, Modal,
+  ActivityIndicator, Linking, Share,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Alert } from '../../lib/alert';
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { ecrire } from '../../lib/db';
+import { messageErreur } from '../../lib/erreurs';
+import { useSeo, SITE_URL, metaEtablissement } from '../../lib/seo';
 import Skeleton from '../../components/Skeleton';
 import { cheapestActiveOffer } from '../../lib/offers';
 import { slotToTime, timeToSlot } from '../../lib/slots';
@@ -24,8 +26,12 @@ import { parseMenu, isMenuEmpty, countMenuItems, menuTitleFor } from '../../lib/
 import MenuSheet from '../../components/MenuSheet';
 import type { OpeningHours } from '../../lib/opening-hours';
 import { useAuth } from '../../lib/auth-context';
-import { colors, categoryColors, spacing, typography, radii } from '../../lib/theme';
+import { colors, categoryColors, spacing, typography, radii, cible } from '../../lib/theme';
 import { useResponsive } from '../../lib/responsive';
+import { useZonesSures } from '../../lib/zones';
+import { useMouvementReduit } from '../../lib/motion';
+import { lienVers } from '../../lib/liens';
+import BoutonIcone from '../../components/BoutonIcone';
 import { useConfirm } from '../../lib/confirm-context';
 import { getOpeningStatus, isOpenOn } from '../../lib/opening-hours';
 import FormField from '../../components/FormField';
@@ -58,6 +64,7 @@ import PhotoScrim from '../../components/PhotoScrim';
 import type { Establishment, EstablishmentType, ListingPhoto, Review, EstablishmentOffer, OfferCategory } from '../../lib/types';
 import { unitsNeeded, offerLabel } from '../../lib/types';
 import { PLANNING_ENABLED } from '../../lib/features';
+import { etatBascule } from '../../lib/a11y';
 
 // Établissement suggéré en fin de fiche, enrichi de sa photo et de son tarif
 type SimilarEstablishment = Establishment & {
@@ -70,6 +77,23 @@ type SimilarEstablishment = Establishment & {
 // le lien ouvre une conversation pré-remplie.
 const SUPPORT_WHATSAPP = '243819745279';
 
+// Photo d'en-tête. 220 px conviennent à un téléphone ; à 1200 px de large,
+// la même hauteur ne montrait plus qu'une tranche de 5:1 de la photo. Dès la
+// tablette, la hauteur suit donc la largeur, sous un plafond qui laisse le
+// début de la fiche visible sans défiler.
+const HERO_MOBILE = 220;
+const HERO_PROPORTION = 0.36;
+const HERO_PLAFOND = 440;
+
+// Pastille des commandes posées sur la photo (retour, partage, favori).
+const FOND_COMMANDE = colors.white + 'CC';
+
+// Côté d'une étoile du sélecteur de note.
+const ETOILE = 34;
+// Surplus d'une zone tactile de 44 px autour d'une ligne de texte `caption` :
+// une marge négative de cette valeur agrandit la cible sans rien décaler.
+const DEBORD_LIGNE = (cible.min - typography.caption.lineHeight) / 2;
+
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
   'Wifi': <Wifi size={13} color={colors.fleuveDark} />,
   'Parking': <Car size={13} color={colors.fleuveDark} />,
@@ -80,10 +104,18 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
-  const { width: heroWidth } = useWindowDimensions();
-  const { isWide, isDesktop, contentWidth } = useResponsive();
+  const { width: heroWidth, isWide, isDesktop, contentWidth } = useResponsive();
+  const { haut, bas, insets } = useZonesSures();
+  const mouvementReduit = useMouvementReduit();
   const confirm = useConfirm();
   const wide = { maxWidth: contentWidth, width: '100%' as const, alignSelf: 'center' as const };
+  const heroHeight = isWide
+    ? Math.min(Math.round(heroWidth * HERO_PROPORTION), HERO_PLAFOND)
+    : HERO_MOBILE;
+  // Au-delà de la largeur de contenu, la photo reste en pleine largeur mais
+  // ses commandes et son titre s'alignent sur la colonne centrée du corps,
+  // au lieu de partir se coller aux bords de la fenêtre.
+  const bordHero = (heroWidth - contentWidth) / 2 + spacing.md;
   const photoScrollRef = useRef<ScrollView>(null);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -112,6 +144,24 @@ export default function ListingDetailScreen() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // L'onglet, l'historique et l'aperçu de partage portent le nom de
+  // l'établissement dès qu'il est connu, plutôt que « Fiche établissement ».
+  // Une fiche suspendue ou non publiée n'est pas proposée aux moteurs.
+  //
+  // Une fiche introuvable non plus. Le serveur répond 200 à toute adresse
+  // « /listing/<quelque chose> » — il sert le même gabarit, sans savoir si
+  // l'établissement existe — et ce gabarit se déclare indexable, pour que les
+  // fiches créées depuis le dernier déploiement puissent l'être. C'est donc ici
+  // qu'une adresse sans établissement doit se retirer de l'index.
+  useSeo(establishment ? {
+    ...metaEtablissement(establishment, photos[0]?.url),
+    index: establishment.status === 'approved' && !establishment.suspended_at,
+  } : loadError ? {
+    title: 'Établissement introuvable',
+    path: `/listing/${id}`,
+    index: false,
+  } : null);
 
   // Disponibilités
   const [fullDays, setFullDays] = useState<Set<string>>(new Set());
@@ -415,7 +465,7 @@ export default function ListingDetailScreen() {
       : await supabase.from('reviews').insert(payload);
 
     setSavingReview(false);
-    if (error) { Alert.alert('Erreur', error.message); return; }
+    if (error) { Alert.alert('Avis non enregistré', messageErreur(error, "Votre avis n'a pas pu être enregistré. Réessayez dans un instant.")); return; }
 
     setShowReviewForm(false);
     fetchReviews();
@@ -430,7 +480,12 @@ export default function ListingDetailScreen() {
       destructive: true,
     });
     if (!ok) return;
-    await supabase.from('reviews').delete().eq('id', myReview.id);
+    // L'avis ne quitte l'écran que si la base l'a réellement supprimé.
+    const supprime = await ecrire(
+      supabase.from('reviews').delete().eq('id', myReview.id),
+      "Suppression de l'avis",
+    );
+    if (!supprime) return;
     setShowReviewForm(false);
     fetchReviews();
   }
@@ -519,13 +574,14 @@ export default function ListingDetailScreen() {
     return (
       <View style={styles.loading}>
         <EmptyState
+          niveau={1}
           icon={<AlertCircle size={40} color={colors.borderStrong} strokeWidth={1.75} />}
           title="Établissement introuvable"
           description="Cette fiche n'existe plus, ou la connexion a échoué. Vérifiez votre réseau et réessayez."
           actionLabel="Réessayer"
           onAction={loadEstablishment}
         />
-        <Pressable style={styles.errorBackLink} onPress={() => goBack('/(tabs)')}>
+        <Pressable style={styles.errorBackLink} accessibilityRole="button" onPress={() => goBack('/(tabs)')}>
           <Text style={styles.errorBackText}>Retour</Text>
         </Pressable>
       </View>
@@ -535,12 +591,12 @@ export default function ListingDetailScreen() {
   if (!establishment) {
     // Le disque centré ne disait rien de la fiche à venir, et la page sautait
     // d'un écran vide à une mise en page complète. La silhouette reprend la
-    // structure réelle — photo de 220, puis nom, lieu, et le début du texte —
+    // structure réelle — photo, puis nom, lieu, et le début du texte —
     // pour que le contenu s'installe à la place déjà réservée.
     return (
       <View style={styles.screen}>
-        <Skeleton height={220} radius={0} />
-        <View style={styles.attenteCorps}>
+        <Skeleton height={heroHeight} radius={0} />
+        <View style={[styles.attenteCorps, isWide && wide]}>
           <Skeleton width="68%" height={22} radius={radii.pill} />
           <Skeleton width="42%" height={13} radius={radii.pill} />
           <View style={{ height: spacing.sm }} />
@@ -653,7 +709,9 @@ export default function ListingDetailScreen() {
 
     if (error || !created) {
       setSubmitting(false);
-      Alert.alert('Erreur', error?.message ?? "La demande n'a pas pu être enregistrée.");
+      // `messageErreur` restitue le message de nos déclencheurs (« il ne reste
+      // que 2 places pour cette date ») et traduit le reste.
+      Alert.alert('Réservation impossible', messageErreur(error, "La demande n'a pas pu être enregistrée. Réessayez dans un instant."));
       return;
     }
 
@@ -675,9 +733,7 @@ export default function ListingDetailScreen() {
         setSubmitting(false);
         Alert.alert(
           'Réservation impossible',
-          itemsError.message.includes('OFFER_FULL')
-            ? itemsError.message.split('OFFER_FULL: ')[1] ?? 'Cette catégorie est complète à ces dates.'
-            : itemsError.message,
+          messageErreur(itemsError, 'Cette offre ne peut pas être réservée à ces dates.'),
         );
         return;
       }
@@ -808,7 +864,7 @@ export default function ListingDetailScreen() {
   // URL publique de la fiche — sert au partage et au signalement.
   const listingUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/listing/${id}`
-    : `https://yakardc.com/listing/${id}`;
+    : `${SITE_URL}/listing/${id}`;
 
   async function handleShare() {
     try {
@@ -870,7 +926,7 @@ export default function ListingDetailScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={[styles.hero, { backgroundColor: soft }]}>
+        <View style={[styles.hero, { height: heroHeight, backgroundColor: soft }]}>
           {photos.length > 0 ? (
             <>
               <ScrollView
@@ -894,7 +950,7 @@ export default function ListingDetailScreen() {
                     source={{ uri: photo.url }}
                     style={{ width: heroWidth, height: '100%' }}
                     contentFit="cover"
-                    transition={220}
+                    transition={mouvementReduit ? 0 : 220}
                     cachePolicy="memory-disk"
                     // La première photo décide de la première impression de la
                     // fiche : elle est demandée en priorité haute, les suivantes
@@ -913,11 +969,14 @@ export default function ListingDetailScreen() {
                   {photos.map((_, i) => (
                     <Pressable
                       key={i}
+                      style={styles.photoDotZone}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Photo ${i + 1} sur ${photos.length}`}
+                      {...etatBascule(i === activePhotoIndex)}
                       onPress={() => {
                         setActivePhotoIndex(i);
-                        photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: true });
+                        photoScrollRef.current?.scrollTo({ x: i * heroWidth, animated: !mouvementReduit });
                       }}
-                      hitSlop={6}
                     >
                       <View style={[styles.photoDot, i === activePhotoIndex && styles.photoDotActive]} />
                     </Pressable>
@@ -926,42 +985,65 @@ export default function ListingDetailScreen() {
               )}
               {/* Entrée explicite vers la galerie. Hors du ScrollView paginé,
                   donc son toucher n'entre en concurrence avec aucun geste. */}
-              <Pressable style={styles.galleryBtn} onPress={() => setViewer({ source: 'photos', index: activePhotoIndex })}>
-                <Images size={13} color={colors.cream} strokeWidth={1.75} />
-                <Text style={styles.galleryBtnText}>
-                  {photos.length > 1 ? `Voir les ${photos.length} photos` : 'Voir la photo'}
-                </Text>
+              <Pressable
+                style={[styles.galleryZone, { right: bordHero }]}
+                accessibilityRole="button"
+                onPress={() => setViewer({ source: 'photos', index: activePhotoIndex })}
+              >
+                <View style={styles.galleryBtn}>
+                  <Images size={13} color={colors.cream} strokeWidth={1.75} />
+                  <Text style={styles.galleryBtnText}>
+                    {photos.length > 1 ? `Voir les ${photos.length} photos` : 'Voir la photo'}
+                  </Text>
+                </View>
               </Pressable>
             </>
           ) : (
             // Repli de marque (§06) : plus d'illustration décorative maison,
             // c'est RiverMotif + PhotoScrim, déjà éprouvés sur la Homepage.
             <>
-              <RiverMotif width={heroWidth} height={220} variant="hero" />
+              <RiverMotif width={heroWidth} height={heroHeight} variant="hero" />
               <View pointerEvents="none" style={StyleSheet.absoluteFill}>
                 <PhotoScrim from="bottom" intensity={0.45} />
               </View>
             </>
           )}
-          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Retour" style={styles.backBtn} onPress={() => goBack('/(tabs)')}>
-            <ArrowLeft size={16} color={colors.ink} strokeWidth={1.75} />
-          </Pressable>
-          <View style={styles.heroActions}>
-            <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel="Partager" style={styles.heroActionBtn} onPress={handleShare}>
-              <Share2 size={16} color={colors.ink} strokeWidth={1.75} />
-            </Pressable>
-            <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel={isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'} style={styles.heroActionBtn} onPress={toggleFavorite} disabled={favoriteLoading}>
-              <Heart
-                size={16}
-                strokeWidth={1.75}
-                color={isFavorited ? colors.danger : colors.ink}
-                fill={isFavorited ? colors.danger : 'transparent'}
-              />
-            </Pressable>
+          <BoutonIcone
+            label="Retour"
+            taille={32}
+            fond={FOND_COMMANDE}
+            onPress={() => goBack('/(tabs)')}
+            icon={<ArrowLeft size={16} color={colors.ink} strokeWidth={1.75} />}
+            style={[styles.backBtn, { top: haut, left: bordHero }]}
+          />
+          <View style={[styles.heroActions, { top: haut, right: bordHero }]}>
+            <BoutonIcone
+              label="Partager"
+              taille={32}
+              fond={FOND_COMMANDE}
+              onPress={handleShare}
+              icon={<Share2 size={16} color={colors.ink} strokeWidth={1.75} />}
+            />
+            {/* Pas de `disabled` pendant l'enregistrement : toggleFavorite
+                ignore déjà un second appui, et le cœur ne clignote pas. */}
+            <BoutonIcone
+              label={isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              taille={32}
+              fond={FOND_COMMANDE}
+              onPress={toggleFavorite}
+              icon={
+                <Heart
+                  size={16}
+                  strokeWidth={1.75}
+                  color={isFavorited ? colors.danger : colors.ink}
+                  fill={isFavorited ? colors.danger : 'transparent'}
+                />
+              }
+            />
           </View>
-          <View style={styles.heroFooter}>
+          <View style={[styles.heroFooter, { left: bordHero, right: bordHero }]}>
             <Text style={styles.heroCategory}>{cat?.label}</Text>
-            <Text style={styles.heroName}>{establishment.name}</Text>
+            <Text style={styles.heroName} accessibilityRole="header" aria-level={1}>{establishment.name}</Text>
           </View>
         </View>
 
@@ -997,14 +1079,24 @@ export default function ListingDetailScreen() {
           {(!!establishment.phone || !!establishment.email) && (
             <View style={styles.contactRow}>
               {!!establishment.phone && (
-                <Pressable style={styles.contactCell} onPress={() => Linking.openURL(`tel:${establishment.phone}`)}>
+                <Pressable
+                  style={styles.contactCell}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Appeler ${establishment.name}`}
+                  onPress={() => Linking.openURL(`tel:${establishment.phone}`)}
+                >
                   <Phone size={15} color={accent} strokeWidth={1.75} />
                   <Text style={styles.contactLabel}>Appeler</Text>
                 </Pressable>
               )}
               {!!establishment.phone && !!establishment.email && <View style={styles.contactDivider} />}
               {!!establishment.email && (
-                <Pressable style={styles.contactCell} onPress={() => Linking.openURL(`mailto:${establishment.email}`)}>
+                <Pressable
+                  style={styles.contactCell}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Écrire un e-mail à ${establishment.name}`}
+                  onPress={() => Linking.openURL(`mailto:${establishment.email}`)}
+                >
                   <Mail size={15} color={accent} strokeWidth={1.75} />
                   <Text style={styles.contactLabel}>Écrire</Text>
                 </Pressable>
@@ -1015,22 +1107,28 @@ export default function ListingDetailScreen() {
           {(!!establishment.instagram || !!establishment.tiktok) && (
             <View style={styles.followRow}>
               <Text style={styles.followLabel}>Suivre :</Text>
+              {/* Un `Text onPress` n'était annoncé ni comme lien ni comme bouton,
+                  et n'offrait que la hauteur de sa ligne au doigt. */}
               {!!establishment.instagram && (
-                <Text
-                  style={[styles.followLink, { color: accent }]}
+                <Pressable
+                  style={styles.followZone}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${establishment.name} sur Instagram`}
                   onPress={() => Linking.openURL(`https://instagram.com/${establishment.instagram!.replace('@', '')}`)}
                 >
-                  Instagram
-                </Text>
+                  <Text style={[styles.followLink, { color: accent }]}>Instagram</Text>
+                </Pressable>
               )}
               {!!establishment.instagram && !!establishment.tiktok && <Text style={styles.followLabel}>·</Text>}
               {!!establishment.tiktok && (
-                <Text
-                  style={[styles.followLink, { color: accent }]}
+                <Pressable
+                  style={styles.followZone}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${establishment.name} sur TikTok`}
                   onPress={() => Linking.openURL(`https://tiktok.com/@${establishment.tiktok!.replace('@', '')}`)}
                 >
-                  TikTok
-                </Text>
+                  <Text style={[styles.followLink, { color: accent }]}>TikTok</Text>
+                </Pressable>
               )}
             </View>
           )}
@@ -1048,7 +1146,7 @@ export default function ListingDetailScreen() {
 
           {!!establishment.description && (
             <View style={styles.section}>
-              <Text style={styles.sectionKicker}>À propos</Text>
+              <Text style={styles.sectionKicker} accessibilityRole="header" aria-level={2}>À propos</Text>
               <Text style={styles.description}>{establishment.description}</Text>
             </View>
           )}
@@ -1061,10 +1159,8 @@ export default function ListingDetailScreen() {
               n'apparaît que lorsqu'il y a au moins l'un des deux. */}
           {(!isMenuEmpty(menu) || menuPhotos.length > 0) && (
             <View style={styles.section}>
-              <Pressable style={styles.menuRow} onPress={() => setMenuOpen(true)}>
-                <View style={[styles.menuIcon, { backgroundColor: soft }]}>
-                  <BookOpen size={17} color={accent} strokeWidth={1.75} />
-                </View>
+              <Pressable style={styles.menuRow} accessibilityRole="button" onPress={() => setMenuOpen(true)}>
+                <BookOpen size={20} color={accent} strokeWidth={1.75} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.menuRowTitle}>{menuSectionTitle}</Text>
                   <Text style={styles.menuRowMeta}>{menuRowMeta}</Text>
@@ -1078,7 +1174,7 @@ export default function ListingDetailScreen() {
               Une offre retirée du catalogue n'est jamais visible ici. */}
           {offers.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionKicker}>{offerSectionTitle}</Text>
+              <Text style={styles.sectionKicker} accessibilityRole="header" aria-level={2}>{offerSectionTitle}</Text>
               <View style={{ gap: spacing.sm }}>
                 {offers.map(o => (
                   <OfferCard
@@ -1098,14 +1194,14 @@ export default function ListingDetailScreen() {
               blanche bordée. Rue en Playfair, zone en Manrope. */}
           {(!!communeLabel || !!streetLine || !!establishment.reference) && (
             <View style={styles.section}>
-              <Text style={styles.sectionKicker}>Adresse</Text>
+              <Text style={styles.sectionKicker} accessibilityRole="header" aria-level={2}>Adresse</Text>
               <View style={styles.addressBlock}>
                 {!!streetLine && <Text style={styles.addressStreet}>{streetLine}</Text>}
                 {!!areaLine && <Text style={styles.addressArea}>{areaLine}</Text>}
                 {!!establishment.reference && (
                   <Text style={styles.addressReference}>Repère : {establishment.reference}</Text>
                 )}
-                <Pressable style={styles.directionsLink} onPress={openDirections}>
+                <Pressable style={styles.directionsLink} accessibilityRole="link" onPress={openDirections}>
                   <Navigation size={13} color={accent} strokeWidth={1.75} />
                   <Text style={[styles.directionsText, { color: accent }]}>Ouvrir l'itinéraire</Text>
                 </Pressable>
@@ -1116,12 +1212,12 @@ export default function ListingDetailScreen() {
           {/* Avis */}
           <View style={styles.section}>
             <View style={styles.reviewsHeader}>
-              <Text style={styles.sectionKicker}>
+              <Text style={styles.sectionKicker} accessibilityRole="header" aria-level={2}>
                 Avis {reviews.length > 0 ? `(${reviews.length})` : ''}
               </Text>
               {/* Plus conditionné à la session : la garde est dans openReviewForm,
                   masquer le bouton cachait le problème au lieu de le traiter. */}
-              <Pressable style={styles.writeReviewBtn} onPress={openReviewForm}>
+              <Pressable style={styles.writeReviewBtn} accessibilityRole="button" onPress={openReviewForm}>
                 {myReview ? <Pencil size={12} color={accent} strokeWidth={1.75} /> : <Star size={12} color={accent} strokeWidth={1.75} />}
                 <Text style={[styles.writeReviewText, { color: accent }]}>
                   {myReview ? 'Modifier mon avis' : 'Donner mon avis'}
@@ -1139,7 +1235,13 @@ export default function ListingDetailScreen() {
                 {reviews.slice(0, 3).map(r => (
                   <View key={r.id} style={styles.reviewCard}>
                     <View style={styles.reviewTopRow}>
-                      <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
+                      {/* Cinq étoiles dessinées ne se lisent pas : la note est dite en clair. */}
+                      <View
+                        style={{ flexDirection: 'row', gap: spacing.v2 }}
+                        accessible
+                        accessibilityRole="image"
+                        accessibilityLabel={`Note : ${r.rating} sur 5`}
+                      >
                         {[1, 2, 3, 4, 5].map(i => (
                           <Star key={i} size={11} color={colors.or} fill={i <= r.rating ? colors.or : 'transparent'} />
                         ))}
@@ -1191,7 +1293,7 @@ export default function ListingDetailScreen() {
           {/* Établissements similaires — évite que la fiche soit un cul-de-sac */}
           {similar.length > 0 && (
             <View style={styles.similarSection}>
-              <Text style={styles.sectionKicker}>Dans la même commune</Text>
+              <Text style={styles.sectionKicker} accessibilityRole="header" aria-level={2}>Dans la même commune</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
                 {similar.map(s => (
                   <ListingCard
@@ -1202,14 +1304,15 @@ export default function ListingDetailScreen() {
                     coverPhotoUrl={s.coverPhoto}
                     priceLabel={s.priceLabel}
                     width={200}
-                    onPress={() => router.replace(`/listing/${s.id}`)}
+                    href={`/listing/${s.id}`}
+                    remplacer
                   />
                 ))}
               </ScrollView>
             </View>
           )}
 
-          <Pressable style={styles.reportLink} onPress={reportListing}>
+          <Pressable style={styles.reportLink} accessibilityRole="link" onPress={reportListing}>
             <Flag size={12} color={colors.faint} strokeWidth={1.75} />
             <Text style={styles.reportText}>Signaler une information incorrecte</Text>
           </Pressable>
@@ -1233,7 +1336,7 @@ export default function ListingDetailScreen() {
 
       {/* Barre de réservation fixe — mobile et tablette uniquement */}
       {!isDesktop && (
-        <View style={styles.bookingBar}>
+        <View style={[styles.bookingBar, { paddingBottom: Math.max(insets.bottom, spacing.v12) }]}>
           <View style={styles.bookingBarPrice}>
             <Text style={styles.priceFrom}>À partir de</Text>
             <Text style={styles.priceValue} numberOfLines={1}>{priceLabel}</Text>
@@ -1244,8 +1347,15 @@ export default function ListingDetailScreen() {
 
       {success && (
         <View style={styles.successBanner}>
-          <Text style={styles.successText}>Demande envoyée. L'établissement vous confirmera sous 24h.</Text>
-          <Pressable onPress={() => { setSuccess(false); router.push('/(tabs)/bookings'); }}>
+          <Text style={styles.successText} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            Demande envoyée. L'établissement vous confirmera sous 24h.
+          </Text>
+          <Pressable
+            style={styles.successZone}
+            accessibilityRole="link"
+            accessibilityLabel="Voir mes réservations"
+            {...lienVers('/bookings', { avant: () => setSuccess(false) })}
+          >
             <Text style={styles.successLink}>Voir mes réservations →</Text>
           </Pressable>
         </View>
@@ -1276,11 +1386,20 @@ export default function ListingDetailScreen() {
         subtitle={establishment.name}
       >
         <Text style={styles.fieldLabel}>Votre note</Text>
-        <View style={styles.starPicker}>
+        {/* Une note est un choix unique parmi cinq : c'est ce qu'annonce le
+            groupe, là où cinq « boutons » ne disaient pas lequel était retenu. */}
+        <View style={styles.starPicker} accessibilityRole="radiogroup" accessibilityLabel="Votre note">
           {[1, 2, 3, 4, 5].map(i => (
-            <Pressable accessibilityRole="button" accessibilityLabel={'Noter ' + i + ' sur 5'} key={i} onPress={() => setReviewRating(i)} hitSlop={6}>
+            <Pressable
+              key={i}
+              style={styles.starZone}
+              accessibilityRole="radio"
+              accessibilityLabel={'Noter ' + i + ' sur 5'}
+              aria-checked={i === reviewRating}
+              onPress={() => setReviewRating(i)}
+            >
               <Star
-                size={34}
+                size={ETOILE}
                 color={colors.or}
                 fill={i <= reviewRating ? colors.or : 'transparent'}
               />
@@ -1288,14 +1407,13 @@ export default function ListingDetailScreen() {
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>Votre commentaire (optionnel)</Text>
-        <TextInput
-          style={[styles.fieldInput, { height: 100, textAlignVertical: 'top' }]}
+        <FormField
+          label="Votre commentaire (optionnel)"
           value={reviewComment}
-          onChangeText={setReviewComment}
+          onChange={setReviewComment}
           placeholder="Qu'avez-vous pensé de votre expérience ?"
-          placeholderTextColor={colors.faint}
           multiline
+          lines={3}
         />
 
         <Button
@@ -1308,7 +1426,7 @@ export default function ListingDetailScreen() {
         />
 
         {myReview && (
-          <Pressable style={styles.deleteReviewBtn} onPress={confirmDeleteReview}>
+          <Pressable style={styles.deleteReviewBtn} accessibilityRole="button" onPress={confirmDeleteReview}>
             <Text style={styles.deleteReviewText}>Supprimer mon avis</Text>
           </Pressable>
         )}
@@ -1330,13 +1448,16 @@ export default function ListingDetailScreen() {
           galerie principale et photos de menu/tarifs. */}
       <Modal visible={viewer !== null} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
         <View style={styles.viewerOverlay}>
-          <View style={styles.viewerHeader}>
+          <View style={[styles.viewerHeader, { paddingTop: haut }]}>
             <Text style={styles.viewerCounter}>
               {viewer ? `${viewer.index + 1} / ${viewerPhotos.length}` : ''}
             </Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Fermer la galerie" onPress={() => setViewer(null)} hitSlop={12}>
-              <X size={22} color={colors.white} strokeWidth={1.75} />
-            </Pressable>
+            <BoutonIcone
+              label="Fermer la galerie"
+              taille={22}
+              onPress={() => setViewer(null)}
+              icon={<X size={22} color={colors.white} strokeWidth={1.75} />}
+            />
           </View>
 
           <View style={styles.viewerImageWrap}>
@@ -1348,7 +1469,7 @@ export default function ListingDetailScreen() {
                 // photo entière — c'est le seul endroit de l'app où recadrer
                 // serait une perte.
                 contentFit="contain"
-                transition={160}
+                transition={mouvementReduit ? 0 : 160}
                 cachePolicy="memory-disk"
                 priority="high"
                 recyclingKey={viewerPhoto.url}
@@ -1357,8 +1478,9 @@ export default function ListingDetailScreen() {
             )}
           </View>
 
-          <View style={styles.viewerFooter}>
+          <View style={[styles.viewerFooter, { paddingBottom: bas }]}>
             <Pressable accessibilityRole="button" accessibilityLabel="Photo précédente"
+              aria-disabled={viewer?.index === 0}
               style={[styles.viewerNavBtn, viewer?.index === 0 && styles.viewerNavBtnDisabled]}
               onPress={() => setViewer(v => (v && v.index > 0 ? { ...v, index: v.index - 1 } : v))}
               disabled={viewer?.index === 0}
@@ -1368,6 +1490,7 @@ export default function ListingDetailScreen() {
             </Pressable>
             <View style={{ width: 44 }} />
             <Pressable accessibilityRole="button" accessibilityLabel="Photo suivante"
+              aria-disabled={viewer !== null && viewer.index === viewerPhotos.length - 1}
               style={[styles.viewerNavBtn, viewer !== null && viewer.index === viewerPhotos.length - 1 && styles.viewerNavBtnDisabled]}
               onPress={() => setViewer(v => (v && v.index < viewerPhotos.length - 1 ? { ...v, index: v.index + 1 } : v))}
               disabled={viewer !== null && viewer.index === viewerPhotos.length - 1}
@@ -1385,42 +1508,59 @@ export default function ListingDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
-  errorBackLink: { alignItems: 'center', paddingVertical: spacing.v12, marginTop: spacing.sm },
+  errorBackLink: {
+    alignItems: 'center', justifyContent: 'center', minHeight: cible.min,
+    // Le mot « Retour » ne fait que 40 px de large.
+    paddingHorizontal: spacing.v12,
+    paddingVertical: spacing.v12, marginTop: spacing.sm,
+  },
   errorBackText: { ...typography.caption, color: colors.muted, textDecorationLine: 'underline' },
-  hero: { height: 220, position: 'relative', overflow: 'hidden' },
+  // La hauteur est posée à l'appel : elle dépend de la largeur d'écran.
+  hero: { position: 'relative', overflow: 'hidden' },
   // Même gouttière que le corps de la fiche, pour que les traits d'attente
   // partent de l'abscisse où commencera le texte.
   attenteCorps: { padding: spacing.gutter, gap: spacing.sm },
   photoDots: {
-    position: 'absolute', bottom: 14, alignSelf: 'center',
-    flexDirection: 'row', gap: spacing.sm, zIndex: 2,
+    position: 'absolute', bottom: 0, alignSelf: 'center',
+    flexDirection: 'row', zIndex: 2,
   },
-  // borderRadius 3 sur 6px, 16 sur 32px : géométrie de cercle, pas un choix
+  // Zone tactile d'un point. Les points restent à 14 px les uns des autres :
+  // la zone ne peut donc pas s'élargir sans recouvrir sa voisine, ni sans
+  // pousser la rangée sous le bouton « Voir les photos » dès cinq images. Elle
+  // gagne en hauteur — 44 px depuis le bas de la photo — et le point garde sa
+  // place, à 14 px du bord, grâce au retrait bas. Sa largeur reste donc sous
+  // les 24 px du critère 2.5.8 (WCAG 2.2) : c'est admis ici parce que le bouton
+  // « Voir les photos », lui de taille pleine, mène aux mêmes images.
+  photoDotZone: {
+    height: cible.min, paddingHorizontal: spacing.xs, paddingBottom: 14,
+    alignItems: 'center', justifyContent: 'flex-end',
+  },
+  // borderRadius 3 sur 6px : géométrie de cercle, pas un choix
   // esthétique — hors échelle à dessein (§04).
   photoDot: { width: 6, height: 6, borderRadius: radii.v4, backgroundColor: colors.white + '80' },
   photoDotActive: { backgroundColor: colors.white, width: 18 },
   // Reprend l'emplacement et le repère semi-transparent de l'ancien compteur,
   // mais devient une vraie commande : le nombre de photos y est annoncé, et
   // la position courante reste portée par les points de pagination.
+  // La pastille garde sa taille, à 12 px du bas ; c'est la zone qui l'entoure
+  // qui atteint 44 px.
+  galleryZone: {
+    position: 'absolute', bottom: 0, zIndex: 3,
+    minHeight: cible.min, justifyContent: 'flex-end', paddingBottom: spacing.v12,
+  },
   galleryBtn: {
-    position: 'absolute', bottom: 12, right: spacing.md, zIndex: 3,
-    flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.nuit + 'A6', borderRadius: radii.pill,
     paddingHorizontal: spacing.v12, paddingVertical: spacing.sm,
   },
   galleryBtnText: { ...typography.badgeSm, color: colors.cream },
-  backBtn: { position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, left: spacing.md,
-    width: 32, height: 32, borderRadius: radii.v16, backgroundColor: colors.white + 'CC',
-    alignItems: 'center', justifyContent: 'center', zIndex: 3 },
-  heroActions: {
-    position: 'absolute', top: Platform.OS === 'ios' ? 54 : 16, right: spacing.md,
-    flexDirection: 'row', gap: spacing.sm, zIndex: 3,
-  },
-  heroActionBtn: {
-    width: 32, height: 32, borderRadius: radii.v16, backgroundColor: colors.white + 'CC',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  heroFooter: { position: 'absolute', bottom: 14, left: spacing.md, right: spacing.md },
+  // Position seulement : la pastille et sa zone de 44 px viennent de
+  // BoutonIcone, le haut et le bord de l'appel (zone sûre, largeur d'écran).
+  backBtn: { position: 'absolute', zIndex: 3 },
+  // Écart de 12 et non de 8 : deux zones de 44 px autour de pastilles de 32
+  // se recouvriraient sinon de 4 px.
+  heroActions: { position: 'absolute', flexDirection: 'row', gap: spacing.v12, zIndex: 3 },
+  heroFooter: { position: 'absolute', bottom: 14 },
   heroCategory: { ...typography.overlineXs, color: colors.cream, textTransform: 'uppercase', marginBottom: spacing.xs, opacity: 0.9 },
   // displayStrong (Playfair 600) — première utilisation dans l'app. Rôle
   // attribué ici : nom d'entité sur un hero photo. displayHero reste réservé
@@ -1452,11 +1592,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'stretch', marginBottom: spacing.v12,
     borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.white,
   },
-  contactCell: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.v12 },
+  contactCell: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    paddingVertical: spacing.v12, minHeight: cible.min,
+  },
   contactDivider: { width: 1, backgroundColor: colors.border },
   contactLabel: { ...typography.caption, color: colors.ink },
   followRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   followLabel: { ...typography.caption, color: colors.faint },
+  followZone: {
+    minHeight: cible.min, minWidth: cible.min, alignItems: 'center', justifyContent: 'center',
+    marginVertical: -DEBORD_LIGNE,
+  },
   followLink: { ...typography.caption, textDecorationLine: 'underline' },
   amenitiesRow: { marginBottom: spacing.md },
   amenityChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.white,
@@ -1470,10 +1617,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
     borderRadius: radii.md, padding: spacing.md,
   },
-  menuIcon: {
-    width: 38, height: 38, borderRadius: radii.sm,
-    alignItems: 'center', justifyContent: 'center',
-  },
   menuRowTitle: { ...typography.cardTitle, color: colors.ink },
   menuRowMeta: { ...typography.caption, color: colors.muted, marginTop: spacing.v2 },
   // Adresse — hiérarchie typographique + filet, pas de carte blanche bordée.
@@ -1481,10 +1624,16 @@ const styles = StyleSheet.create({
   addressStreet: { ...typography.cardTitle, color: colors.ink },
   addressArea: { ...typography.caption, color: colors.muted },
   addressReference: { ...typography.caption, color: colors.faint },
-  directionsLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  directionsLink: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs,
+    minHeight: cible.min, marginTop: spacing.sm - DEBORD_LIGNE, marginBottom: -DEBORD_LIGNE,
+  },
   directionsText: { ...typography.caption, textDecorationLine: 'underline' },
   reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  writeReviewBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  writeReviewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    minHeight: cible.min, marginVertical: -DEBORD_LIGNE,
+  },
   writeReviewText: { ...typography.caption },
   reviewCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, padding: spacing.v12 },
   reviewTopRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
@@ -1500,8 +1649,18 @@ const styles = StyleSheet.create({
   similarRow: { gap: spacing.v12, paddingBottom: spacing.xs },
   reportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.md, marginTop: spacing.sm },
   reportText: { ...typography.caption, color: colors.faint, textDecorationLine: 'underline' },
-  starPicker: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm + 2, marginBottom: spacing.md, marginTop: spacing.xs },
-  deleteReviewBtn: { alignItems: 'center', paddingVertical: spacing.v12, marginTop: spacing.xs },
+  starPicker: { flexDirection: 'row', justifyContent: 'center', marginBottom: spacing.md, marginTop: spacing.xs },
+  // Chaque étoile occupe 44 px au lieu de 34 : les zones se touchent, ce qui
+  // redonne exactement l'écart de 10 px qu'elles avaient. La marge négative
+  // rend à la rangée sa hauteur d'origine.
+  starZone: {
+    width: cible.min, height: cible.min, alignItems: 'center', justifyContent: 'center',
+    marginVertical: -(cible.min - ETOILE) / 2,
+  },
+  deleteReviewBtn: {
+    alignItems: 'center', justifyContent: 'center', minHeight: cible.min,
+    paddingVertical: spacing.v12, marginTop: spacing.xs,
+  },
   deleteReviewText: { ...typography.caption, color: colors.danger },
   priceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
@@ -1512,30 +1671,32 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, bottom: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md,
     backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.v12, paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+    // Le retrait bas est posé à l'appel : il suit la barre de geste réelle.
+    paddingHorizontal: spacing.gutter, paddingTop: spacing.v12,
   },
   bookingBarPrice: { flex: 1 },
   successBanner: { position: 'absolute', bottom: 96, left: spacing.md, right: spacing.md,
     backgroundColor: colors.success, borderRadius: radii.md, padding: spacing.md, gap: spacing.sm },
   successText: { ...typography.caption, color: colors.cream },
   successLink: { ...typography.caption, color: colors.amber },
+  successZone: {
+    alignSelf: 'flex-start', justifyContent: 'center',
+    minHeight: cible.min, marginVertical: -DEBORD_LIGNE,
+  },
   fieldLabel: { ...typography.caption, color: colors.ink, marginBottom: spacing.xs },
-  fieldInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radii.sm, paddingHorizontal: spacing.v12, paddingVertical: spacing.v12, ...typography.body, color: colors.ink },
-  // 26px carré, rayon 8 (radii.sm) : pas un cercle, valeur d'échelle.
 
-  // Visionneuse plein écran (galerie + menu)
+  // Visionneuse plein écran (galerie + menu). Les retraits haut et bas sont
+  // posés à l'appel, d'après la zone sûre de l'appareil.
   viewerOverlay: { flex: 1, backgroundColor: colors.nuit + 'F0' },
   viewerHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : spacing.lg, paddingHorizontal: spacing.gutter, paddingBottom: spacing.v12,
+    paddingHorizontal: spacing.gutter, paddingBottom: spacing.v12,
   },
   viewerCounter: { ...typography.caption, color: colors.white },
   viewerImageWrap: { flex: 1, paddingHorizontal: spacing.v12 },
   viewerFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24, paddingTop: spacing.v12,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.v12,
   },
   viewerNavBtn: {
     width: 44, height: 44, borderRadius: radii.lg,

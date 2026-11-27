@@ -21,7 +21,7 @@
 // métadonnées du compte : l'app impose son remplacement à la connexion.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { sendEmail, layout, button, notice, appUrl as adressePublique } from '../_shared/email.ts';
+import { sendEmail, layout, button, notice, appUrl as adressePublique, etatEmail } from '../_shared/email.ts';
 import { keyKind, firstEnv, secretKey, publishableKey } from '../_shared/keys.ts';
 
 const CORS = {
@@ -147,11 +147,6 @@ Deno.serve(async (req: Request) => {
   const secret = secretKey();
   const SECRET = secret.value;
   const PUBLISHABLE = publishableKey();
-  // RESEND_API_KEY et MAIL_FROM ne servent plus qu'a la ligne de diagnostic
-  // ci-dessous : l'envoi lui-meme les relit dans _shared/email.ts, seul
-  // endroit ou la cle est manipulee.
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-  const MAIL_FROM = Deno.env.get('MAIL_FROM') ?? 'YakaRDC <onboarding@resend.dev>';
   const APP_URL = adressePublique();
 
   // Une clé manquante donnait un client cassé, puis un 401 muet qui laissait
@@ -178,8 +173,9 @@ Deno.serve(async (req: Request) => {
     publiable: keyKind(PUBLISHABLE),
     secrete: keyKind(SECRET),
     secrete_source: secret.source,
-    resend: !!RESEND_API_KEY,
-    mail_from: MAIL_FROM,
+    // Service d'envoi et expéditeur retenus — jamais la clé. Le choix se fait
+    // dans _shared/email.ts, seul endroit où elle est manipulée.
+    email: etatEmail(),
   });
 
   try {

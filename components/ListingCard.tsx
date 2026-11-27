@@ -1,8 +1,9 @@
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Star, MapPin } from 'lucide-react-native';
-import { colors, categoryColors, typography, radii, ratios, spacing } from '../lib/theme';
+import { colors, categoryColors, typography, radii, ratios, spacing, fonts } from '../lib/theme';
 import { useAppuiAnime } from '../lib/motion';
+import { lienVers } from '../lib/liens';
 
 const PressableAnime = Animated.createAnimatedComponent(Pressable);
 import CategoryIcon from './CategoryIcon';
@@ -31,7 +32,14 @@ export interface ListingCardProps {
   // repli que ratingPill/newPill).
   badge?: ListingCardBadge;
   width?: number;
-  onPress: () => void;
+  // Destination de la carte. À préférer à `onPress` dès que la carte mène à un
+  // écran : sur le web elle devient alors un vrai lien (nouvel onglet, copie
+  // d'adresse, moteurs de recherche) — voir lib/liens.ts.
+  href?: string;
+  // Avec `href` : remplace l'écran courant au lieu d'en empiler un (d'une fiche
+  // vers une fiche voisine, pour que « retour » ramène à la liste).
+  remplacer?: boolean;
+  onPress?: () => void;
 }
 
 const badgeTone: Record<ListingCardBadge['tone'], { bg: string; color: string }> = {
@@ -45,7 +53,7 @@ const badgeTone: Record<ListingCardBadge['tone'], { bg: string; color: string }>
 // localisation en Manrope. Pas d'icône décorative : l'icône de catégorie
 // n'apparaît qu'en repli, quand aucune photo n'est disponible.
 export default function ListingCard({
-  type, name, location, coverPhotoUrl, avgRating, reviewCount, priceLabel, badge, width, onPress,
+  type, name, location, coverPhotoUrl, avgRating, reviewCount, priceLabel, badge, width, href, remplacer, onPress,
 }: ListingCardProps) {
   const cat = categoryColors[type];
   const tone = cat?.accent ?? colors.lave;
@@ -56,7 +64,18 @@ export default function ListingCard({
   return (
     <PressableAnime
       style={[styles.card, width ? { width } : null, appui.style]}
-      onPress={onPress}
+      {...(href ? lienVers(href, { avant: onPress, remplacer }) : { onPress })}
+      // Une annonce courte plutôt que la lecture de chaque texte de la carte,
+      // pastille « Nouveau » et pictogrammes compris.
+      accessibilityRole={href ? 'link' : 'button'}
+      accessibilityLabel={[
+        name,
+        cat?.label,
+        location,
+        avgRating != null ? `note ${avgRating.toFixed(1)} sur 5` : null,
+        badge?.label,
+        priceLabel,
+      ].filter(Boolean).join(', ')}
       {...appui.gestes}
     >
       <View style={[styles.image, { backgroundColor: tone }]}>
@@ -80,7 +99,7 @@ export default function ListingCard({
             accessibilityLabel={`Photo de ${name}`}
           />
         ) : (
-          <CategoryIcon type={type} size={30} color="rgba(250,248,244,0.85)" />
+          <CategoryIcon type={type} size={30} color={colors.onBrandMuted} />
         )}
         {badge ? (
           <View style={[styles.statusPill, { backgroundColor: badgeTone[badge.tone].bg }]}>
@@ -125,7 +144,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: spacing.v2,
     backgroundColor: colors.white, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.v2,
   },
-  ratingPillText: { ...typography.captionSm, ...typography.caption, color: colors.or, },
+  ratingPillText: { ...typography.caption, color: colors.or },
   newPill: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: colors.fleuveSoft, borderRadius: radii.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.v2,
@@ -142,6 +161,8 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v2 },
   locationText: { ...typography.caption, color: colors.faint, flex: 1 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
-  price: { ...typography.caption, fontWeight: '600' },
+  // La graisse passe par la famille : chaque graisse de Manrope est un fichier
+  // distinct, et `fontWeight` ne faisait qu'épaissir artificiellement le 500.
+  price: { ...typography.caption, fontFamily: fonts.sansSemiBold },
   reviewCount: { ...typography.caption, color: colors.faint },
 });

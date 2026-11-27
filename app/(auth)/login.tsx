@@ -5,12 +5,16 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, fonts, typography, radii, spacing, breakpoints } from '../../lib/theme';
+import { colors, fonts, typography, radii, spacing, breakpoints, cible } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { lienVers } from '../../lib/liens';
 import LogoYaka from '../../components/LogoYaka';
+import BoutonIcone from '../../components/BoutonIcone';
+import PhotoScrim from '../../components/PhotoScrim';
+import { messageErreur } from '../../lib/erreurs';
 import LandscapeIllustration from '../../components/LandscapeIllustration';
 
 // Destination d'après connexion. N'accepte qu'un chemin interne : doit commencer
@@ -24,8 +28,9 @@ function safeRedirect(target?: string): string {
 }
 
 export default function LoginScreen() {
-  // Zone sûre réelle : la marque monte en haut de l'écran, donc sous l'encoche.
-  const insets = useSafeAreaInsets();
+  // Zone sûre réelle : la marque monte en haut de l'écran, donc sous l'encoche,
+  // et le formulaire descend jusqu'à la barre de geste.
+  const { bas, insets } = useZonesSures();
   const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams<{ redirect?: string; reason?: string }>();
   const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -54,7 +59,10 @@ export default function LoginScreen() {
       password,
     });
     setLoading(false);
-    if (authError) { setError('Email ou mot de passe incorrect.'); return; }
+    // Toute erreur était jusqu'ici annoncée comme « mot de passe incorrect »,
+    // y compris une coupure réseau : l'utilisateur retapait alors un mot de
+    // passe juste, voire le réinitialisait, pour rien.
+    if (authError) { setError(messageErreur(authError, 'La connexion a échoué. Réessayez dans un instant.')); return; }
 
     // Un partenaire approuvé se connecte avec un mot de passe reçu par email,
     // qui reste lisible dans sa boîte de réception. Tant qu'il ne l'a pas
@@ -71,7 +79,8 @@ export default function LoginScreen() {
   async function handleGoogleLogin() {
     const redirectTo = typeof window !== 'undefined'
       ? `${window.location.origin}/callback` : undefined;
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    if (oauthError) setError(messageErreur(oauthError, 'La connexion avec Google a échoué. Réessayez dans un instant.'));
   }
 
   const content = (
@@ -94,11 +103,13 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.headerZone}>
-        <Text style={styles.headline}>C'est parti,</Text>
-        <Text style={styles.subheadline}>découvre le Congo autrement.</Text>
+        <Text style={styles.headline} accessibilityRole="header" aria-level={1}>C'est parti,</Text>
+        <Text style={styles.subheadline}>découvrez le Congo autrement.</Text>
       </View>
 
-      <View style={styles.form}>
+      {/* Le plancher de 32 garde le retrait d'origine là où il n'y a pas de
+          barre de geste (web, Android à boutons). */}
+      <View style={[styles.form, { paddingBottom: Math.max(bas, spacing.xl) }]}>
         {/* Motif de la redirection, quand l'utilisateur arrive depuis une
             action nécessitant un compte (favori, réservation, avis…). */}
         {!!params.reason && (
@@ -107,52 +118,75 @@ export default function LoginScreen() {
           </View>
         )}
 
+        {/* Le pictogramme tenait dans le texte d'exemple, sous forme d'emoji : la
+            lecture vocale le prononçait, et il disparaissait à la première
+            lettre saisie. Il est maintenant une icône à part, et le champ porte
+            son propre libellé — l'exemple seul s'efface dès qu'on écrit. */}
         <View style={[styles.pill, !!error && styles.pillError]}>
+          <Mail size={16} color={colors.faint} strokeWidth={1.75} />
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={setEmail}
-            placeholder="✉  Adresse email"
+            placeholder="Adresse email"
             placeholderTextColor={colors.faint}
+            accessibilityLabel="Adresse email"
             keyboardType="email-address"
+            autoComplete="email"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="next"
           />
         </View>
 
-        <View style={[styles.pill, styles.pillRow, !!error && styles.pillError]}>
+        <View style={[styles.pill, !!error && styles.pillError]}>
+          <Lock size={16} color={colors.faint} strokeWidth={1.75} />
           <TextInput
-            style={[styles.input, { flex: 1 }]}
+            style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="🔒  Mot de passe"
+            placeholder="Mot de passe"
             placeholderTextColor={colors.faint}
+            accessibilityLabel="Mot de passe"
             secureTextEntry={!showPassword}
+            autoComplete="current-password"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={handleLogin}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onPress={() => setShowPassword(v => !v)} hitSlop={10}>
-            {showPassword
+          <BoutonIcone
+            icon={showPassword
               ? <EyeOff size={17} color={colors.faint} strokeWidth={1.75} />
               : <Eye size={17} color={colors.faint} strokeWidth={1.75} />}
-          </Pressable>
+            label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            onPress={() => setShowPassword(v => !v)}
+            taille={17}
+          />
         </View>
 
         {/* Sous le champ, la ou on se rend compte qu'on l'a oublie. */}
-        <Pressable style={styles.forgotRow} onPress={() => router.push('/forgot-password')} hitSlop={6}>
+        <Pressable style={styles.forgotRow} accessibilityRole="link" {...lienVers('/forgot-password')}>
           <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
         </Pressable>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
+        )}
 
-        <Pressable style={[styles.primaryBtn, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading}>
-          <Text style={styles.primaryBtnText}>{loading ? 'Connexion...' : 'Se connecter'}</Text>
+        {/* Dessiné ici et non par `Button` : ambre à libellé lave, en pastille.
+            `Button` écrit son libellé en crème, illisible sur ambre. */}
+        <Pressable
+          style={[styles.primaryBtn, loading && { opacity: 0.7 }]}
+          onPress={handleLogin}
+          disabled={loading}
+          accessibilityRole="button"
+          aria-disabled={loading} aria-busy={loading}
+        >
+          <Text style={styles.primaryBtnText}>{loading ? 'Connexion…' : 'Se connecter'}</Text>
         </Pressable>
 
-        <Pressable style={styles.googleBtn} onPress={handleGoogleLogin}>
+        <Pressable style={styles.googleBtn} onPress={handleGoogleLogin} accessibilityRole="button">
           <Svg width="15" height="15" viewBox="0 0 24 24">
             <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
             <Path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -163,9 +197,13 @@ export default function LoginScreen() {
         </Pressable>
 
         <View style={styles.linksRow}>
-          <Text style={styles.linkText} onPress={() => router.push('/(auth)/register')}>Créer un compte</Text>
-          <Text style={styles.dot}>·</Text>
-          <Text style={styles.linkText} onPress={() => router.push('/become-partner')}>Devenir partenaire</Text>
+          <Pressable style={styles.linkZone} accessibilityRole="link" {...lienVers('/register')}>
+            <Text style={styles.linkText}>Créer un compte</Text>
+          </Pressable>
+          <Text style={styles.dot} aria-hidden>·</Text>
+          <Pressable style={styles.linkZone} accessibilityRole="link" {...lienVers('/become-partner')}>
+            <Text style={styles.linkText}>Devenir partenaire</Text>
+          </Pressable>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -182,6 +220,17 @@ export default function LoginScreen() {
         resizeMode="cover"
         onError={() => setBgUrl(null)}
       >
+        {/* La photo est choisie par l'administrateur : rien ne dit qu'elle est
+            sombre là où tombe le texte. Le voile de 10 % ne suffisait pas sur
+            un ciel clair. Le dégradé s'épaissit vers le bas, où se trouvent
+            titre, liens et message d'erreur, et laisse le haut de la photo
+            respirer. Plus dense que sur l'accueil (0,65) : ici le texte
+            remonte jusqu'à mi-écran, où le dégradé n'a fait que la moitié du
+            chemin. L'illustration de repli garde son seul voile : ses teintes,
+            elles, sont connues d'avance. */}
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <PhotoScrim from="bottom" intensity={0.8} />
+        </View>
         {content}
       </ImageBackground>
     );
@@ -197,18 +246,24 @@ export default function LoginScreen() {
   );
 }
 
+// Ombre et voile reprennent `nuit` plutôt qu'un noir pur, à opacité inchangée
+// (50 % et 10 %) : aucun jeton ne porte ces deux valeurs.
 const shadow = {
-  textShadowColor: 'rgba(0,0,0,0.5)',
+  textShadowColor: colors.nuit + '80',
   textShadowOffset: { width: 0, height: 1 },
   textShadowRadius: 6,
 };
+
+// Les liens gardent leur hauteur de ligne à l'écran, mais reçoivent le doigt
+// sur 44 px : la marge négative annule le surplus, rien ne se décale.
+const DEBORD_LIEN = (cible.min - typography.caption.lineHeight) / 2;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.nuit3 },
   flex: { flex: 1, justifyContent: 'flex-end' },
   veil: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: colors.nuit + '1A',
   },
   // Titre, sous-titre et formulaire partagent la même largeur maximale : sur un
   // écran large, ils formaient jusqu'ici une colonne de 740 px, illisible pour
@@ -235,40 +290,51 @@ const styles = StyleSheet.create({
   },
   subheadline: {
     fontFamily: fonts.display,
-    fontSize: 16, color: 'rgba(255,248,236,0.85)', marginTop: spacing.xs, ...shadow,
+    fontSize: 16, color: colors.onBrandMuted, marginTop: spacing.xs, ...shadow,
   },
+  // Le retrait bas vient de la zone sûre : il est posé à l'appel.
   form: {
     maxWidth: breakpoints.formMax, width: '100%', alignSelf: 'center',
-    paddingHorizontal: spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 32, gap: spacing.v12,
+    paddingHorizontal: spacing.xl, gap: spacing.v12,
   },
-  // Bloc ajouté pour le motif de redirection — en jetons, contrairement au
-  // reste de cet écran (non encore repris par le design system).
+  // Bloc ajouté pour le motif de redirection.
   reasonNote: {
     backgroundColor: colors.nuit + 'B3', borderRadius: radii.md,
     paddingHorizontal: spacing.md, paddingVertical: spacing.v12,
   },
   reasonText: { ...typography.caption, color: colors.cream, textAlign: 'center' },
   pill: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
     backgroundColor: colors.white, borderRadius: radii.pill,
-    paddingHorizontal: spacing.v20, paddingVertical: spacing.v12,
+    paddingHorizontal: spacing.v20,
   },
-  pillRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12 },
   pillError: { borderWidth: 1.5, borderColor: colors.danger },
-  input: { ...typography.body, color: colors.ink, },
-  forgotRow: { alignSelf: 'flex-end', paddingVertical: spacing.v2 },
+  // Le retrait vertical est porté par la saisie, non par la pastille : un appui
+  // n'importe où dans sa hauteur place le curseur (la saisie ne mesurait que
+  // sa ligne de texte).
+  input: { ...typography.body, flex: 1, alignSelf: 'stretch', paddingVertical: spacing.v12, color: colors.ink },
+  forgotRow: {
+    alignSelf: 'flex-end', minHeight: cible.min, justifyContent: 'center',
+    marginVertical: spacing.v2 - DEBORD_LIEN,
+  },
   forgotText: { ...typography.caption, color: colors.amber, ...shadow, },
-  errorText: { ...typography.bodyXs, color: '#FFB4A8', textAlign: 'center', ...shadow, },
+  errorText: { ...typography.bodyXs, color: colors.dangerOnDark, textAlign: 'center', ...shadow, },
   primaryBtn: {
-    backgroundColor: colors.amber, borderRadius: radii.pill,
-    paddingVertical: spacing.md, alignItems: 'center', marginTop: spacing.xs,
+    backgroundColor: colors.amber, borderRadius: radii.pill, minHeight: cible.min,
+    paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center', marginTop: spacing.xs,
   },
   primaryBtnText: { ...typography.titleSm, color: colors.laveDeep, },
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: radii.pill, paddingVertical: spacing.v12,
+    backgroundColor: colors.white + 'F2', borderRadius: radii.pill, paddingVertical: spacing.v12,
+    minHeight: cible.min,
   },
   googleText: { ...typography.pillLabel, color: colors.ink, },
-  linksRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  linkText: { ...typography.caption, color: 'rgba(255,255,255,0.9)', ...shadow, },
-  dot: { ...typography.bodyXs, color: 'rgba(255,255,255,0.5)', },
+  linksRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm,
+    marginTop: spacing.xs - DEBORD_LIEN, marginBottom: -DEBORD_LIEN,
+  },
+  linkZone: { minHeight: cible.min, justifyContent: 'center' },
+  linkText: { ...typography.caption, color: colors.cream, ...shadow, },
+  dot: { ...typography.bodyXs, color: colors.white + '80', },
 });

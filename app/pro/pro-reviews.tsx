@@ -1,14 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput,
+  ActivityIndicator, TextInput,
 } from 'react-native';
-import { router } from 'expo-router';
-import { goBack } from '../../lib/navigation';
-import { ArrowLeft, Star, MessageCircle } from 'lucide-react-native';
+import { Star, MessageCircle } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
-import { colors, typography, breakpoints, radii, spacing } from '../../lib/theme';
+import { colors, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
 import type { Establishment, Review } from '../../lib/types';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
@@ -56,7 +54,7 @@ export default function PartnerReviewsScreen() {
     <View style={styles.screen}>
       <ScreenHeader
         title="Avis clients"
-        subtitle={`${reviews.length} avis · ${avgRating} ★ en moyenne`}
+        subtitle={`${reviews.length} avis · ${avgRating} en moyenne`}
         backFallback="/pro"
         contentMaxWidth={breakpoints.panelMax}
       />
@@ -76,10 +74,18 @@ export default function PartnerReviewsScreen() {
           />
         ) : (
           <View style={{ gap: spacing.v12 }}>
-            {reviews.map(r => (
+            {reviews.map(r => {
+              const brouillonVide = !replyDraft[r.id]?.trim();
+              const envoiEnCours = replying === r.id;
+              return (
               <View key={r.id} style={styles.reviewCard}>
                 <View style={styles.reviewTop}>
-                  <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
+                  <View
+                    style={{ flexDirection: 'row', gap: spacing.v2 }}
+                    accessible
+                    accessibilityRole="image"
+                    accessibilityLabel={`Note : ${r.rating} sur 5`}
+                  >
                     {[1, 2, 3, 4, 5].map(i => (
                       <Star key={i} size={12} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                     ))}
@@ -107,19 +113,25 @@ export default function PartnerReviewsScreen() {
                       onChangeText={t => setReplyDraft(prev => ({ ...prev, [r.id]: t }))}
                       placeholder="Répondre à cet avis..."
                       placeholderTextColor={colors.faint}
+                      accessibilityLabel="Répondre à cet avis"
                     />
                     <Pressable
+                      style={styles.replyBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Envoyer la réponse"
+                      aria-disabled={brouillonVide || envoiEnCours} aria-busy={envoiEnCours}
                       onPress={() => handleReply(r.id)}
-                      disabled={!replyDraft[r.id]?.trim() || replying === r.id}
+                      disabled={brouillonVide || envoiEnCours}
                     >
-                      <Text style={[styles.replyBtnText, !replyDraft[r.id]?.trim() && { opacity: 0.4 }]}>
-                        {replying === r.id ? '...' : 'Envoyer'}
+                      <Text style={[styles.replyBtnText, brouillonVide && { opacity: 0.4 }]}>
+                        {envoiEnCours ? '...' : 'Envoyer'}
                       </Text>
                     </Pressable>
                   </View>
                 )}
               </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -131,7 +143,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   reviewCard: {
     backgroundColor: colors.white, borderRadius: radii.md, padding: spacing.v12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
+    shadowColor: colors.nuit, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
   reviewTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   reviewDate: { ...typography.captionSm, color: colors.faint, },
@@ -139,7 +151,10 @@ const styles = StyleSheet.create({
   replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
   replyLabel: { ...typography.badgeSm, color: colors.lave, marginBottom: spacing.v2, },
   replyText: { ...typography.captionSm, color: colors.ink, },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: spacing.sm },
-  replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
+  // Champ et bouton font 44 px de haut. Le retrait haut est supprimé et le bas
+  // de la ligne mord sur la marge de la carte : celle-ci ne grandit presque pas.
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, marginBottom: -spacing.sm },
+  replyInput: { ...typography.bodyXs, flex: 1, color: colors.ink, minHeight: cible.min, },
+  replyBtn: { minHeight: cible.min, minWidth: cible.min, alignItems: 'center', justifyContent: 'center' },
   replyBtnText: { ...typography.caption, color: colors.lave, },
 });

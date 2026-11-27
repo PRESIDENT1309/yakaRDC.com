@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Pressable, StyleSheet,
-  Platform, ActivityIndicator, TextInput, } from 'react-native';
+  ActivityIndicator, TextInput, } from 'react-native';
 import { Alert } from '../../lib/alert';
-import { router } from 'expo-router';
 import {
   CalendarCheck, Users, Wallet, Star, Bell,
   MessageCircle, Tag, ChevronRight,
@@ -12,25 +11,20 @@ import { supabase } from '../../lib/supabase';
 import { bookingTotal } from '../../lib/offers';
 import { timeToSlot } from '../../lib/slots';
 import { useAuth } from '../../lib/auth-context';
-import { colors, fonts, typography, breakpoints, radii, spacing } from '../../lib/theme';
+import { colors, fonts, typography, breakpoints, radii, spacing, cible } from '../../lib/theme';
+import { useZonesSures } from '../../lib/zones';
+import { lienVers } from '../../lib/liens';
+import BoutonIcone from '../../components/BoutonIcone';
+import StatCard from '../../components/StatCard';
 import type { Establishment, Booking, Review } from '../../lib/types';
 
 const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-
-function StatCard({ icon, value, label, sub, bg }:
-  { icon: React.ReactNode; value: string; label: string; sub: string; bg: string }) {
-  return (
-    <View style={[styles.statCard, { backgroundColor: bg }]}>
-      <View style={styles.statIconBadge}>{icon}</View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statSub}>{sub}</Text>
-    </View>
-  );
-}
+// Lus à voix haute à la place des abréviations, qu'une synthèse vocale épelle.
+const WEEKDAY_NAMES = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
 export default function PartnerDashboard() {
   const { profile } = useAuth();
+  const { haut } = useZonesSures();
   const [loading, setLoading] = useState(true);
   const [establishment, setEstablishment] = useState<Establishment | null>(null);
   // « Réservations aujourd'hui » comptait les demandes REÇUES aujourd'hui
@@ -172,17 +166,20 @@ export default function PartnerDashboard() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center', padding: 18, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingTop: haut }]}>
 
         {/* En-tête */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.brandName}>{establishment.name}</Text>
-            <Text style={styles.headerSub}>Bonjour, voici votre activité 👋</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.brandName} accessibilityRole="header" aria-level={1}>{establishment.name}</Text>
+            <Text style={styles.headerSub}>Bonjour, voici votre activité</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" style={styles.bellBtn} onPress={() => Alert.alert('Notifications', 'Bientôt disponible.')}>
-            <Bell size={16} color={colors.lave} />
-          </Pressable>
+          <BoutonIcone
+            icon={<Bell size={16} color={colors.lave} />}
+            label="Notifications"
+            fond={colors.white}
+            onPress={() => Alert.alert('Notifications', 'Bientôt disponible.')}
+          />
         </View>
 
         {/* ── Ce qui attend une réponse ──
@@ -191,14 +188,12 @@ export default function PartnerDashboard() {
             perdre un client. Rien ne s'affiche quand il n'y a rien à traiter. */}
         {pendingCount > 0 && (
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="link"
             accessibilityLabel={`${pendingCount} demande${pendingCount > 1 ? 's' : ''} à traiter`}
             style={styles.actionBand}
-            onPress={() => router.push('/pro/bookings')}
+            {...lienVers('/pro/bookings')}
           >
-            <View style={styles.actionIcon}>
-              <CalendarCheck size={16} color={colors.warning} />
-            </View>
+            <CalendarCheck size={20} color={colors.warning} />
             <View style={{ flex: 1 }}>
               <Text style={styles.actionTitle}>
                 {pendingCount} demande{pendingCount > 1 ? 's' : ''} en attente
@@ -215,7 +210,7 @@ export default function PartnerDashboard() {
             La question « qui vient aujourd'hui ? » appelait une liste, pas un
             compteur : pour préparer un service, il faut des heures et des noms. */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aujourd'hui</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Aujourd'hui</Text>
           {todayBookings.length === 0 ? (
             <Text style={styles.emptyText}>Aucune réservation prévue aujourd'hui.</Text>
           ) : (
@@ -243,43 +238,58 @@ export default function PartnerDashboard() {
         {/* 4 cartes couleur pleine */}
         <View style={styles.statsGrid}>
           <StatCard
-            icon={<CalendarCheck size={16} color={colors.white} />}
+            variante="plein"
+            couleur={colors.lave}
+            icon={<View style={styles.statIcon}><CalendarCheck size={16} color={colors.cream} /></View>}
             value={String(monthCount)}
             label="Demandes reçues"
             sub="ce mois-ci"
-            bg={colors.lave}
+            style={styles.statCard}
           />
           <StatCard
-            icon={<Users size={16} color={colors.white} />}
+            variante="plein"
+            couleur={colors.success}
+            icon={<View style={styles.statIcon}><Users size={16} color={colors.cream} /></View>}
             value={String(establishment.view_count)}
             label="Visiteurs"
             sub="de la fiche"
-            bg={colors.success}
+            style={styles.statCard}
           />
           <StatCard
-            icon={<Wallet size={16} color={colors.white} />}
+            variante="plein"
+            couleur={colors.warning}
+            icon={<View style={styles.statIcon}><Wallet size={16} color={colors.cream} /></View>}
             value={`${revenue.toFixed(0)} $`}
             label="Généré"
             sub="réservations confirmées"
-            bg={colors.warning}
+            style={styles.statCard}
           />
           <StatCard
-            icon={<Star size={16} color={colors.white} />}
+            variante="plein"
+            couleur={colors.fleuveDark}
+            icon={<View style={styles.statIcon}><Star size={16} color={colors.cream} /></View>}
             value={avgRating != null ? avgRating.toFixed(1) : '—'}
             label="Note moyenne"
             sub={`${reviewCount} avis`}
-            bg={colors.fleuveDark}
+            style={styles.statCard}
           />
         </View>
 
         {/* Graphique réservations de la semaine */}
         <View style={styles.chartCard}>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Réservations cette semaine</Text>
+            <Text style={styles.chartTitle} accessibilityRole="header" aria-level={2}>Réservations cette semaine</Text>
           </View>
           <View style={styles.chartBars}>
             {weekCounts.map((count, i) => (
-              <View key={i} style={styles.barColumn}>
+              // La hauteur d'une barre ne se lit pas à l'oreille : chaque
+              // colonne annonce son jour et son nombre.
+              <View
+                key={i}
+                style={styles.barColumn}
+                accessible
+                accessibilityLabel={`${WEEKDAY_NAMES[i]} : ${count} réservation${count > 1 ? 's' : ''}`}
+              >
                 <View style={styles.barTrack}>
                   <View style={[
                     styles.barFill,
@@ -296,7 +306,7 @@ export default function PartnerDashboard() {
                     },
                   ]} />
                 </View>
-                <Text style={[styles.barLabel, i === bestDayIdx && { color: colors.lave, fontWeight: '700' }]}>
+                <Text style={[styles.barLabel, i === bestDayIdx && styles.barLabelBest]}>
                   {WEEKDAY_LABELS[i]}
                 </Text>
               </View>
@@ -312,9 +322,15 @@ export default function PartnerDashboard() {
         {/* Avis récents */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Avis récents</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header" aria-level={2}>Avis récents</Text>
             {reviewCount > 2 && (
-              <Pressable onPress={() => router.push('/pro/pro-reviews')}>
+              <Pressable
+                style={styles.seeAllZone}
+                accessibilityRole="link"
+                // « Voir tout » seul ne dit pas tout de quoi : le titre le précise.
+                accessibilityLabel="Voir tout : Avis récents"
+                {...lienVers('/pro/pro-reviews')}
+              >
                 <Text style={styles.seeAll}>Voir tout</Text>
               </Pressable>
             )}
@@ -324,13 +340,21 @@ export default function PartnerDashboard() {
             <Text style={styles.emptyText}>Aucun avis pour le moment.</Text>
           ) : (
             <View style={{ gap: spacing.v12 }}>
-              {recentReviews.map(r => (
+              {recentReviews.map(r => {
+                const brouillonVide = !replyDraft[r.id]?.trim();
+                const envoiEnCours = replying === r.id;
+                return (
                 <View key={r.id} style={styles.reviewCard}>
-                  <Text style={styles.reviewQuoteMark}>"</Text>
+                  <Text style={styles.reviewQuoteMark} aria-hidden>"</Text>
                   <View style={{ flex: 1 }}>
                     {r.comment && <Text style={styles.reviewComment}>{r.comment}</Text>}
                     <View style={styles.reviewMetaRow}>
-                      <View style={{ flexDirection: 'row', gap: spacing.v2 }}>
+                      <View
+                        style={{ flexDirection: 'row', gap: spacing.v2 }}
+                        accessible
+                        accessibilityRole="image"
+                        accessibilityLabel={`Note : ${r.rating} sur 5`}
+                      >
                         {[1, 2, 3, 4, 5].map(i => (
                           <Star key={i} size={10} color={colors.warning} fill={i <= r.rating ? colors.warning : 'transparent'} />
                         ))}
@@ -350,20 +374,26 @@ export default function PartnerDashboard() {
                           onChangeText={t => setReplyDraft(prev => ({ ...prev, [r.id]: t }))}
                           placeholder="Répondre à cet avis..."
                           placeholderTextColor={colors.faint}
+                          accessibilityLabel="Répondre à cet avis"
                         />
                         <Pressable
+                          style={styles.replyBtn}
+                          accessibilityRole="button"
+                          accessibilityLabel="Envoyer la réponse"
+                          aria-disabled={brouillonVide || envoiEnCours} aria-busy={envoiEnCours}
                           onPress={() => handleReply(r.id)}
-                          disabled={!replyDraft[r.id]?.trim() || replying === r.id}
+                          disabled={brouillonVide || envoiEnCours}
                         >
-                          <Text style={[styles.replyBtnText, !replyDraft[r.id]?.trim() && { opacity: 0.4 }]}>
-                            {replying === r.id ? '...' : 'Envoyer'}
+                          <Text style={[styles.replyBtnText, brouillonVide && { opacity: 0.4 }]}>
+                            {envoiEnCours ? '...' : 'Envoyer'}
                           </Text>
                         </Pressable>
                       </View>
                     )}
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
@@ -391,17 +421,19 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cream },
   emptyText: { ...typography.bodySm, color: colors.muted, textAlign: 'center', },
+  // Le retrait haut est ajouté à l'appel : il dépend de l'appareil (zone sûre).
+  content: {
+    maxWidth: breakpoints.dashboardMax, width: '100%', alignSelf: 'center',
+    paddingHorizontal: spacing.gutter, paddingBottom: 40,
+  },
   headerRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    marginBottom: 18, paddingTop: Platform.OS === 'ios' ? 46 : 6,
+    gap: spacing.v12, marginBottom: spacing.md,
   },
-  brandName: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 21, color: colors.ink },
+  // Sans `flex`, un nom d'établissement long poussait la cloche hors de l'écran.
+  headerText: { flex: 1 },
+  brandName: { fontFamily: fonts.display, fontSize: 21, color: colors.ink },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  bellBtn: {
-    width: 34, height: 34, borderRadius: radii.v16, backgroundColor: colors.white,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
-  },
   // ── Bandeau « à traiter » ──
   // Le seul bloc de l'écran sur lequel on peut agir. Il emprunte la famille
   // `warning` — assez présente pour se remarquer, sans l'alarme du rouge :
@@ -412,10 +444,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warningSoft,
     borderWidth: 1, borderColor: colors.warningBorder,
     borderRadius: radii.md, padding: spacing.v12, marginBottom: spacing.md,
-  },
-  actionIcon: {
-    width: 34, height: 34, borderRadius: radii.md, backgroundColor: colors.white,
-    alignItems: 'center', justifyContent: 'center',
   },
   actionTitle: { ...typography.titleSm, color: colors.warning },
   actionSub: { ...typography.captionSm, color: colors.warning, marginTop: spacing.v2 },
@@ -441,17 +469,15 @@ const styles = StyleSheet.create({
   todayPendingText: { ...typography.captionSm, color: colors.warning },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.v12, marginBottom: spacing.md },
-  statCard: { width: '47.5%', borderRadius: radii.v16, padding: spacing.v12, gap: spacing.v2 },
-  statIconBadge: {
-    width: 26, height: 26, borderRadius: radii.md, backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm,
-  },
-  statValue: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 24, color: colors.white },
-  statLabel: { ...typography.captionSm, color: 'rgba(255,255,255,0.9)', marginTop: spacing.v2, },
-  statSub: { ...typography.captionSm, color: 'rgba(255,255,255,0.6)', },
+  // Deux cartes par rangée, qui se partagent toute la largeur. Avec `47.5%`,
+  // la grille s'arrêtait quelques pixels avant le bord des cartes voisines.
+  statCard: { flexBasis: '40%', flexGrow: 1 },
+  // L'icône est posée nue ; ce retrait la détache du chiffre, comme le faisait
+  // l'ancienne pastille.
+  statIcon: { marginBottom: spacing.sm },
   chartCard: {
     backgroundColor: colors.white, borderRadius: radii.v16, padding: spacing.md, marginBottom: spacing.v20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
+    shadowColor: colors.nuit, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
   },
   chartHeader: { marginBottom: spacing.v12 },
   chartTitle: { ...typography.pillLabel, color: colors.ink, },
@@ -460,22 +486,29 @@ const styles = StyleSheet.create({
   barTrack: { width: 14, height: 64, justifyContent: 'flex-end' },
   barFill: { width: '100%', borderRadius: radii.v4, minHeight: 4 },
   barLabel: { ...typography.captionSm, color: colors.muted, },
+  barLabelBest: { color: colors.lave, fontFamily: fonts.sansBold },
   chartFooter: { ...typography.captionSm, color: colors.lave, marginTop: spacing.v12, fontStyle: 'italic', },
   section: { marginBottom: spacing.v20 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.v12 },
   sectionTitle: { fontFamily: fonts.display, fontSize: 16, color: colors.ink },
   seeAll: { ...typography.caption, color: colors.lave, },
+  // Zone tactile de 44 px ; la marge négative rend le surplus, pour que la
+  // ligne du titre garde sa hauteur.
+  seeAllZone: { minHeight: cible.min, justifyContent: 'center', marginVertical: -spacing.v12 },
   reviewCard: {
     flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.white, borderRadius: radii.md, padding: spacing.v12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
+    shadowColor: colors.nuit, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
-  reviewQuoteMark: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 30, color: colors.surfaceSunken, lineHeight: 30 },
-  reviewComment: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 12.5, color: colors.muted, marginBottom: spacing.sm },
+  reviewQuoteMark: { fontFamily: fonts.display, fontSize: 30, color: colors.surfaceSunken, lineHeight: 30 },
+  reviewComment: { fontFamily: fonts.display, fontSize: 12.5, color: colors.muted, marginBottom: spacing.sm },
   reviewMetaRow: { flexDirection: 'row', marginBottom: spacing.sm },
   replyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.laveSoft, borderRadius: radii.sm, padding: spacing.sm },
   replyText: { ...typography.captionSm, flex: 1, color: colors.ink, },
-  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: spacing.sm },
-  replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, paddingVertical: spacing.xs, },
+  // Champ et bouton font 44 px de haut. Le retrait haut est supprimé et le bas
+  // de la ligne mord sur la marge de la carte : celle-ci ne grandit presque pas.
+  replyForm: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.surfaceSunken, marginBottom: -spacing.sm },
+  replyInput: { ...typography.captionSm, flex: 1, color: colors.ink, minHeight: cible.min, },
+  replyBtn: { minHeight: cible.min, minWidth: cible.min, alignItems: 'center', justifyContent: 'center' },
   replyBtnText: { ...typography.caption, color: colors.lave, },
   promoTicket: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.v12,
@@ -484,5 +517,5 @@ const styles = StyleSheet.create({
   promoNotchLeft: { position: 'absolute', left: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },
   promoNotchRight: { position: 'absolute', right: -8, top: '50%', width: 16, height: 16, borderRadius: radii.sm, backgroundColor: colors.cream },
   promoLabel: { ...typography.captionSm, color: colors.amber, letterSpacing: 0.5, },
-  promoText: { fontFamily: 'PlayfairDisplay_400Regular_Italic', fontSize: 15, color: colors.cream, marginTop: spacing.v2 },
+  promoText: { fontFamily: fonts.display, fontSize: 15, color: colors.cream, marginTop: spacing.v2 },
 });

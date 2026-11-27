@@ -1,16 +1,18 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { Check, X, UserCog, Store, History as HistoryIcon } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { colors, typography, radii, spacing } from '../../lib/theme';
+import { colors, typography, radii, spacing, breakpoints } from '../../lib/theme';
 import type { AdminActivityLog } from '../../lib/types';
 import EmptyState from '../../components/EmptyState';
 
-const ACTION_CONFIG: Record<string, { icon: (c: string) => React.ReactNode; bg: string; color: string }> = {
-  establishment_approved:       { icon: c => <Check size={13} color={c} />, bg: colors.successSoft, color: colors.success },
-  partner_request_approved:     { icon: c => <Check size={13} color={c} />, bg: colors.successSoft, color: colors.success },
-  partner_request_rejected:     { icon: c => <X size={13} color={c} />, bg: colors.dangerSoft, color: colors.danger },
-  role_changed:                 { icon: c => <UserCog size={13} color={c} />, bg: colors.laveSoft, color: colors.lave },
+// L'icône est posée nue, dans la couleur de l'action : la pastille de fond qui
+// l'entourait n'ajoutait rien à ce que la couleur dit déjà.
+const ACTION_CONFIG: Record<string, { icon: (c: string) => React.ReactNode; color: string }> = {
+  establishment_approved:       { icon: c => <Check size={16} color={c} />, color: colors.success },
+  partner_request_approved:     { icon: c => <Check size={16} color={c} />, color: colors.success },
+  partner_request_rejected:     { icon: c => <X size={16} color={c} />, color: colors.danger },
+  role_changed:                 { icon: c => <UserCog size={16} color={c} />, color: colors.lave },
 };
 
 function describeAction(log: AdminActivityLog): string {
@@ -49,7 +51,7 @@ export default function HistoryScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Historique d'activité</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header" aria-level={1}>Historique d'activité</Text>
         <Text style={styles.headerSub}>{logs.length} action{logs.length !== 1 ? 's' : ''} enregistrée{logs.length !== 1 ? 's' : ''}</Text>
       </View>
 
@@ -65,10 +67,10 @@ export default function HistoryScreen() {
         ) : (
           <View style={styles.card}>
             {logs.map((log, i) => {
-              const cfg = ACTION_CONFIG[log.action] ?? { icon: (c: string) => <Check size={13} color={c} />, bg: colors.surfaceSunken, color: colors.muted };
+              const cfg = ACTION_CONFIG[log.action] ?? { icon: (c: string) => <Check size={16} color={c} />, color: colors.muted };
               return (
                 <View key={log.id} style={[styles.row, i !== logs.length - 1 && styles.rowBorder]}>
-                  <View style={[styles.icon, { backgroundColor: cfg.bg }]}>{cfg.icon(cfg.color)}</View>
+                  {cfg.icon(cfg.color)}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowText}>{describeAction(log)}</Text>
                     <Text style={styles.rowDate}>
@@ -89,14 +91,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.cream },
   // Meme largeur que le contenu : sans cela, le filet du bas et les actions
   // de droite depassaient la colonne de plusieurs centaines de pixels.
-  header: { maxWidth: 700, width: '100%', paddingTop: Platform.OS === 'web' ? 16 : 50, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  // La colonne est centrée : calée à gauche, elle laissait sur grand écran tout
+  // le vide du même côté. La zone sûre, elle, est dégagée par le layout de l'admin.
+  header: { maxWidth: breakpoints.panelMax, width: '100%', alignSelf: 'center', paddingTop: spacing.md, paddingHorizontal: spacing.v20, paddingBottom: spacing.v12, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.titleSm, color: colors.ink, },
   headerSub: { ...typography.captionSm, color: colors.muted, marginTop: spacing.v2, },
-  content: { padding: spacing.v20, maxWidth: 700 },
+  content: { padding: spacing.v20, width: '100%', maxWidth: breakpoints.panelMax, alignSelf: 'center' },
   card: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.v12, padding: spacing.v12 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.surfaceSunken },
-  icon: { width: 28, height: 28, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowText: { ...typography.bodyXs, color: colors.ink, },
   rowDate: { ...typography.captionSm, color: colors.faint, marginTop: spacing.v2, },
 });
